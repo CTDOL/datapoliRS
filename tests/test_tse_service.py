@@ -11,7 +11,7 @@ async def test_pesquisar_deputada_rs_sucesso():
     codigo_eleicao = "2040402026"
     id_candidato = 12345
 
-    respx.get(f"{TSE_BASE_URL}/{ano}/{codigo_eleicao}/RS/candidatos").mock(
+    respx.get(f"{TSE_BASE_URL}/listar/{ano}/{codigo_eleicao}/RS/candidatos").mock(
         return_value=httpx.Response(
             200,
             json={
@@ -27,7 +27,7 @@ async def test_pesquisar_deputada_rs_sucesso():
         )
     )
 
-    respx.get(f"{TSE_BASE_URL}/{ano}/{codigo_eleicao}/candidato/{id_candidato}").mock(
+    respx.get(f"{TSE_BASE_URL}/buscar/{ano}/RS/{codigo_eleicao}/candidato/{id_candidato}").mock(
         return_value=httpx.Response(
             200,
             json={
@@ -71,7 +71,7 @@ async def test_pesquisar_deputada_rs_nao_encontrada():
     ano = 2026
     codigo_eleicao = "2040402026"
 
-    respx.get(f"{TSE_BASE_URL}/{ano}/{codigo_eleicao}/RS/candidatos").mock(
+    respx.get(f"{TSE_BASE_URL}/listar/{ano}/{codigo_eleicao}/RS/candidatos").mock(
         return_value=httpx.Response(200, json={"candidatos": []})
     )
 

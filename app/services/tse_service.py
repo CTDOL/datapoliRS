@@ -2,7 +2,7 @@ from typing import Optional, Dict, Any, List
 import httpx
 from app.schemas.candidate import CandidataDetalhada, BemDeclarado
 
-TSE_BASE_URL = "https://divulgacandcontas.tse.jus.br/divulga/rest/v1/candidatura/buscar"
+TSE_BASE_URL = "https://divulgacandcontas.tse.jus.br/divulga/rest/v1/candidatura"
 CARGO_DEPUTADO_ESTADUAL = 7
 
 
@@ -19,13 +19,15 @@ class TSEService:
             return None
 
     async def buscar_candidatas_rs(self, ano: int, codigo_eleicao: str) -> List[Dict[str, Any]]:
-        dados = await self._get(f"{ano}/{codigo_eleicao}/RS/candidatos")
+        # Novo formato listar fornecido pelo usuario
+        dados = await self._get(f"listar/{ano}/{codigo_eleicao}/RS/candidatos")
         if not dados:
             return []
         return dados.get("candidatos", [])
 
     async def obter_detalhes_candidato(self, ano: int, codigo_eleicao: str, id_candidato: int) -> Optional[Dict[str, Any]]:
-        return await self._get(f"{ano}/{codigo_eleicao}/candidato/{id_candidato}")
+        # Novo formato buscar fornecido pelo usuario
+        return await self._get(f"buscar/{ano}/RS/{codigo_eleicao}/candidato/{id_candidato}")
 
     async def pesquisar_deputada_rs(
         self, nome: str, ano: int, codigo_eleicao: str

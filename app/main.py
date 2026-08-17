@@ -35,8 +35,8 @@ async def health_check():
 )
 async def consultar_deputada_rs(
     nome: str = Query(..., description="Nome civil ou nome de urna da candidata"),
-    ano: int = Query(2026, description="Ano do pleito eleitoral"),
-    codigo_eleicao: str = Query("2040402026", description="Código do pleito no TSE")
+    ano: int = Query(2022, description="Ano do pleito eleitoral"),
+    codigo_eleicao: str = Query("2040602022", description="Código do pleito no TSE")
 ):
     resultado = await tse_service.pesquisar_deputada_rs(nome, ano, codigo_eleicao)
     if not resultado:
