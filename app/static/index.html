@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Candidatas - RS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Busca de Candidatas <span>RS</span></h1>
+            <p>Pesquise deputadas estaduais do Rio Grande do Sul e veja detalhes e bens declarados.</p>
+        </header>
+
+        <main>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Digite o nome da candidata..." autocomplete="off">
+                <button id="searchBtn">Buscar</button>
+            </div>
+
+            <div id="loader" class="loader hidden"></div>
+            
+            <div id="errorMessage" class="error-message hidden"></div>
+
+            <div id="resultContainer" class="result-container hidden">
+                <div class="profile-card">
+                    <div class="profile-header">
+                        <div class="profile-image">
+                            <img id="candidatePhoto" src="" alt="Foto da Candidata">
+                        </div>
+                        <div class="profile-info">
+                            <h2 id="candidateUrnaName">Nome de Urna</h2>
+                            <p class="full-name" id="candidateFullName">Nome Completo</p>
+                            <div class="tags">
+                                <span class="tag tag-party" id="candidateParty">Partido</span>
+                                <span class="tag tag-number" id="candidateNumber">00000</span>
+                                <span class="tag tag-status" id="candidateStatus">Situação</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="assets-section">
+                    <h3>Bens Declarados</h3>
+                    <div class="assets-summary">
+                        <span>Total Declarado:</span>
+                        <strong id="totalAssets">R$ 0,00</strong>
+                    </div>
+                    <div class="assets-list" id="assetsList">
+                        <!-- Bens serão inseridos aqui -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>

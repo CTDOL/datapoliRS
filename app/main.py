@@ -1,6 +1,8 @@
 import os
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.schemas.candidate import CandidataDetalhada
 from app.services.tse_service import TSEService
 
@@ -10,7 +12,15 @@ app = FastAPI(
     description="Microsserviço de busca e normalização de dados eleitorais via DivulgaCandContas (TSE)."
 )
 
+# Monta a pasta de arquivos estáticos
+os.makedirs("app/static", exist_ok=True)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 tse_service = TSEService()
+
+@app.get("/", tags=["Frontend"])
+async def serve_frontend():
+    return FileResponse("app/static/index.html")
 
 
 @app.get("/health", tags=["Monitoramento"])
