@@ -141,6 +141,36 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }).addTo(mapInstance);
 
+            // Remove existing legend if any
+            if (mapInstance.legendControl) {
+                mapInstance.removeControl(mapInstance.legendControl);
+            }
+
+            // Create Legend
+            const legend = L.control({position: 'bottomright'});
+            legend.onAdd = function (map) {
+                const div = L.DomUtil.create('div', 'info legend');
+                const grades = [0, maxVotes * 0.2, maxVotes * 0.5, maxVotes * 0.8];
+                const labels = [];
+                
+                div.innerHTML = '<h4>Escala de Votos</h4>';
+                
+                // loop through our density intervals and generate a label with a colored square for each interval
+                for (let i = 0; i < grades.length; i++) {
+                    const from = Math.ceil(grades[i]);
+                    const to = grades[i + 1] ? Math.ceil(grades[i + 1] - 1) : maxVotes;
+                    
+                    div.innerHTML +=
+                        '<i style="background:' + getColor(from + 1) + '"></i> ' +
+                        from + (to ? '&ndash;' + to + '<br>' : '+');
+                }
+                
+                return div;
+            };
+            
+            legend.addTo(mapInstance);
+            mapInstance.legendControl = legend;
+
         } catch (error) {
             console.error("Error drawing map:", error);
         }

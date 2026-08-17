@@ -193,8 +193,8 @@ header p {
 }
 
 .tag-status {
-    background-color: #d1fae5;
-    color: #047857;
+    background: #dcfce7;
+    color: #166534;
 }
 
 .assets-section {
@@ -283,4 +283,23 @@ header p {
     .asset-item .asset-val {
         align-self: flex-end;
     }
+}
+
+/* Map Legend Styles */
+.info.legend {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    font-size: 12px;
+    line-height: 18px;
+    color: #334155;
+}
+.info.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.9;
+    border-radius: 3px;
 }
