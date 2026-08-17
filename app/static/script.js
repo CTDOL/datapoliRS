@@ -76,11 +76,11 @@ document.addEventListener("DOMContentLoaded", () => {
             assetsListEl.innerHTML = "<p style='color: var(--text-muted)'>Nenhum bem declarado.</p>";
         }
 
+        // Show results first so map container has dimensions
+        resultContainer.classList.remove("hidden");
+
         // Fetch votes and draw map
         fetchAndDrawMap(data.numero_urna);
-
-        // Show results
-        resultContainer.classList.remove("hidden");
     };
 
     let mapInstance = null;
@@ -95,6 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 maxZoom: 20
             }).addTo(mapInstance);
         }
+        setTimeout(() => mapInstance.invalidateSize(), 300);
     };
 
     const fetchAndDrawMap = async (numeroUrna) => {
