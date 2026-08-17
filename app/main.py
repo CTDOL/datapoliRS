@@ -46,6 +46,27 @@ async def consultar_deputada_rs(
         )
     return resultado
 
+import json
+
+VOTOS_CACHE = None
+
+@app.get("/api/v1/candidatas/{numero}/votos", tags=["Candidaturas RS"])
+async def obter_votos_municipio(numero: str):
+    global VOTOS_CACHE
+    if VOTOS_CACHE is None:
+        try:
+            with open("app/data/votos_rs_2022.json", "r", encoding="utf-8") as f:
+                VOTOS_CACHE = json.load(f)
+        except FileNotFoundError:
+            raise HTTPException(status_code=500, detail="Banco de dados de votos não encontrado.")
+    
+    votos = VOTOS_CACHE.get(str(numero))
+    if not votos:
+        raise HTTPException(status_code=404, detail="Votos não encontrados para este número.")
+        
+    return [{"municipio": k, "votos": v} for k, v in votos.items()]
+
+
 
 if __name__ == "__main__":
     porta = int(os.environ.get("PORT", 8000))
