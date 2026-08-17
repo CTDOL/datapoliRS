@@ -19,14 +19,14 @@ class TSEService:
             return None
 
     async def buscar_candidatas_rs(self, ano: int, codigo_eleicao: str) -> List[Dict[str, Any]]:
-        # Novo formato listar fornecido pelo usuario
-        dados = await self._get(f"listar/{ano}/{codigo_eleicao}/RS/candidatos")
+        # Formato correto do TSE para listar (ex: listar/2022/RS/2040602022/7/candidatos)
+        dados = await self._get(f"listar/{ano}/RS/{codigo_eleicao}/{CARGO_DEPUTADO_ESTADUAL}/candidatos")
         if not dados:
             return []
         return dados.get("candidatos", [])
 
     async def obter_detalhes_candidato(self, ano: int, codigo_eleicao: str, id_candidato: int) -> Optional[Dict[str, Any]]:
-        # Novo formato buscar fornecido pelo usuario
+        # Formato correto do TSE para buscar detalhes (ex: buscar/2022/RS/2040602022/candidato/210001620207)
         return await self._get(f"buscar/{ano}/RS/{codigo_eleicao}/candidato/{id_candidato}")
 
     async def pesquisar_deputada_rs(
