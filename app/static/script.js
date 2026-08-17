@@ -51,30 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("candidateParty").textContent = data.partido;
         document.getElementById("candidateNumber").textContent = data.numero_urna;
         document.getElementById("candidateStatus").textContent = data.situacao_candidatura;
-        
-        // Bens Totais
-        document.getElementById("totalAssets").textContent = formatCurrency(data.total_bens);
-        
-        // Lista de Bens
-        const assetsListEl = document.getElementById("assetsList");
-        assetsListEl.innerHTML = "";
-        
-        if (data.lista_bens && data.lista_bens.length > 0) {
-            data.lista_bens.forEach(bem => {
-                const item = document.createElement("div");
-                item.className = "asset-item";
-                item.innerHTML = `
-                    <div>
-                        <span class="asset-desc">${bem.descricao || bem.tipo}</span>
-                        <span class="asset-type">${bem.tipo || 'Outros'}</span>
-                    </div>
-                    <span class="asset-val">${formatCurrency(bem.valor)}</span>
-                `;
-                assetsListEl.appendChild(item);
-            });
-        } else {
-            assetsListEl.innerHTML = "<p style='color: var(--text-muted)'>Nenhum bem declarado.</p>";
-        }
+
 
         // Show results first so map container has dimensions
         resultContainer.classList.remove("hidden");
