@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Candidatas - RS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>datapoliRS — Inteligência Eleitoral & Mapas de Votação</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     
     <!-- Leaflet CSS -->
@@ -12,26 +12,50 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Busca de Candidatas <span>RS</span></h1>
-            <p>Pesquise deputadas estaduais do Rio Grande do Sul e veja detalhes e bens declarados.</p>
+        <header style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div class="brand">
+                    <span class="logo-icon">🛡️</span>
+                    <h1>datapoli<span>RS</span></h1>
+                </div>
+                <p class="subtitle">Plataforma de Inteligência Eleitoral e Análise Geoespacial de Redutos de Votos</p>
+            </div>
+            <div>
+                <a href="http://localhost:3000/login" style="background-color: #3b82f6; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">Acesso Restrito (Gabinete)</a>
+            </div>
         </header>
 
         <main>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Digite o nome da candidata..." autocomplete="off">
-                <button id="searchBtn">Buscar</button>
+            <!-- Painel de Filtros e Busca -->
+            <div class="search-panel">
+                <div class="filter-group">
+                    <label for="cargoSelect">Cargo:</label>
+                    <select id="cargoSelect">
+                        <option value="">Todos os Cargos</option>
+                        <option value="7" selected>Deputado Estadual</option>
+                        <option value="6">Deputado Federal</option>
+                        <option value="5">Senador</option>
+                        <option value="3">Governador</option>
+                    </select>
+                </div>
+
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Digite o nome ou número do candidato..." autocomplete="off">
+                    <button id="searchBtn">Buscar</button>
+                    <div id="autocompleteDropdown" class="autocomplete-dropdown hidden"></div>
+                </div>
             </div>
 
             <div id="loader" class="loader hidden"></div>
-            
             <div id="errorMessage" class="error-message hidden"></div>
 
+            <!-- Painel de Resultados -->
             <div id="resultContainer" class="result-container hidden">
+                <!-- Card de Perfil do Candidato -->
                 <div class="profile-card">
                     <div class="profile-header">
                         <div class="profile-image">
-                            <img id="candidatePhoto" src="" alt="Foto da Candidata">
+                            <img id="candidatePhoto" src="" alt="Foto">
                         </div>
                         <div class="profile-info">
                             <h2 id="candidateUrnaName">Nome de Urna</h2>
@@ -39,18 +63,61 @@
                             <div class="tags">
                                 <span class="tag tag-party" id="candidateParty">Partido</span>
                                 <span class="tag tag-number" id="candidateNumber">00000</span>
-                                <span class="tag tag-status" id="candidateStatus">Situação</span>
+                                <span class="tag tag-cargo" id="candidateCargo">Cargo</span>
+                                <span class="tag tag-status" id="candidateStatus">Deferido</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Métricas Resumo -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <span class="metric-label">Votos no RS</span>
+                            <strong class="metric-value" id="metricTotalVotes">0</strong>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-label">Municípios com Votos</span>
+                            <strong class="metric-value" id="metricTotalMunicipios">0 / 496</strong>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-label">Maior Reduto Eleitoral</span>
+                            <strong class="metric-value" id="metricTopReduto">-</strong>
                         </div>
                     </div>
                 </div>
 
+                <!-- Grid de Mapa e Top Redutos -->
+                <div class="analytics-grid">
+                    <!-- Mapa Coroplético -->
+                    <div class="card map-card">
+                        <div class="card-header">
+                            <h3>🗺️ Distribuição Espacial de Votos (PostGIS)</h3>
+                            <span class="badge">Eleições 2022</span>
+                        </div>
+                        <div id="map" style="height: 460px; width: 100%; border-radius: 8px;"></div>
+                    </div>
 
-
-                <!-- Map Card -->
-                <div class="card fade-in" id="mapCard">
-                    <h3>Votação por Município</h3>
-                    <div id="map" style="height: 400px; width: 100%; border-radius: 8px; margin-top: 1rem;"></div>
+                    <!-- Tabela de Top Municípios -->
+                    <div class="card ranking-card">
+                        <div class="card-header">
+                            <h3>🏆 Top 10 Redutos Eleitorais</h3>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="ranking-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Município</th>
+                                        <th>Votos</th>
+                                        <th>% do Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="topRankingBody">
+                                    <!-- Inserido dinamicamente via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>

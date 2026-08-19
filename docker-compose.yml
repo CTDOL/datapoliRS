@@ -1,21 +1,88 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: datapoli_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-datapoli_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-datapoli_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-datapoli_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datapoli_user} -d ${POSTGRES_DB:-datapoli_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datapoli_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: datapoli_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datapoli_network
+
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: deputadas_rs_api
+    container_name: datapoli_api
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     volumes:
       - ./app:/app/app
+      - ./etl:/app/etl
+      - ./sql:/app/sql
+      - ./tests:/app/tests
+      - ./scripts:/app/scripts
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=8000
-    restart: unless-stopped
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-datapoli_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-datapoli_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-datapoli_db}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-datapoli_user}:${POSTGRES_PASSWORD:-datapoli_pass}@postgres:5432/${POSTGRES_DB:-datapoli_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
+    networks:
+      - datapoli_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  datapoli_network:
+    driver: bridge
