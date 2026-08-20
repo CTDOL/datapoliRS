@@ -52,9 +52,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Blurs (Glassmorphism environment) */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
 
       {/* Entry Animation */}
@@ -65,16 +65,16 @@ export default function LoginPage() {
         className="w-full max-w-md"
       >
         {/* Glassmorphism Card */}
-        <div className="backdrop-blur-xl bg-slate-900/40 border border-slate-700/50 p-8 rounded-3xl shadow-2xl relative z-10 overflow-hidden">
+        <div className="backdrop-blur-xl bg-zinc-900/40 border border-zinc-700/50 p-8 rounded-3xl shadow-2xl relative z-10 overflow-hidden">
           {/* Subtle top glare */}
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center border border-blue-500/20 mb-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
-              <Shield className="w-8 h-8 text-blue-400" />
+            <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 mb-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+              <Shield className="w-8 h-8 text-purple-400" />
             </div>
             <h1 className="text-3xl font-bold text-white tracking-tight">DATAPOLIRS</h1>
-            <p className="text-slate-400 text-sm mt-2 font-medium tracking-wide uppercase">Inteligência Estratégica</p>
+            <p className="text-zinc-400 text-sm mt-2 font-medium tracking-wide uppercase">Inteligência Estratégica</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -89,25 +89,25 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 ml-1 uppercase tracking-wider">Email Corporativo</label>
+              <label className="text-xs font-semibold text-zinc-300 ml-1 uppercase tracking-wider">Email Corporativo</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
                 placeholder="operador@campanha.com.br"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 ml-1 uppercase tracking-wider">Senha</label>
+              <label className="text-xs font-semibold text-zinc-300 ml-1 uppercase tracking-wider">Senha</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-300"
+                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
                 placeholder="••••••••"
               />
             </div>
@@ -115,7 +115,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium py-3.5 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/25 flex justify-center items-center mt-6 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium py-3.5 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-purple-500/25 flex justify-center items-center mt-6 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

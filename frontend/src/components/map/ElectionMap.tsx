@@ -139,17 +139,17 @@ export default function ElectionMap({ liderancas = [] }: ElectionMapProps) {
   }, [JSON.stringify(liderancas), mapTheme]); // Refaz ao mudar dados ou tema (segurança extra)
 
   return (
-    <div className="w-full h-[600px] min-h-[600px] rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 relative">
+    <div className="w-full h-[600px] min-h-[600px] rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 bg-zinc-950 relative">
       <div ref={mapContainer} className="w-full h-full" />
       
       {/* Controle de Mapa Base */}
-      <div className="absolute top-4 right-4 z-10 flex bg-slate-900/80 backdrop-blur-md rounded-xl p-1 border border-slate-700/50 shadow-xl">
+      <div className="absolute top-4 right-4 z-10 flex bg-zinc-900/80 backdrop-blur-md rounded-xl p-1 border border-zinc-700/50 shadow-xl">
         <button
           onClick={() => setMapTheme('dark')}
           className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
             mapTheme === 'dark' 
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' 
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20' 
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
           }`}
         >
           Dark
@@ -158,8 +158,8 @@ export default function ElectionMap({ liderancas = [] }: ElectionMapProps) {
           onClick={() => setMapTheme('light')}
           className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
             mapTheme === 'light' 
-              ? 'bg-slate-100 text-slate-900 shadow-md' 
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              ? 'bg-zinc-100 text-zinc-900 shadow-md' 
+              : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
           }`}
         >
           Light
