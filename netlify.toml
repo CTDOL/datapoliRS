@@ -1,0 +1,4 @@
+[build]
+  base = "frontend"
+  command = "next build"
+  publish = "frontend/.next"
