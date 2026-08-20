@@ -17,3 +17,7 @@ async def obter_municipios_geojson(
 ) -> Dict[str, Any]:
     """Endpoint que serve as geometrias vetoriais dos municípios do RS com alta performance."""
     return await GeoService.getMunicipiosGeoJson(connection)
+
+@router.get("/municipios/lista", summary="Lista leve de municípios com centróide")
+async def obter_lista_municipios(connection: asyncpg.Connection = Depends(getDbConnection)):
+    return await GeoService.getMunicipiosList(connection)

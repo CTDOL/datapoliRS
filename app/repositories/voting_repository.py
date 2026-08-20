@@ -37,7 +37,8 @@ class VotingRepository:
         self,
         connection: asyncpg.Connection,
         candidateNumber: int,
-        cargoCode: Optional[int] = None
+        cargoCode: Optional[int] = None,
+        ano: int = 2022
     ) -> Optional[Dict[str, Any]]:
         """Busca o candidato pelo número e retorna seu SQ e detalhes de votação."""
         candidateQuery = """
@@ -52,13 +53,15 @@ class VotingRepository:
             FROM tb_candidaturas c
             JOIN tb_cargos cg ON c.cd_cargo = cg.cd_cargo
             JOIN tb_partidos p ON c.nr_partido = p.nr_partido
+            JOIN tb_eleicoes e ON c.cd_eleicao = e.cd_eleicao
             WHERE c.nr_candidato = $1
               AND ($2::INT IS NULL OR c.cd_cargo = $2::INT)
+              AND e.ano_eleicao = $3
             ORDER BY c.sq_candidato DESC
             LIMIT 1;
         """
         try:
-            candidateRecord = await connection.fetchrow(candidateQuery, candidateNumber, cargoCode)
+            candidateRecord = await connection.fetchrow(candidateQuery, candidateNumber, cargoCode, ano)
             if not candidateRecord:
                 return None
             return dict(candidateRecord)

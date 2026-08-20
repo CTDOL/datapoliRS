@@ -7,6 +7,20 @@ logger = logging.getLogger("GeoRepository")
 
 
 class GeoRepository:
+
+    @staticmethod
+    async def getMunicipiosList(connection: asyncpg.Connection) -> list:
+        query = """
+            SELECT cd_ibge_7, nm_municipio, 
+                   ST_Y(ST_Centroid(geometria)) as latitude, 
+                   ST_X(ST_Centroid(geometria)) as longitude
+            FROM tb_municipios
+            WHERE geometria IS NOT NULL
+            ORDER BY nm_municipio;
+        """
+        rows = await connection.fetch(query)
+        return [dict(r) for r in rows]
+
     """Repositório de dados geoespaciais com processamento nativo via PostGIS."""
 
     @staticmethod

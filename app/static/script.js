@@ -42,9 +42,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const cargoVal = cargoSelect.value;
         const cargoParam = cargoVal ? `&cd_cargo=${cargoVal}` : "";
+        const anoVal = document.getElementById("anoSelect").value;
+        const anoParam = `&ano=${anoVal}`;
 
         try {
-            const res = await fetch(`/api/v1/candidatos?termo=${encodeURIComponent(query)}${cargoParam}&limite=8`);
+            const res = await fetch(`/api/v1/candidatos?termo=${encodeURIComponent(query)}${cargoParam}${anoParam}&limite=8`);
             if (!res.ok) return;
             const candidates = await res.json();
 
@@ -90,12 +92,14 @@ document.addEventListener("DOMContentLoaded", () => {
         loader.classList.remove("hidden");
 
         const cargoVal = cargoSelect.value;
-        const cargoParam = cargoVal ? `&cd_cargo=${cargoVal}` : "";
+        const cargoParam = cargoVal ? `cd_cargo=${cargoVal}&` : "";
+        const anoVal = document.getElementById("anoSelect").value;
+        const anoParam = `ano=${anoVal}`;
 
         try {
             // Se for número puro, busca direto por número
             if (!isNaN(query) && parseInt(query) > 0) {
-                const res = await fetch(`/api/v1/votacao/numero/${query}?${cargoParam.replace('&', '')}`);
+                const res = await fetch(`/api/v1/votacao/numero/${query}?${cargoParam}${anoParam}`);
                 if (!res.ok) throw new Error("Candidato não localizado para o número informado.");
                 const votingData = await res.json();
                 renderVotingDashboard(votingData);
@@ -103,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // Senão, busca por nome na API
-            const res = await fetch(`/api/v1/candidatos?termo=${encodeURIComponent(query)}${cargoParam}&limite=1`);
+            const res = await fetch(`/api/v1/candidatos?termo=${encodeURIComponent(query)}&${cargoParam}${anoParam}&limite=1`);
             if (!res.ok) throw new Error("Erro ao buscar dados no servidor.");
             const candidates = await res.json();
 
@@ -147,6 +151,8 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("candidateParty").textContent = data.sg_partido;
         document.getElementById("candidateNumber").textContent = data.nr_candidato;
         document.getElementById("candidateCargo").textContent = data.ds_cargo;
+        
+        document.getElementById("electionBadge").textContent = `Eleições ${document.getElementById("anoSelect").value}`;
 
         // Foto oficial com proxy resiliente e cache
         const photoEl = document.getElementById("candidatePhoto");
@@ -157,7 +163,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Métricas
         metricTotalVotes.textContent = formatNumber(data.total_votos_estado);
-        metricTotalMunicipios.textContent = `${data.municipios_votados} / 496`;
+        
+        // Filtra municípios onde o candidato realmente teve votos
+        const municipiosComVoto = data.distribuicao_municipios.filter(m => m.votos > 0).length;
+        metricTotalMunicipios.textContent = `${municipiosComVoto} / 497`;
 
         const topReduto = data.distribuicao_municipios[0];
         if (topReduto) {

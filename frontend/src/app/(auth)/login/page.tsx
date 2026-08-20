@@ -33,8 +33,11 @@ export default function LoginPage() {
       // Decode do JWT Base64 padrão para extrair as claims (sub e tenant_id)
       const payload = JSON.parse(atob(token.split('.')[1]));
       
-      // Salva no estado global
-      login(token, { 
+      // Define o Cookie de Sessão para o Middleware autorizar a rota (Sem a flag Secure para rodar via HTTP no localhost)
+      document.cookie = `token=${token}; path=/; max-age=3600; SameSite=Lax`;
+      
+      // Salva no estado global (Corrigida a assinatura do Zustand)
+      login({ 
         email: payload.sub, 
         tenant_id: payload.tenant_id 
       });

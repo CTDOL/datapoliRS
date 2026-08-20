@@ -13,18 +13,10 @@ const ElectionMap = dynamic(() => import('@/components/map/ElectionMap'), {
   ),
 });
 
-const IBGE_COORDS: Record<string, [number, number]> = {
-  '4300034': [-54.1611, -31.8656], // Aceguá
-  '4314902': [-51.2177, -30.0346], // Porto Alegre
-  '4305108': [-51.1794, -29.1678], // Caxias do Sul
-  '4314407': [-52.3426, -31.7654], // Pelotas
-  '4304606': [-52.8122, -29.7186], // Canoas
-  '4309209': [-50.9984, -29.9439], // Gravataí
-  '4313409': [-51.1444, -29.6868], // Novo Hamburgo
-};
+import { LiderancaPoint } from '@/components/map/ElectionMap';
 
 export default function DashboardPage() {
-  const [liderancas, setLiderancas] = useState<any[]>([]);
+  const [liderancas, setLiderancas] = useState<LiderancaPoint[]>([]);
 
   useEffect(() => {
     async function loadLiderancas() {
@@ -32,18 +24,7 @@ export default function DashboardPage() {
         console.log('📡 Buscando lideranças da API...');
         const res = await api.get('/api/v1/gabinete/liderancas');
         console.log('✅ Resposta da API recebida:', res.data);
-
-        const mapped = res.data.map((l: any) => {
-          const coords = IBGE_COORDS[l.cd_ibge_7] || [-51.2177, -30.0346];
-          return {
-            ...l,
-            longitude: coords[0],
-            latitude: coords[1],
-          };
-        });
-
-        console.log('🗺️ Dados mapeados para o mapa:', mapped);
-        setLiderancas(mapped);
+        setLiderancas(res.data);
       } catch (err) {
         console.error('❌ Erro ao buscar lideranças:', err);
       }

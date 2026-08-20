@@ -1,7 +1,7 @@
-import { Loader2 } from 'lucide-react';
+import { Loader2, Edit2 } from 'lucide-react';
 import { Lideranca } from './useLiderancas';
 
-export function LiderancasTable({ liderancas, isLoading }: { liderancas: Lideranca[], isLoading: boolean }) {
+export function LiderancasTable({ liderancas, isLoading, onEdit }: { liderancas: Lideranca[], isLoading: boolean, onEdit?: (lideranca: Lideranca) => void }) {
   return (
     <div className="flex-1 bg-slate-900/50 backdrop-blur-md border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
       <div className="overflow-x-auto">
@@ -13,6 +13,7 @@ export function LiderancasTable({ liderancas, isLoading }: { liderancas: Lideran
               <th className="px-6 py-4 font-semibold">Cód. IBGE</th>
               <th className="px-6 py-4 font-semibold">Tipo</th>
               <th className="px-6 py-4 font-semibold">Status</th>
+              <th className="px-6 py-4 font-semibold text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50 text-sm">
@@ -31,6 +32,11 @@ export function LiderancasTable({ liderancas, isLoading }: { liderancas: Lideran
                   <td className="px-6 py-4 text-slate-300">{l.nm_municipio || l.cd_ibge_7 || 'N/I'}</td>
                   <td className="px-6 py-4"><span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{l.tp_influencia}</span></td>
                   <td className="px-6 py-4"><span className={`flex items-center gap-2 ${l.is_ativo ? 'text-teal-400' : 'text-slate-500'}`}><span className={`w-2 h-2 rounded-full ${l.is_ativo ? 'bg-teal-400' : 'bg-slate-500'}`} />{l.is_ativo ? 'Ativo' : 'Inativo'}</span></td>
+                  <td className="px-6 py-4 text-right">
+                    <button onClick={() => onEdit && onEdit(l)} className="text-slate-400 hover:text-blue-400 p-2 transition-colors">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
               ))
             )}

@@ -1,24 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, UserPlus, MapPin, Phone } from 'lucide-react';
-import { FormDataLideranca } from './useLiderancas';
+import { FormDataLideranca, Lideranca } from './useLiderancas';
+import { api } from '@/services/api';
+
+interface MunicipioItem {
+  cd_ibge_7: string;
+  nm_municipio: string;
+}
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: FormDataLideranca) => Promise<boolean>;
   isSubmitting: boolean;
+  initialData?: Lideranca | null;
 }
 
-export function LiderancaFormModal({ isOpen, onClose, onSubmit, isSubmitting }: ModalProps) {
+export function LiderancaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initialData }: ModalProps) {
   const [formData, setFormData] = useState<FormDataLideranca>({
     nm_completo: '',
     nr_telefone: '',
     cd_ibge_7: '4314902',
     tp_influencia: 'Comunitária',
   });
+  
+  useEffect(() => {
+    setTimeout(() => {
+      if (initialData) {
+        setFormData({
+          nm_completo: initialData.nm_completo || '',
+          nr_telefone: initialData.nr_telefone || '',
+          cd_ibge_7: initialData.cd_ibge_7 || '4314902',
+          tp_influencia: initialData.tp_influencia || 'Comunitária',
+        });
+      } else {
+        setFormData({ nm_completo: '', nr_telefone: '', cd_ibge_7: '4314902', tp_influencia: 'Comunitária' });
+      }
+    }, 0);
+  }, [initialData, isOpen]);
+  
+  const [municipios, setMunicipios] = useState<MunicipioItem[]>([]);
+  const [loadingMun, setLoadingMun] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchMuns = async () => {
+        setLoadingMun(true);
+        try {
+          const res = await api.get('/api/v1/geo/municipios/lista');
+          setMunicipios(res.data);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setLoadingMun(false);
+        }
+      };
+      fetchMuns();
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,25 +71,27 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, isSubmitting }: 
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40"
-      />
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-slate-900 border border-slate-700/50 rounded-3xl shadow-2xl z-50 overflow-hidden"
-      >
+      {isOpen && (
+        <>
+          <motion.div
+            key="backdrop"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40"
+          />
+          <motion.div
+            key="modal"
+            initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-slate-900 border border-slate-700/50 rounded-3xl shadow-2xl z-50 overflow-hidden"
+          >
         <div className="p-6 border-b border-slate-800 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
               <UserPlus className="w-5 h-5 text-blue-400" />
             </div>
-            <h2 className="text-xl font-bold text-white">Nova Liderança</h2>
+            <h2 className="text-xl font-bold text-white">{initialData ? 'Editar Liderança' : 'Nova Liderança'}</h2>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <X className="w-6 h-6" />
@@ -65,8 +109,21 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, isSubmitting }: 
               <input type="text" required value={formData.nr_telefone} onChange={(e) => setFormData({...formData, nr_telefone: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-blue-500/50" placeholder="(51) 99999-9999"/>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase mb-1.5 flex items-center gap-1"><MapPin className="w-3 h-3"/> Cód. IBGE</label>
-              <input type="text" value={formData.cd_ibge_7} onChange={(e) => setFormData({...formData, cd_ibge_7: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-blue-500/50" placeholder="Ex: 4314902"/>
+              <label className="block text-xs font-semibold text-slate-300 uppercase mb-1.5 flex items-center gap-1"><MapPin className="w-3 h-3"/> Município de Atuação</label>
+              <select 
+                value={formData.cd_ibge_7} 
+                onChange={(e) => setFormData({...formData, cd_ibge_7: e.target.value})} 
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-blue-500/50"
+                disabled={loadingMun}
+              >
+                {loadingMun ? (
+                  <option value="">Carregando...</option>
+                ) : (
+                  municipios.map(m => (
+                    <option key={m.cd_ibge_7} value={m.cd_ibge_7}>{m.nm_municipio}</option>
+                  ))
+                )}
+              </select>
             </div>
           </div>
           <div>
@@ -84,8 +141,10 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, isSubmitting }: 
               {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar'}
             </button>
           </div>
-        </form>
-      </motion.div>
+          </form>
+        </motion.div>
+        </>
+      )}
     </AnimatePresence>
   );
 }

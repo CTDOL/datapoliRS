@@ -35,7 +35,14 @@
                         <option value="7" selected>Deputado Estadual</option>
                         <option value="6">Deputado Federal</option>
                         <option value="5">Senador</option>
-                        <option value="3">Governador</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="anoSelect">Ano:</label>
+                    <select id="anoSelect">
+                        <option value="2022" selected>2022</option>
+                        <option value="2026">2026</option>
                     </select>
                 </div>
 
@@ -77,7 +84,7 @@
                         </div>
                         <div class="metric-card">
                             <span class="metric-label">Municípios com Votos</span>
-                            <strong class="metric-value" id="metricTotalMunicipios">0 / 496</strong>
+                            <strong class="metric-value" id="metricTotalMunicipios">0 / 497</strong>
                         </div>
                         <div class="metric-card">
                             <span class="metric-label">Maior Reduto Eleitoral</span>
@@ -92,7 +99,7 @@
                     <div class="card map-card">
                         <div class="card-header">
                             <h3>🗺️ Distribuição Espacial de Votos (PostGIS)</h3>
-                            <span class="badge">Eleições 2022</span>
+                            <span class="badge" id="electionBadge">Eleições 2022</span>
                         </div>
                         <div id="map" style="height: 460px; width: 100%; border-radius: 8px;"></div>
                     </div>

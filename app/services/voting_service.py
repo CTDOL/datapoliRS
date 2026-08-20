@@ -31,6 +31,7 @@ class VotingService:
         cargoCode: Optional[int] = None,
         partidoSigla: Optional[str] = None,
         candidateNumber: Optional[int] = None,
+        ano: int = 2022,
         limit: int = 50
     ) -> List[CandidatoBuscaItem]:
         """Pesquisa candidaturas no banco de dados com filtros flexíveis."""
@@ -40,6 +41,7 @@ class VotingService:
             cargoCode=cargoCode,
             partidoSigla=partidoSigla,
             candidateNumber=candidateNumber,
+            ano=ano,
             limit=limit
         )
         return [CandidatoBuscaItem(**candidate) for candidate in candidatesRaw]
@@ -109,13 +111,15 @@ class VotingService:
         self,
         connection: asyncpg.Connection,
         candidateNumber: int,
-        cargoCode: Optional[int] = None
+        cargoCode: Optional[int] = None,
+        ano: int = 2022
     ) -> VotacaoCandidatoResponse:
         """Localiza o candidato pelo número eleitoral e cargo e retorna seus votos."""
         candidate = await self.voting_repo.getVotesByCandidateNumberAndCargo(
             connection=connection,
             candidateNumber=candidateNumber,
-            cargoCode=cargoCode
+            cargoCode=cargoCode,
+            ano=ano
         )
         if not candidate:
             cargoMsg = f" para o cargo {cargoCode}" if cargoCode else ""

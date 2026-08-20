@@ -86,7 +86,9 @@ class CabinetRepository:
                 l.tp_influencia,
                 l.ds_observacoes,
                 l.is_ativo,
-                l.created_at
+                l.created_at,
+                ST_Y(ST_Centroid(m.geometria)) as latitude,
+                ST_X(ST_Centroid(m.geometria)) as longitude
             FROM tb_gabinete_liderancas l
             LEFT JOIN tb_municipios m ON l.cd_ibge_7 = m.cd_ibge_7
             WHERE {whereClause}
@@ -118,7 +120,9 @@ class CabinetRepository:
                 l.tp_influencia,
                 l.ds_observacoes,
                 l.is_ativo,
-                l.created_at
+                l.created_at,
+                ST_Y(ST_Centroid(m.geometria)) as latitude,
+                ST_X(ST_Centroid(m.geometria)) as longitude
             FROM tb_gabinete_liderancas l
             LEFT JOIN tb_municipios m ON l.cd_ibge_7 = m.cd_ibge_7
             WHERE l.tenant_id = $1 AND l.id_lideranca = $2;

@@ -9,7 +9,13 @@ export const api = axios.create({
 // Interceptor de Requisição (pode ser usado para injetar headers genéricos como CSRF se necessário)
 api.interceptors.request.use(
   (config) => {
-    // O token não é mais injetado manualmente aqui, pois reside em Cookie HttpOnly.
+    // Extrai o token do cookie cliente para enviar ao FastAPI (que exige Header Bearer)
+    if (typeof document !== 'undefined') {
+      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
     return config;
   },
   (error) => {

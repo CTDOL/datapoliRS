@@ -15,6 +15,7 @@ class CandidateRepository:
         cargoCode: Optional[int] = None,
         partidoSigla: Optional[str] = None,
         candidateNumber: Optional[int] = None,
+        ano: int = 2022,
         limit: int = 50
     ) -> List[Dict[str, Any]]:
         """Pesquisa candidaturas com filtros combinados e paginação."""
@@ -59,10 +60,12 @@ class CandidateRepository:
             FROM tb_candidaturas c
             JOIN tb_cargos cg ON c.cd_cargo = cg.cd_cargo
             JOIN tb_partidos p ON c.nr_partido = p.nr_partido
-            WHERE {whereClause}
+            JOIN tb_eleicoes e ON c.cd_eleicao = e.cd_eleicao
+            WHERE {whereClause} AND e.ano_eleicao = ${paramIndex}
             ORDER BY c.nm_urna_candidato ASC
-            LIMIT ${paramIndex};
+            LIMIT ${paramIndex + 1};
         """
+        params.append(ano)
         params.append(limit)
 
         try:

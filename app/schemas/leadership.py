@@ -34,6 +34,8 @@ class LiderancaResponse(LiderancaBase):
     id_lideranca: UUID
     tenant_id: UUID
     nm_municipio: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

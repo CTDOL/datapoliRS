@@ -31,7 +31,10 @@ export function useLiderancas() {
   }, []);
 
   useEffect(() => {
-    fetchLiderancas();
+    const initFetch = async () => {
+      await fetchLiderancas();
+    };
+    initFetch();
   }, [fetchLiderancas]);
 
   const addLideranca = async (data: FormDataLideranca) => {
@@ -48,5 +51,19 @@ export function useLiderancas() {
     }
   };
 
-  return { liderancas, isLoading, isSubmitting, addLideranca };
+  const updateLideranca = async (id: string, data: FormDataLideranca) => {
+    setIsSubmitting(true);
+    try {
+      await api.put(`/api/v1/gabinete/liderancas/${id}`, data);
+      await fetchLiderancas(); // Re-fetch
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar liderança', error);
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return { liderancas, isLoading, isSubmitting, addLideranca, updateLideranca };
 }

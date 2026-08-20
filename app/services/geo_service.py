@@ -11,6 +11,17 @@ GEOJSON_CACHE_TTL = 86400 * 7  # 7 Dias (geometrias são estáticas)
 
 
 class GeoService:
+
+    @staticmethod
+    async def getMunicipiosList(connection: asyncpg.Connection) -> list:
+        cachedData = await CacheService.get("geo:rs:municipios:lista")
+        if cachedData:
+            return cachedData
+        data = await GeoRepository.getMunicipiosList(connection)
+        if data:
+            await CacheService.set("geo:rs:municipios:lista", data, ttlSeconds=GEOJSON_CACHE_TTL)
+        return data
+
     """Serviço de inteligência geoespacial com cache Redis e processamento PostGIS."""
 
     @staticmethod

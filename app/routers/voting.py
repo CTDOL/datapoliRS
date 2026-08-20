@@ -78,6 +78,7 @@ async def pesquisar_candidatos(
     cargo: Optional[int] = Query(None, alias="cd_cargo", description="Código do cargo (ex: 7=Deputado Estadual, 6=Deputado Federal)"),
     partido: Optional[str] = Query(None, alias="sg_partido", description="Sigla do partido (ex: PT, PP, PL, MDB)"),
     numero: Optional[int] = Query(None, alias="nr_candidato", description="Número eleitoral na urna"),
+    ano: int = Query(2022, description="Ano da eleição"),
     limite: int = Query(50, ge=1, le=200, description="Quantidade máxima de resultados"),
     connection: asyncpg.Connection = Depends(getDbConnection),
     voting_service: VotingService = Depends(get_voting_service)
@@ -89,6 +90,7 @@ async def pesquisar_candidatos(
         cargoCode=cargo,
         partidoSigla=partido,
         candidateNumber=numero,
+        ano=ano,
         limit=limite
     )
 
@@ -115,6 +117,7 @@ async def obter_votacao_candidato_por_sq(
 async def obter_votacao_candidato_por_numero(
     numero_urna: int,
     cargo: Optional[int] = Query(None, alias="cd_cargo", description="Filtrar por cargo específico"),
+    ano: int = Query(2022, description="Ano da eleição"),
     connection: asyncpg.Connection = Depends(getDbConnection),
     voting_service: VotingService = Depends(get_voting_service)
 ) -> VotacaoCandidatoResponse:
@@ -122,5 +125,6 @@ async def obter_votacao_candidato_por_numero(
     return await voting_service.getCandidateVotesByNumber(
         connection=connection,
         candidateNumber=numero_urna,
-        cargoCode=cargo
+        cargoCode=cargo,
+        ano=ano
     )
