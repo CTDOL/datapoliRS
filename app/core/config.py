@@ -37,6 +37,13 @@ class AppSettings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # CORS - lista separada por vírgula das origens do frontend (ex: Netlify)
+    ALLOWED_ORIGINS: str = "http://localhost:3000"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
