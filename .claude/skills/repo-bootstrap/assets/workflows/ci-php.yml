@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Checar sintaxe
+        run: find src public -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Instalar dependências
+        run: composer install --prefer-dist --no-progress
+        if: hashFiles('composer.json') != ''
+
+      - name: Rodar testes
+        run: vendor/bin/phpunit
+        if: hashFiles('phpunit.xml*') != ''
+
+      - name: Auditar dependências
+        run: composer audit || true
+        if: hashFiles('composer.lock') != ''
+
+  credenciais:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Procurar credencial no código
+        run: |
+          if grep -rnE "(password|senha|secret|api_key)[[:space:]]*=[[:space:]]*[\"'][^\"']{3,}" \
+             --include='*.php' --exclude-dir=vendor . ; then
+            echo "::error::Possível credencial encontrada no código."
+            exit 1
+          fi
+          echo "Nenhuma credencial óbvia encontrada."

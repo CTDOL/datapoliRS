@@ -1,0 +1,14 @@
+vendor/
+composer.lock
+.env
+.env.*
+!.env.example
+*.log
+storage/logs/*
+storage/framework/cache/*
+bootstrap/cache/*
+*.sqlite
+*.sql.gz
+.DS_Store
+.idea/
+.vscode/
