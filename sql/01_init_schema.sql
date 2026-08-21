@@ -109,3 +109,14 @@ CREATE TABLE IF NOT EXISTS tb_gabinete_liderancas (
 );
 CREATE INDEX IF NOT EXISTS idx_liderancas_tenant ON tb_gabinete_liderancas(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_liderancas_municipio ON tb_gabinete_liderancas(cd_ibge_7);
+
+-- 10. Tabela de Usuários (Autenticação do Gabinete Digital)
+CREATE TABLE IF NOT EXISTS tb_users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_users_email ON tb_users(email);

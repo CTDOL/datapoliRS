@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.database import initializeDatabasePool, closeDatabasePool
 from app.core.redis_client import initializeRedisClient, closeRedisClient
 from app.core.dependencies import getDbConnection
+from app.core.bootstrap import ensureAdminUser
 from app.schemas.candidate import CandidataDetalhada
 from app.services.tse_service import TSEService
 from app.services.voting_service import VotingService
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
     logger.info("=== INICIALIZANDO ECOSSISTEMA DATAPOLIRS ===")
     await initializeDatabasePool()
     await initializeRedisClient()
+    await ensureAdminUser()
     logger.info("=== DATAPOLIRS PRONTO PARA RECEBER REQUISIÇÕES ===")
     yield
     logger.info("=== ENCERRANDO RECURSOS DO DATAPOLIRS ===")
@@ -84,7 +86,7 @@ async def serve_frontend():
 
 @app.get("/health", tags=["Monitoramento"])
 async def health_check():
-    """Healthcheck para probes do Docker e Render."""
+    """Healthcheck para probes do Docker."""
     return {
         "status": "online",
         "version": settings.API_VERSION,

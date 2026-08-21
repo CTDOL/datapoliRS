@@ -116,9 +116,18 @@ export default function ElectionMap({ liderancas = [] }: ElectionMapProps) {
       const lng = Number(l.longitude) + Math.cos(i) * 0.0002;
       const lat = Number(l.latitude) + Math.sin(i) * 0.0002;
 
-      // Cria o elemento visual do marker
+      // Elemento externo: é o que o MapLibre posiciona via transform inline (translate em px).
+      // Não pode receber a propriedade CSS `scale` (via hover:scale-*) aqui — no Tailwind v4,
+      // `scale` é uma propriedade separada de `transform` e o navegador a compõe ENVOLVENDO
+      // o transform inline do MapLibre, amplificando também o deslocamento (não só o tamanho),
+      // o que faz o ponto "pular" pra longe da posição real ao passar o mouse.
       const el = document.createElement('div');
-      el.className = 'lideranca-marker w-4 h-4 bg-sky-500 border-2 border-white rounded-full shadow-[0_0_10px_rgba(14,165,233,0.8)] cursor-pointer hover:scale-125 transition-transform';
+      el.className = 'lideranca-marker w-4 h-4 cursor-pointer';
+
+      // Elemento interno: recebe a aparência visual e o efeito de hover, isolado do posicionamento.
+      const dot = document.createElement('div');
+      dot.className = 'w-full h-full bg-sky-500 border-2 border-white rounded-full shadow-[0_0_10px_rgba(14,165,233,0.8)] hover:scale-125 transition-transform';
+      el.appendChild(dot);
 
       // Configura o popup
       const popup = new maplibregl.Popup({ offset: 15, closeButton: true }).setHTML(`
@@ -137,6 +146,25 @@ export default function ElectionMap({ liderancas = [] }: ElectionMapProps) {
     });
 
   }, [JSON.stringify(liderancas), mapTheme]); // Refaz ao mudar dados ou tema (segurança extra)
+
+  // Ajusta o enquadramento do mapa pra caber todas as lideranças, em vez de um centro/zoom fixo
+  // (com centro fixo em POA, pontos distantes como Uruguaiana ficavam fora da área visível).
+  // Depende só de `liderancas` (não do tema) pra não resetar o zoom/pan ao trocar Dark/Light.
+  useEffect(() => {
+    if (!map.current) return;
+
+    const validLiderancas = liderancas.filter(l => l.longitude && l.latitude);
+    if (validLiderancas.length === 0) return;
+
+    const bounds = new maplibregl.LngLatBounds();
+    validLiderancas.forEach(l => bounds.extend([Number(l.longitude), Number(l.latitude)]));
+
+    map.current.fitBounds(bounds, {
+      padding: 60,
+      maxZoom: 12, // evita zoom exagerado quando há só 1 liderança
+      duration: 0,
+    });
+  }, [JSON.stringify(liderancas)]);
 
   return (
     <div className="w-full h-[600px] min-h-[600px] rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 bg-zinc-950 relative">

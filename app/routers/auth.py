@@ -1,24 +1,36 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+import asyncpg
 from app.services.auth_service import AuthService
+from app.core.dependencies import getDbConnection
 from datetime import timedelta
-import uuid
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Autenticação"])
 
+credentials_exception = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Credenciais Incorretas",
+    headers={"WWW-Authenticate": "Bearer"},
+)
+
+
 @router.post("/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    # Mock credenciais para o MVP (Zero Trust Testing)
-    if form_data.username == "operador@campanha.com.br" and form_data.password == "admin123":
-        tenant_id = "11111111-2222-3333-4444-555555555555"
-        access_token = AuthService.create_access_token(
-            data={"sub": form_data.username, "tenant_id": tenant_id},
-            expires_delta=timedelta(minutes=60)
-        )
-        return {"access_token": access_token, "token_type": "bearer"}
-    
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Credenciais Incorretas",
-        headers={"WWW-Authenticate": "Bearer"},
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    connection: asyncpg.Connection = Depends(getDbConnection)
+):
+    row = await connection.fetchrow(
+        "SELECT email, hashed_password, is_active, tenant_id FROM tb_users WHERE email = $1",
+        form_data.username,
     )
+    if row is None or not row["is_active"]:
+        raise credentials_exception
+
+    if not AuthService.verify_password(form_data.password, row["hashed_password"]):
+        raise credentials_exception
+
+    access_token = AuthService.create_access_token(
+        data={"sub": row["email"], "tenant_id": str(row["tenant_id"])},
+        expires_delta=timedelta(minutes=60)
+    )
+    return {"access_token": access_token, "token_type": "bearer"}

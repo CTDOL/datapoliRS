@@ -32,12 +32,17 @@ class AppSettings(BaseSettings):
     TSE_BASE_URL: str = "https://divulgacandcontas.tse.jus.br/divulga/rest/v1/candidatura"
     TSE_TIMEOUT_SECONDS: float = 10.0
     
-    # Auth
-    SECRET_KEY: str = "default_secret_for_local_dev_change_me_in_prod" # fallback for dev
+    # Auth — sem valor padrão: obrigatório vir de variável de ambiente (.env)
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # CORS - lista separada por vírgula das origens do frontend (ex: Netlify)
+    # Usuário administrador criado automaticamente no startup, se ainda não existir
+    ADMIN_EMAIL: str = "operador@campanha.com.br"
+    ADMIN_PASSWORD: str = "admin123"
+    ADMIN_TENANT_ID: str = "11111111-2222-3333-4444-555555555555"
+
+    # CORS - lista separada por vírgula das origens do frontend
     ALLOWED_ORIGINS: str = "http://localhost:3000"
 
     @property

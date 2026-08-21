@@ -38,7 +38,7 @@ async def closeRedisClient() -> None:
     global redisClientInstance
     if redisClientInstance is not None:
         logger.info("Fechando conexão com Redis...")
-        await redisClientInstance.close()
+        await redisClientInstance.aclose()
         redisClientInstance = None
         logger.info("Conexão Redis encerrada.")
 
