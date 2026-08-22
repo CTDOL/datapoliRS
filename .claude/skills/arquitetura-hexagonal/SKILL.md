@@ -123,6 +123,7 @@ A pergunta que decide: **essa regra vai mudar, e alguém vai precisar entender e
 
 ## Roteiro ao aplicar num pedido
 
+0. **Se o sistema já existe, confirme que ele é uma coisa só antes de desenhar qualquer coisa.** Projetos reais acumulam artefatos que divergem entre si — README descrevendo uma arquitetura, `docker-compose.yml` descrevendo outra, múltiplos arquivos de deploy (`render.yaml`, `netlify.toml`) de tentativas anteriores. Não proponha estrutura, hexágono ou plano de deploy em cima de uma base que ainda não sabe o que é. Resolva a divergência primeiro — pergunte ao usuário qual é a versão real, ou trate isso como Fase 2 de `analise-legado` antes de continuar aqui.
 1. Rode `detect-stack.sh`.
 2. Identifique **a regra de negócio** no pedido — não a tela, não a tabela. Se o usuário só descreveu tela e tabela, pergunte qual decisão o sistema toma.
 3. Nomeie as entidades e value objects com as palavras do domínio dele.

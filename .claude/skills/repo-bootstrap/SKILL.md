@@ -10,10 +10,22 @@ description: Colocar um projeto sob controle de versão e configurar o repositó
 **Credencial antes de remoto.** Uma vez que você faz `git push` com senha no código, ela está publicada — mesmo em repositório privado, mesmo se você apagar depois. Reescrever histórico não desfaz: quem clonou, tem.
 
 ```
+0. Coerência do artefato
+        ↓
 1. Varrer credenciais    →  2. .gitignore     →  3. git init + commit
                                                        ↓
 6. CI e templates    ←     5. push       ←     4. criar remoto
 ```
+
+## Passo 0 — Coerência do artefato
+
+Antes de varrer credencial ou desenhar CI, confirme que o que você vai empacotar é **uma coisa só, coerente**. Sinais de que não é:
+
+- README descreve uma arquitetura ("app leve, sem banco") e o `docker-compose.yml` descreve outra (Postgres + Redis rodando)
+- Existem múltiplos arquivos de deploy para plataformas diferentes (`render.yaml`, `netlify.toml`, `Dockerfile`) sem indicação de qual é o vigente
+- `docker-compose.yml` do repo é claramente de desenvolvimento (bind mount de código, `--reload`, portas de banco expostas) e não existe versão equivalente de produção
+
+Se algum desses sinais aparecer, **pare e resolva isso primeiro** — com o usuário, não adivinhando. CI/CD bem construído em cima de uma definição de produção incerta só automatiza a incerteza mais rápido. Isso é trabalho de código/config (ver `analise-legado`), não de infraestrutura, e vem antes de qualquer `.gitignore`, workflow ou tag de versão.
 
 ## Passo 1 — Varrer credenciais
 
