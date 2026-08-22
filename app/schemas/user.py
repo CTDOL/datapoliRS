@@ -7,6 +7,7 @@ class UserInDB(BaseModel):
     email: str
     is_active: bool
     tenant_id: uuid.UUID
+    role: str
 
 class TokenData(BaseModel):
     email: Optional[str] = None

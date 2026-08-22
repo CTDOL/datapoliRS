@@ -1,13 +1,15 @@
 import uuid
 import logging
-from typing import List, Optional
+from typing import Optional
 from fastapi import HTTPException, status
 import asyncpg
+import math
 from app.repositories.cabinet_repository import CabinetRepository
 from app.schemas.leadership import (
     LiderancaCreate,
     LiderancaUpdate,
-    LiderancaResponse
+    LiderancaResponse,
+    LiderancaPageResponse
 )
 
 logger = logging.getLogger("CabinetService")
@@ -33,17 +35,27 @@ class CabinetService:
         tenantId: uuid.UUID,
         ibgeCode: Optional[str] = None,
         influenceCategory: Optional[str] = None,
-        isActive: Optional[bool] = None
-    ) -> List[LiderancaResponse]:
-        """Lista todas as lideranças vinculadas ao gabinete do tenantId."""
-        records = await CabinetRepository.listLeaderships(
+        isActive: Optional[bool] = None,
+        page: int = 1,
+        pageSize: int = 50
+    ) -> LiderancaPageResponse:
+        """Lista as lideranças do gabinete do tenantId, paginadas."""
+        records, total = await CabinetRepository.listLeaderships(
             connection=connection,
             tenantId=tenantId,
             ibgeCode=ibgeCode,
             influenceCategory=influenceCategory,
-            isActive=isActive
+            isActive=isActive,
+            page=page,
+            pageSize=pageSize
         )
-        return [LiderancaResponse(**record) for record in records]
+        return LiderancaPageResponse(
+            items=[LiderancaResponse(**record) for record in records],
+            total=total,
+            page=page,
+            page_size=pageSize,
+            total_pages=math.ceil(total / pageSize) if total > 0 else 0
+        )
 
     @staticmethod
     async def getLeadershipById(

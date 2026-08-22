@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 import asyncpg
+from app.core.config import settings
 from app.services.auth_service import AuthService
-from app.core.dependencies import getDbConnection
+from app.core.dependencies import AUTH_COOKIE_NAME, get_current_user, getDbConnection
+from app.schemas.user import UserInDB
 from datetime import timedelta
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Autenticação"])
@@ -13,9 +15,12 @@ credentials_exception = HTTPException(
     headers={"WWW-Authenticate": "Bearer"},
 )
 
+ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60
+
 
 @router.post("/login")
 async def login(
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ):
@@ -31,6 +36,30 @@ async def login(
 
     access_token = AuthService.create_access_token(
         data={"sub": row["email"], "tenant_id": str(row["tenant_id"])},
-        expires_delta=timedelta(minutes=60)
+        expires_delta=timedelta(seconds=ACCESS_TOKEN_MAX_AGE_SECONDS)
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    response.set_cookie(
+        key=AUTH_COOKIE_NAME,
+        value=access_token,
+        max_age=ACCESS_TOKEN_MAX_AGE_SECONDS,
+        path="/",
+        httponly=True,
+        secure=settings.ENVIRONMENT == "production",
+        samesite="lax",
+    )
+    return {"message": "Login efetuado com sucesso"}
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie(key=AUTH_COOKIE_NAME, path="/")
+    return {"message": "Logout efetuado com sucesso"}
+
+
+@router.get("/me")
+async def read_current_user(current_user: UserInDB = Depends(get_current_user)):
+    return {
+        "email": current_user.email,
+        "tenant_id": str(current_user.tenant_id),
+        "role": current_user.role,
+    }

@@ -27,19 +27,14 @@ export default function LoginPage() {
       formData.append('username', email);
       formData.append('password', password);
 
-      const response = await api.post('/api/v1/auth/login', formData);
-      const token = response.data.access_token;
+      // O backend responde com Set-Cookie (HttpOnly); o token nunca passa pelo JS.
+      await api.post('/api/v1/auth/login', formData);
 
-      // Decode do JWT Base64 padrão para extrair as claims (sub e tenant_id)
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      
-      // Define o Cookie de Sessão para o Middleware autorizar a rota (Sem a flag Secure para rodar via HTTP no localhost)
-      document.cookie = `token=${token}; path=/; max-age=3600; SameSite=Lax`;
-      
-      // Salva no estado global (Corrigida a assinatura do Zustand)
-      login({ 
-        email: payload.sub, 
-        tenant_id: payload.tenant_id 
+      // Busca os dados do usuário autenticado para popular o estado global.
+      const me = await api.get('/api/v1/auth/me');
+      login({
+        email: me.data.email,
+        tenant_id: me.data.tenant_id
       });
 
       // Redireciona para o painel principal isolado

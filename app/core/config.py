@@ -38,8 +38,10 @@ class AppSettings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Usuário administrador criado automaticamente no startup, se ainda não existir
+    # ADMIN_PASSWORD é obrigatória e sem default: um valor fraco previsível aqui
+    # criaria um admin com senha conhecida em qualquer deploy que esqueça o .env.
     ADMIN_EMAIL: str = "operador@campanha.com.br"
-    ADMIN_PASSWORD: str = "admin123"
+    ADMIN_PASSWORD: str
     ADMIN_TENANT_ID: str = "11111111-2222-3333-4444-555555555555"
 
     # CORS - lista separada por vírgula das origens do frontend

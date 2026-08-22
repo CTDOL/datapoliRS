@@ -21,8 +21,11 @@ export function useLiderancas() {
   const fetchLiderancas = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await api.get('/api/v1/gabinete/liderancas');
-      setLiderancas(response.data);
+      // Backend agora pagina (Sprint 2 do plano de regularização); page_size=200
+      // preserva o comportamento atual de "carregar tudo" até a Sprint 3 trazer
+      // paginação de verdade na UI.
+      const response = await api.get('/api/v1/gabinete/liderancas', { params: { page_size: 200 } });
+      setLiderancas(response.data.items);
     } catch (error) {
       console.error('Erro ao buscar lideranças', error);
     } finally {

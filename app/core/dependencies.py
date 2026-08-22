@@ -1,7 +1,7 @@
 import uuid
 import logging
 from typing import AsyncGenerator
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status, Depends, Request
 import asyncpg
 from app.core.database import getDatabaseConnection
 from app.core.redis_client import CacheService
@@ -15,15 +15,32 @@ async def getDbConnection() -> AsyncGenerator[asyncpg.Connection, None]:
         yield connection
 
 
-from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from app.services.auth_service import AuthService
 from app.schemas.user import UserInDB, TokenData
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+AUTH_COOKIE_NAME = "token"
+
+
+def get_token_from_request(request: Request) -> str:
+    """Extrai o JWT do cookie HttpOnly de sessão ou, alternativamente, do header Authorization Bearer."""
+    token = request.cookies.get(AUTH_COOKIE_NAME)
+    if token:
+        return token
+
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[len("Bearer "):]
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(get_token_from_request),
     db: asyncpg.Connection = Depends(getDbConnection)
 ) -> UserInDB:
     """
@@ -35,7 +52,7 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
         payload = AuthService.decode_access_token(token)
         email: str = payload.get("sub")
@@ -50,7 +67,7 @@ async def get_current_user(
         raise credentials_exception
 
     query = """
-        SELECT id, email, is_active, tenant_id
+        SELECT id, email, is_active, tenant_id, role
         FROM tb_users
         WHERE email = $1 AND tenant_id = $2
     """
@@ -74,3 +91,16 @@ async def get_current_user(
         )
 
     return user
+
+
+def require_role(allowed_roles: list[str]):
+    """Dependency factory: bloqueia a rota com 403 se o papel do usuário
+    autenticado não estiver em allowed_roles. Uso: Depends(require_role(["admin"]))."""
+    async def _check_role(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Você não tem permissão para executar esta ação."
+            )
+        return current_user
+    return _check_role

@@ -3,8 +3,13 @@ from fastapi import APIRouter, Depends
 import asyncpg
 from app.core.dependencies import getDbConnection
 from app.services.geo_service import GeoService
+from app.core.rate_limit import RateLimiter
 
-router = APIRouter(prefix="/api/v1/geo", tags=["Geoespacial"])
+router = APIRouter(
+    prefix="/api/v1/geo",
+    tags=["Geoespacial"],
+    dependencies=[Depends(RateLimiter(times=30, seconds=1))]
+)
 
 
 @router.get(

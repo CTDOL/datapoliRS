@@ -22,9 +22,9 @@ export default function DashboardPage() {
     async function loadLiderancas() {
       try {
         console.log('📡 Buscando lideranças da API...');
-        const res = await api.get('/api/v1/gabinete/liderancas');
+        const res = await api.get('/api/v1/gabinete/liderancas', { params: { page_size: 200 } });
         console.log('✅ Resposta da API recebida:', res.data);
-        setLiderancas(res.data);
+        setLiderancas(res.data.items);
       } catch (err) {
         console.error('❌ Erro ao buscar lideranças:', err);
       }

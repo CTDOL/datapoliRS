@@ -51,9 +51,15 @@ class CabinetRepository:
         tenantId: uuid.UUID,
         ibgeCode: Optional[str] = None,
         influenceCategory: Optional[str] = None,
-        isActive: Optional[bool] = None
-    ) -> List[Dict[str, Any]]:
-        """Lista todas as lideranças de um gabinete com filtros opcionais."""
+        isActive: Optional[bool] = None,
+        page: int = 1,
+        pageSize: int = 50
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """Lista as lideranças de um gabinete paginadas, com filtros opcionais.
+
+        Retorna (registros_da_página, total_de_registros). O total vem de
+        COUNT(*) OVER() na mesma query — evita um segundo round-trip ao banco.
+        """
         conditions = ["l.tenant_id = $1"]
         params: List[Any] = [tenantId]
         paramIndex = 2
@@ -74,8 +80,14 @@ class CabinetRepository:
             paramIndex += 1
 
         whereClause = " AND ".join(conditions)
-        query = f"""
-            SELECT 
+
+        countQuery = f"SELECT COUNT(*) FROM tb_gabinete_liderancas l WHERE {whereClause};"
+
+        limitParamIndex = paramIndex
+        offsetParamIndex = paramIndex + 1
+        dataParams = params + [pageSize, (page - 1) * pageSize]
+        dataQuery = f"""
+            SELECT
                 l.id_lideranca,
                 l.tenant_id,
                 l.cd_ibge_7,
@@ -92,11 +104,13 @@ class CabinetRepository:
             FROM tb_gabinete_liderancas l
             LEFT JOIN tb_municipios m ON l.cd_ibge_7 = m.cd_ibge_7
             WHERE {whereClause}
-            ORDER BY l.nm_completo ASC;
+            ORDER BY l.nm_completo ASC
+            LIMIT ${limitParamIndex} OFFSET ${offsetParamIndex};
         """
         try:
-            records = await connection.fetch(query, *params)
-            return [dict(record) for record in records]
+            total = await connection.fetchval(countQuery, *params)
+            records = await connection.fetch(dataQuery, *dataParams)
+            return [dict(record) for record in records], total
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao listar lideranças para tenant {tenantId}: {dbError}", exc_info=True)
             raise RuntimeError(f"Database query error: {dbError}") from dbError

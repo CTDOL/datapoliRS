@@ -1,17 +1,23 @@
 import uuid
-from typing import List, Optional
+from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 import asyncpg
-from app.core.dependencies import getDbConnection, get_current_user
+from app.core.dependencies import getDbConnection, get_current_user, require_role
 from app.schemas.user import UserInDB
 from app.services.cabinet_service import CabinetService
 from app.schemas.leadership import (
     LiderancaCreate,
     LiderancaUpdate,
-    LiderancaResponse
+    LiderancaResponse,
+    LiderancaPageResponse
 )
+from app.core.rate_limit import RateLimiter
 
-router = APIRouter(prefix="/api/v1/gabinete/liderancas", tags=["Gabinete Digital & Lideranças"])
+router = APIRouter(
+    prefix="/api/v1/gabinete/liderancas",
+    tags=["Gabinete Digital & Lideranças"],
+    dependencies=[Depends(RateLimiter(times=30, seconds=1))]
+)
 
 
 @router.post(
@@ -31,23 +37,27 @@ async def cadastrar_lideranca(
 
 @router.get(
     "",
-    response_model=List[LiderancaResponse],
-    summary="Lista todas as lideranças do gabinete com filtros"
+    response_model=LiderancaPageResponse,
+    summary="Lista as lideranças do gabinete, paginadas, com filtros"
 )
 async def listar_liderancas(
     cd_ibge_7: Optional[str] = Query(None, description="Filtrar por código IBGE do município"),
     tp_influencia: Optional[str] = Query(None, description="Filtrar por categoria de influência"),
     is_ativo: Optional[bool] = Query(None, description="Filtrar por status ativo/inativo"),
+    page: int = Query(1, ge=1, description="Número da página (1-indexado)"),
+    page_size: int = Query(50, ge=1, le=200, description="Quantidade de registros por página"),
     current_user: UserInDB = Depends(get_current_user),
     connection: asyncpg.Connection = Depends(getDbConnection)
-) -> List[LiderancaResponse]:
-    """Recupera a lista de lideranças cadastradas no gabinete isolado."""
+) -> LiderancaPageResponse:
+    """Recupera a lista paginada de lideranças cadastradas no gabinete isolado."""
     return await CabinetService.listLeaderships(
         connection=connection,
         tenantId=current_user.tenant_id,
         ibgeCode=cd_ibge_7,
         influenceCategory=tp_influencia,
-        isActive=is_ativo
+        isActive=is_ativo,
+        page=page,
+        pageSize=page_size
     )
 
 
@@ -83,11 +93,11 @@ async def atualizar_lideranca(
 @router.delete(
     "/{id_lideranca}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Remove uma liderança do gabinete"
+    summary="Remove uma liderança do gabinete (requer papel admin)"
 )
 async def remover_lideranca(
     id_lideranca: uuid.UUID,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> None:
     """Exclui a liderança do gabinete garantindo isolamento por tenant_id."""

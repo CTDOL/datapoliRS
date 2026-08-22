@@ -3,25 +3,10 @@ import { useAuthStore } from '../stores/useAuthStore';
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
-  withCredentials: true, // Necessário para enviar/receber cookies HttpOnly
+  // O cookie de sessão é HttpOnly: o navegador o anexa sozinho em toda
+  // requisição para o backend, o JS nunca lê nem manipula seu valor.
+  withCredentials: true,
 });
-
-// Interceptor de Requisição (pode ser usado para injetar headers genéricos como CSRF se necessário)
-api.interceptors.request.use(
-  (config) => {
-    // Extrai o token do cookie cliente para enviar ao FastAPI (que exige Header Bearer)
-    if (typeof document !== 'undefined') {
-      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 // Interceptor de Resposta (Fail Fast)
 api.interceptors.response.use(

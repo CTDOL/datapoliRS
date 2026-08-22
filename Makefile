@@ -1,10 +1,12 @@
-.PHONY: help install run test lint clean docker-build docker-up docker-down etl-municipios etl-tse etl db-shell
+.PHONY: help install run test lint clean docker-build docker-up docker-down etl-municipios etl-tse etl db-shell migrate migration
 
 help:
 	@echo "Comandos disponíveis no ecossistema datapoliRS:"
 	@echo "  make install         - Instala dependências no ambiente virtual"
 	@echo "  make docker-up       - Sobe os serviços (PostgreSQL PostGIS, Redis, API) via Docker Compose"
 	@echo "  make docker-down     - Para todos os containers Docker"
+	@echo "  make migrate         - Aplica as migrations pendentes (alembic upgrade head)"
+	@echo "  make migration msg='descrição' - Gera uma nova migration vazia"
 	@echo "  make etl-municipios  - Executa a carga geoespacial de municípios no PostGIS"
 	@echo "  make etl-tse         - Executa o pipeline de ingestão do TSE com DuckDB"
 	@echo "  make etl             - Executa todos os pipelines ETL de carga"
@@ -35,6 +37,12 @@ etl: etl-municipios etl-tse
 
 db-shell:
 	docker exec -it datapoli_postgres psql -U datapoli_user -d datapoli_db
+
+migrate:
+	alembic upgrade head
+
+migration:
+	alembic revision -m "$(msg)"
 
 run:
 	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

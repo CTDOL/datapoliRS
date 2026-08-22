@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { api } from '@/services/api';
 import { Map, Users, Settings, LogOut, Shield, Globe } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -14,9 +15,14 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { logout } = useAuthStore();
 
-  const handleLogout = () => {
-    logout();
-    router.replace('/login');
+  const handleLogout = async () => {
+    // Cookie é HttpOnly: só o backend consegue removê-lo (Set-Cookie de expiração).
+    try {
+      await api.post('/api/v1/auth/logout');
+    } finally {
+      logout();
+      router.replace('/login');
+    }
   };
 
   const navItems = [
