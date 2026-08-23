@@ -1,6 +1,6 @@
 ---
 name: arquitetura-hexagonal
-description: Estruturar ou reestruturar um sistema isolando a regra de negócio da stack, usando portas e adaptadores (hexagonal), SOLID e DDD tático. Use quando o pedido envolver desenhar um módulo novo, decidir onde colocar uma lógica, escolher entre frameworks, separar camadas, criar entidades/casos de uso/repositórios, ou quando o usuário perguntar "onde isso deveria ficar" e "como faço isso não depender do framework". Serve para qualquer stack — PHP puro, Laravel, Node, Python, Oracle APEX, HTML estático com backend fino.
+description: Estruturar ou reestruturar um sistema isolando a regra de negócio da stack, usando portas e adaptadores (hexagonal), SOLID e DDD tático. Use quando o pedido envolver desenhar um módulo novo, decidir onde colocar uma lógica, escolher entre frameworks, separar camadas, criar entidades/casos de uso/repositórios, ou quando o usuário perguntar "onde isso deveria ficar" e "como faço isso não depender do framework". Serve para qualquer stack — PHP puro, Laravel, Node, Python, Oracle APEX, React/Next.js, HTML estático com backend fino.
 ---
 
 # Arquitetura hexagonal aplicada

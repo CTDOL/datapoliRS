@@ -121,6 +121,30 @@ Regras práticas:
 
 ---
 
+## React / Next.js (SPA ou App Router)
+
+Front dinâmico com estado — aqui o erro comum não é SQL vazando pro controller, é regra de negócio (validação, cálculo, decisão) vazando pra dentro de componente ou de `useEffect`, acoplada ao ciclo de vida do React.
+
+```
+src/
+├── features/<dominio>/
+│   └── regras.ts      ← NÚCLEO: funções puras de validação/cálculo, zero import de React
+├── hooks/
+│   └── useXxx.ts       ← orquestra: chama services/, aplica regras.ts, expõe estado pronto
+├── services/
+│   └── api.ts           ← adaptador de saída: único lugar que sabe fetch/axios/URL/headers
+├── components/           ← adaptador de entrada: só JSX + evento, delega pro hook
+└── store/                ← Zustand/Redux: estado global é infraestrutura, não domínio
+```
+
+**O teste de fumaça vale igual aqui:** se uma regra de validação ou cálculo só roda dentro de um componente montado — precisa de `render()`, de DOM, de mock de hook para ser testada — ela está grudada no adaptador. Extraia para uma função pura em `regras.ts` e teste sem Testing Library.
+
+O hook (`useXxx`) é o composition root local: busca dado do `service`, aplica `regras.ts`, devolve estado já pronto. O componente não decide nada — só mostra e dispara evento. Se `ui`/componente faz `fetch` direto, é o mesmo erro do `ui.js` chamando fetch direto na seção de HTML estático acima: trocar endpoint vira caça ao tesouro no projeto inteiro.
+
+**Erro específico de SPA, fora do hexágono clássico mas que quebra a mesma garantia de "trocar detalhe sem quebrar o resto": posição do componente na árvore importa.** Envolver um componente com estado interno caro (ex: um mapa, um player, qualquer coisa com `ref`/estado que não deveria reconstruir) num `{condicao && <div>...}` que aparece **antes** dele desloca seu índice entre os filhos — o React desmonta e remonta esse componente ao alternar a condição, mesmo sem nenhuma mudança de `key` ou prop. Sintoma: "o estado do componente X some toda vez que eu mudo Y", sem erro nenhum no console. Correção: mantenha a posição do componente estável na árvore — renderize o wrapper sempre (esconda com CSS, ex. classe `hidden`) em vez de condicionar sua presença antes de um irmão com estado.
+
+---
+
 ## HTML estático + backend fino
 
 Front puro consumindo API. O hexágono está todo no backend. No front, o equivalente é isolar as chamadas:
