@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -13,7 +14,21 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout } = useAuthStore();
+  const { user, logout, login } = useAuthStore();
+
+  // A store (Zustand, sem persist) some num refresh de página; o cookie
+  // HttpOnly continua válido. Sem isso, o botão de admin (role) some ao dar F5.
+  useEffect(() => {
+    if (user) return;
+    api
+      .get('/api/v1/auth/me')
+      .then((res) => {
+        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role });
+      })
+      .catch(() => {
+        // 401/403 já é tratado pelo interceptor global (redireciona para /login).
+      });
+  }, [user, login]);
 
   const handleLogout = async () => {
     // Cookie é HttpOnly: só o backend consegue removê-lo (Set-Cookie de expiração).

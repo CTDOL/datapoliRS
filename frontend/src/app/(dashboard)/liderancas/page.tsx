@@ -6,11 +6,26 @@ import { useLiderancas } from '@/features/liderancas/useLiderancas';
 import { LiderancasTable } from '@/features/liderancas/LiderancasTable';
 import { LiderancaFormModal } from '@/features/liderancas/LiderancaFormModal';
 import { Lideranca } from '@/features/liderancas/useLiderancas';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export default function LiderancasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLideranca, setEditingLideranca] = useState<Lideranca | null>(null);
-  const { liderancas, isLoading, isSubmitting, addLideranca, updateLideranca } = useLiderancas();
+  const {
+    liderancas,
+    isLoading,
+    isSubmitting,
+    termo,
+    setTermo,
+    page,
+    setPage,
+    totalPages,
+    total,
+    addLideranca,
+    updateLideranca,
+    deleteLideranca,
+  } = useLiderancas();
+  const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
 
   return (
     <div className="w-full h-full p-8 flex flex-col relative">
@@ -31,13 +46,21 @@ export default function LiderancasPage() {
         </button>
       </div>
 
-      <LiderancasTable 
-        liderancas={liderancas} 
-        isLoading={isLoading} 
+      <LiderancasTable
+        liderancas={liderancas}
+        isLoading={isLoading}
         onEdit={(lideranca) => {
           setEditingLideranca(lideranca);
           setIsModalOpen(true);
-        }} 
+        }}
+        onDelete={(lideranca) => deleteLideranca(lideranca.id_lideranca)}
+        canDelete={isAdmin}
+        termo={termo}
+        onTermoChange={setTermo}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        onPageChange={setPage}
       />
       
       <LiderancaFormModal 

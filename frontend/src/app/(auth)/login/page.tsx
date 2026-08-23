@@ -34,7 +34,8 @@ export default function LoginPage() {
       const me = await api.get('/api/v1/auth/me');
       login({
         email: me.data.email,
-        tenant_id: me.data.tenant_id
+        tenant_id: me.data.tenant_id,
+        role: me.data.role,
       });
 
       // Redireciona para o painel principal isolado

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 interface User {
   email: string;
   tenant_id: string;
+  role: string;
 }
 
 interface AuthState {

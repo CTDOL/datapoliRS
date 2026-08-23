@@ -44,6 +44,7 @@ async def listar_liderancas(
     cd_ibge_7: Optional[str] = Query(None, description="Filtrar por código IBGE do município"),
     tp_influencia: Optional[str] = Query(None, description="Filtrar por categoria de influência"),
     is_ativo: Optional[bool] = Query(None, description="Filtrar por status ativo/inativo"),
+    termo: Optional[str] = Query(None, description="Busca por nome completo (case-insensitive, parcial)"),
     page: int = Query(1, ge=1, description="Número da página (1-indexado)"),
     page_size: int = Query(50, ge=1, le=200, description="Quantidade de registros por página"),
     current_user: UserInDB = Depends(get_current_user),
@@ -56,6 +57,7 @@ async def listar_liderancas(
         ibgeCode=cd_ibge_7,
         influenceCategory=tp_influencia,
         isActive=is_ativo,
+        searchTerm=termo,
         page=page,
         pageSize=page_size
     )

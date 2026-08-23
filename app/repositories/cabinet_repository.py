@@ -52,6 +52,7 @@ class CabinetRepository:
         ibgeCode: Optional[str] = None,
         influenceCategory: Optional[str] = None,
         isActive: Optional[bool] = None,
+        searchTerm: Optional[str] = None,
         page: int = 1,
         pageSize: int = 50
     ) -> tuple[List[Dict[str, Any]], int]:
@@ -77,6 +78,11 @@ class CabinetRepository:
         if isActive is not None:
             conditions.append(f"l.is_ativo = ${paramIndex}")
             params.append(isActive)
+            paramIndex += 1
+
+        if searchTerm and searchTerm.strip():
+            conditions.append(f"l.nm_completo ILIKE ${paramIndex}")
+            params.append(f"%{searchTerm.strip()}%")
             paramIndex += 1
 
         whereClause = " AND ".join(conditions)

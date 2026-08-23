@@ -4,6 +4,7 @@ import asyncpg
 from app.core.config import settings
 from app.services.auth_service import AuthService
 from app.core.dependencies import AUTH_COOKIE_NAME, get_current_user, getDbConnection
+from app.core.rate_limit import RateLimiter
 from app.schemas.user import UserInDB
 from datetime import timedelta
 
@@ -18,7 +19,7 @@ credentials_exception = HTTPException(
 ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60
 
 
-@router.post("/login")
+@router.post("/login", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def login(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { api } from '@/services/api';
 
 export interface Lideranca {
@@ -13,19 +13,28 @@ export interface Lideranca {
 
 export type FormDataLideranca = Omit<Lideranca, 'id_lideranca' | 'is_ativo'>;
 
+const PAGE_SIZE = 20;
+const DEBOUNCE_MS = 350;
+
 export function useLiderancas() {
   const [liderancas, setLiderancas] = useState<Lideranca[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [termo, setTermo] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchLiderancas = useCallback(async () => {
+  const fetchLiderancas = useCallback(async (paginaAlvo: number, termoAlvo: string) => {
     try {
       setIsLoading(true);
-      // Backend agora pagina (Sprint 2 do plano de regularização); page_size=200
-      // preserva o comportamento atual de "carregar tudo" até a Sprint 3 trazer
-      // paginação de verdade na UI.
-      const response = await api.get('/api/v1/gabinete/liderancas', { params: { page_size: 200 } });
+      const response = await api.get('/api/v1/gabinete/liderancas', {
+        params: { page: paginaAlvo, page_size: PAGE_SIZE, termo: termoAlvo.trim() || undefined },
+      });
       setLiderancas(response.data.items);
+      setTotalPages(response.data.total_pages || 1);
+      setTotal(response.data.total || 0);
     } catch (error) {
       console.error('Erro ao buscar lideranças', error);
     } finally {
@@ -33,18 +42,33 @@ export function useLiderancas() {
     }
   }, []);
 
+  // Busca com debounce: volta pra página 1 a cada mudança de termo.
   useEffect(() => {
-    const initFetch = async () => {
-      await fetchLiderancas();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setPage(1);
+      fetchLiderancas(1, termo);
+    }, DEBOUNCE_MS);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-    initFetch();
-  }, [fetchLiderancas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [termo]);
+
+  useEffect(() => {
+    if (page === 1) return; // já coberto pelo efeito de busca acima
+    const timer = setTimeout(() => fetchLiderancas(page, termo), 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  const refetch = useCallback(() => fetchLiderancas(page, termo), [fetchLiderancas, page, termo]);
 
   const addLideranca = async (data: FormDataLideranca) => {
     setIsSubmitting(true);
     try {
       await api.post('/api/v1/gabinete/liderancas', { ...data, is_ativo: true });
-      await fetchLiderancas(); // Re-fetch na mesma instância
+      await refetch();
       return true;
     } catch (error) {
       console.error('Erro ao criar liderança', error);
@@ -58,7 +82,7 @@ export function useLiderancas() {
     setIsSubmitting(true);
     try {
       await api.put(`/api/v1/gabinete/liderancas/${id}`, data);
-      await fetchLiderancas(); // Re-fetch
+      await refetch();
       return true;
     } catch (error) {
       console.error('Erro ao atualizar liderança', error);
@@ -68,5 +92,32 @@ export function useLiderancas() {
     }
   };
 
-  return { liderancas, isLoading, isSubmitting, addLideranca, updateLideranca };
+  const deleteLideranca = async (id: string) => {
+    setIsSubmitting(true);
+    try {
+      await api.delete(`/api/v1/gabinete/liderancas/${id}`);
+      await refetch();
+      return true;
+    } catch (error) {
+      console.error('Erro ao excluir liderança', error);
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return {
+    liderancas,
+    isLoading,
+    isSubmitting,
+    termo,
+    setTermo,
+    page,
+    setPage,
+    totalPages,
+    total,
+    addLideranca,
+    updateLideranca,
+    deleteLideranca,
+  };
 }

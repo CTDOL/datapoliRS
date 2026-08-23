@@ -36,6 +36,7 @@ class CabinetService:
         ibgeCode: Optional[str] = None,
         influenceCategory: Optional[str] = None,
         isActive: Optional[bool] = None,
+        searchTerm: Optional[str] = None,
         page: int = 1,
         pageSize: int = 50
     ) -> LiderancaPageResponse:
@@ -46,6 +47,7 @@ class CabinetService:
             ibgeCode=ibgeCode,
             influenceCategory=influenceCategory,
             isActive=isActive,
+            searchTerm=searchTerm,
             page=page,
             pageSize=pageSize
         )
