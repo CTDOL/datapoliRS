@@ -25,6 +25,7 @@ export function useLiderancas() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
 
   const fetchLiderancas = useCallback(async (paginaAlvo: number, termoAlvo: string) => {
     try {
@@ -35,15 +36,22 @@ export function useLiderancas() {
       setLiderancas(response.data.items);
       setTotalPages(response.data.total_pages || 1);
       setTotal(response.data.total || 0);
+      return response.data;
     } catch (error) {
       console.error('Erro ao buscar lideranças', error);
+      return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Busca com debounce: volta pra página 1 a cada mudança de termo.
+  // Primeira carga dispara na hora; mudanças de termo depois disso usam debounce.
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      fetchLiderancas(1, termo);
+      return;
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setPage(1);
@@ -96,7 +104,12 @@ export function useLiderancas() {
     setIsSubmitting(true);
     try {
       await api.delete(`/api/v1/gabinete/liderancas/${id}`);
-      await refetch();
+      const resultado = await fetchLiderancas(page, termo);
+      if (resultado && resultado.items.length === 0 && page > 1) {
+        const paginaAnterior = page - 1;
+        setPage(paginaAnterior);
+        await fetchLiderancas(paginaAnterior, termo);
+      }
       return true;
     } catch (error) {
       console.error('Erro ao excluir liderança', error);

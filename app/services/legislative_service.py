@@ -30,9 +30,7 @@ class LegislativeService:
         """Agrega ALRS + Câmara + Senado e marca quais já foram importados por este gabinete."""
         resultados = await buscar_em_todas_fontes(nome)
 
-        importados, _ = await LegislativeRepository.listProjetosLei(
-            connection=connection, tenantId=tenantId, page=1, pageSize=500
-        )
+        importados = await LegislativeRepository.listChavesImportadas(connection, tenantId)
         chaves_importadas = {(r["fonte"], r["identificador_externo"]): r["id_projeto_lei"] for r in importados}
 
         for proposicao in resultados:

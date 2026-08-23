@@ -42,6 +42,7 @@ export function useEmendas() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
 
   const fetchKpis = useCallback(async (ano: number | '') => {
     try {
@@ -69,15 +70,23 @@ export function useEmendas() {
       setEmendas(response.data.items);
       setTotalPages(response.data.total_pages || 1);
       setTotal(response.data.total || 0);
+      return response.data;
     } catch (error) {
       console.error('Erro ao buscar emendas', error);
+      return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Debounce em qualquer mudança de filtro: volta pra página 1.
+  // Primeira carga dispara na hora; mudanças de filtro depois disso usam debounce.
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      fetchEmendas(1, { termo, ano: anoExercicio, situacao: tpSituacao });
+      fetchKpis(anoExercicio);
+      return;
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setPage(1);
@@ -134,7 +143,13 @@ export function useEmendas() {
     setIsSubmitting(true);
     try {
       await api.delete(`/api/v1/gabinete/emendas/${id}`);
-      await refetch();
+      const resultado = await fetchEmendas(page, { termo, ano: anoExercicio, situacao: tpSituacao });
+      if (resultado && resultado.items.length === 0 && page > 1) {
+        const paginaAnterior = page - 1;
+        setPage(paginaAnterior);
+        await fetchEmendas(paginaAnterior, { termo, ano: anoExercicio, situacao: tpSituacao });
+      }
+      await fetchKpis(anoExercicio);
       return true;
     } catch (error) {
       console.error('Erro ao excluir emenda', error);

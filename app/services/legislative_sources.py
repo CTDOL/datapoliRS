@@ -111,6 +111,10 @@ class SenadoAdapter:
             logger.warning(f"Falha ao consultar matérias do Senado para '{nome}': {erro}")
             return []
 
+        if not isinstance(materias, list):
+            logger.warning(f"Resposta inesperada do Senado para '{nome}': {materias!r}")
+            return []
+
         resultados = []
         for item in materias[:limite]:
             tipo, numero, ano = _split_identificacao(item.get("identificacao"))
@@ -134,7 +138,9 @@ class SenadoAdapter:
         encontrados = await self.buscar_por_nome(autor, limite=100)
         for proposicao in encontrados:
             if proposicao.identificador_externo == identificador_externo:
-                return proposicao.model_dump(exclude={"fonte", "identificador_externo", "ja_importado", "id_projeto_lei"})
+                dados = proposicao.model_dump(exclude={"fonte", "identificador_externo", "ja_importado", "id_projeto_lei"})
+                dados["ementa"] = dados.get("ementa") or "(ementa não disponível na fonte oficial)"
+                return dados
         return None
 
 

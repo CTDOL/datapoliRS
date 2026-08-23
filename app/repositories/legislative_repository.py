@@ -97,6 +97,21 @@ class LegislativeRepository:
             raise RuntimeError(f"Database query error: {dbError}") from dbError
 
     @staticmethod
+    async def listChavesImportadas(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+    ) -> List[Dict[str, Any]]:
+        """Só as chaves de dedup (fonte, identificador_externo, id) — sem paginação,
+        usado para marcar ja_importado na busca externa sem truncar em gabinetes grandes."""
+        query = "SELECT fonte, identificador_externo, id_projeto_lei FROM tb_gabinete_projetos_lei WHERE tenant_id = $1;"
+        try:
+            records = await connection.fetch(query, tenantId)
+            return [dict(record) for record in records]
+        except asyncpg.PostgresError as dbError:
+            logger.error(f"Erro ao listar chaves importadas para tenant {tenantId}: {dbError}", exc_info=True)
+            raise RuntimeError(f"Database query error: {dbError}") from dbError
+
+    @staticmethod
     async def getProjetoLeiById(
         connection: asyncpg.Connection,
         tenantId: uuid.UUID,

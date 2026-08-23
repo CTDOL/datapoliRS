@@ -49,6 +49,7 @@ export function useProjetosLei() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const listaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
 
   const fetchProjetosLei = useCallback(async (paginaAlvo: number, filtros: { termo: string; fonte: string }) => {
     try {
@@ -64,14 +65,21 @@ export function useProjetosLei() {
       setProjetosLei(response.data.items);
       setTotalPages(response.data.total_pages || 1);
       setTotal(response.data.total || 0);
+      return response.data;
     } catch (error) {
       console.error('Erro ao buscar projetos de lei', error);
+      return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      fetchProjetosLei(1, { termo, fonte });
+      return;
+    }
     if (listaDebounceRef.current) clearTimeout(listaDebounceRef.current);
     listaDebounceRef.current = setTimeout(() => {
       setPage(1);
@@ -155,7 +163,12 @@ export function useProjetosLei() {
   const deleteProjetoLei = async (id: string) => {
     try {
       await api.delete(`/api/v1/gabinete/projetos-lei/${id}`);
-      await refetchProjetosLei();
+      const resultado = await fetchProjetosLei(page, { termo, fonte });
+      if (resultado && resultado.items.length === 0 && page > 1) {
+        const paginaAnterior = page - 1;
+        setPage(paginaAnterior);
+        await fetchProjetosLei(paginaAnterior, { termo, fonte });
+      }
       return true;
     } catch (error) {
       console.error('Erro ao excluir projeto de lei', error);

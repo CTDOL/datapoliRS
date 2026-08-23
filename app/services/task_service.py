@@ -6,6 +6,7 @@ import asyncpg
 from app.repositories.task_repository import TaskRepository
 from app.repositories.legislative_repository import LegislativeRepository
 from app.repositories.amendment_repository import AmendmentRepository
+from app.repositories.cabinet_repository import CabinetRepository
 from app.schemas.task import TarefaCreate, TarefaUpdate, TarefaResponse
 
 logger = logging.getLogger("TaskService")
@@ -28,6 +29,10 @@ class TaskService:
             emenda = await AmendmentRepository.getAmendmentById(connection, tenantId, payload.id_emenda)
             if not emenda:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Emenda não encontrada neste gabinete.")
+        if payload.id_lideranca_responsavel:
+            lideranca = await CabinetRepository.getLeadershipById(connection, tenantId, payload.id_lideranca_responsavel)
+            if not lideranca:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Liderança responsável não encontrada neste gabinete.")
 
         criada = await TaskRepository.createTarefa(connection, tenantId, payload)
         return await TaskService.getTarefaById(connection, tenantId, criada["id_tarefa"])
@@ -61,6 +66,10 @@ class TaskService:
         payload: TarefaUpdate,
     ) -> TarefaResponse:
         await TaskService.getTarefaById(connection, tenantId, tarefaId)
+        if payload.id_lideranca_responsavel:
+            lideranca = await CabinetRepository.getLeadershipById(connection, tenantId, payload.id_lideranca_responsavel)
+            if not lideranca:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Liderança responsável não encontrada neste gabinete.")
         atualizada = await TaskRepository.updateTarefa(connection, tenantId, tarefaId, payload)
         if not atualizada:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Não foi possível atualizar a tarefa informada.")
