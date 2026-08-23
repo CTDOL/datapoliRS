@@ -15,7 +15,7 @@ O **datapoliRS** é uma plataforma de inteligência eleitoral e gestão de gabin
 1. **Portal Público de Consulta Eleitoral** — SPA vanilla JS/Leaflet servida pelo FastAPI em `/`, sem autenticação, consultando candidaturas de 2022.
 2. **Gabinete Digital** — painel Next.js autenticado, multi-tenant, para gestão de lideranças políticas com geolocalização e visualização cruzada com dados de votação.
 
-**Estágio de maturidade: MVP avançado / pré-homologação.** O núcleo de segurança (auth via cookie `HttpOnly`, RBAC, isolamento multi-tenant com FK real, migrations versionadas) já está regularizado. Falta o módulo de negócio mais visível do produto (Emendas Orçamentárias) e cobertura de testes no frontend.
+**Estágio de maturidade: MVP avançado / pré-homologação.** O núcleo de segurança (auth via cookie `HttpOnly`, RBAC, isolamento multi-tenant com FK real, migrations versionadas, rate limiting no login) está regularizado. Os módulos de negócio centrais — Lideranças, Emendas Orçamentárias e Projetos de Lei (com busca em fontes oficiais: ALRS, Câmara dos Deputados e Senado Federal) — estão codificados e operacionais. Falta cobertura de testes automatizados no frontend e a tela de Configurações do gabinete.
 
 ### Matriz de Módulos & Features
 
@@ -32,24 +32,27 @@ O **datapoliRS** é uma plataforma de inteligência eleitoral e gestão de gabin
 | Paginação real (`page`/`page_size`) em `GET /gabinete/liderancas` | [app/repositories/cabinet_repository.py](app/repositories/cabinet_repository.py) |
 | Mapa Tático unificado — 3 modos (Lideranças / Votação / Visão Cruzada) | [frontend/src/components/map/ElectionMap.tsx](frontend/src/components/map/ElectionMap.tsx), via Leaflet |
 | Busca de candidato com debounce alimentando o mapa | [frontend/src/app/(dashboard)/page.tsx](frontend/src/app/(dashboard)/page.tsx) |
-| Rate limiting (Redis, fixed window) | `voting`, `geo`, `cabinet` routers |
-| Migrations versionadas (Alembic) | `alembic/versions/` — 3 revisões aplicadas |
+| Rate limiting (Redis, fixed window) | `voting`, `geo`, `cabinet`, `amendments`, `legislative`, `tasks` routers, e `auth/login` (5 tentativas/60s) |
+| Migrations versionadas (Alembic) | `alembic/versions/` — 6 revisões aplicadas |
+| Paginação, busca com debounce e exclusão (role=admin) em Lideranças | [LiderancasTable.tsx](frontend/src/features/liderancas/LiderancasTable.tsx), [useLiderancas.ts](frontend/src/features/liderancas/useLiderancas.ts) |
+| Módulo de Emendas Orçamentárias — CRUD completo + KPIs agregados | [app/routers/amendments.py](app/routers/amendments.py), tela [/emendas](frontend/src/app/(dashboard)/emendas/page.tsx) |
+| Módulo de Projetos de Lei — busca ao vivo em ALRS/Câmara/Senado, importação idempotente, observadores (lideranças) e tarefas | [app/routers/legislative.py](app/routers/legislative.py), [app/services/legislative_sources.py](app/services/legislative_sources.py), tela [/projetos-lei](frontend/src/app/(dashboard)/projetos-lei/page.tsx) |
+| Restauração de sessão (`/auth/me`) no layout do dashboard | [layout.tsx](frontend/src/app/(dashboard)/layout.tsx) — sem isso o `role` (e o botão de admin) sumia a cada F5, já que a store Zustand não é persistida |
 
 **🟡 Funcionalidades parciais ou stubs:**
 
 | Item | Estado |
 |---|---|
-| Tela "Configurações" | Estática — `"será implementada na próxima Sprint"` ([settings/page.tsx](frontend/src/app/(dashboard)/settings/page.tsx)) |
-| Botão de excluir liderança na UI | API existe (`DELETE`, protegida por RBAC) mas **não há botão na tabela** ([LiderancasTable.tsx](frontend/src/features/liderancas/LiderancasTable.tsx)) |
-| Paginação na UI de lideranças | Backend pagina; frontend ainda busca tudo de uma vez com `page_size=200` fixo (compatibilidade temporária, sem controles de página) |
-| Busca/filtro na tabela de lideranças | Não existe — só existe busca de *candidato* para o mapa de votação |
+| Tela "Configurações" | Estática — `"será implementada na próxima Sprint"` ([settings/page.tsx](frontend/src/app/(dashboard)/settings/page.tsx)) — sem escopo definido ainda |
+| Fonte oficial da ALRS (Projetos de Lei) | Sem API pública documentada — scraping controlado de HTML server-side (Drupal 9), mais frágil que Câmara/Senado (API REST oficial) |
+| Prestação de contas oficial (CEAP/CEAPS/emendas federais via CGU) | Levantado e validado na análise, mas fora do escopo deste MVP — API da CGU exige cadastro prévio de token |
 
 **❌ Funcionalidades não iniciadas:**
 
 | Item | Observação |
 |---|---|
-| Módulo de Emendas Orçamentárias | Nenhuma tabela, rota, schema ou tela — previsto no Master Plan (Sprint 4), zero código |
-| Dashboard Executivo de KPIs | Não existe — a rota raiz do gabinete é o Mapa Tático, não um painel de métricas |
+| Nível municipal (Câmaras de Vereadores via SAPL) | Sem fonte única nem diretório de quais câmaras do RS expõem API — mapeamento manual necessário antes de integrar |
+| Dashboard Executivo de KPIs | Não existe — a rota raiz do gabinete é o Mapa Tático, não um painel de métricas consolidado |
 | Testes automatizados de frontend | Nenhum arquivo `.test.`/`.spec.` no projeto — sem Vitest, Jest ou Playwright configurados |
 | Refresh token | Login só emite access token de 60 min, sem renovação — usuário precisa logar de novo |
 
