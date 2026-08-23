@@ -20,6 +20,8 @@ from app.routers.geo import router as geo_router
 from app.routers.voting import router as voting_router
 from app.routers.cabinet import router as cabinet_router
 from app.routers.amendments import router as amendments_router
+from app.routers.legislative import router as legislative_router
+from app.routers.tasks import router as tasks_router
 from app.routers.auth import router as auth_router
 
 # Configuração de Logging Estruturado
@@ -75,6 +77,8 @@ app.include_router(geo_router)
 app.include_router(voting_router)
 app.include_router(cabinet_router)
 app.include_router(amendments_router)
+app.include_router(legislative_router)
+app.include_router(tasks_router)
 app.include_router(auth_router)
 
 tse_service = TSEService(timeout=settings.TSE_TIMEOUT_SECONDS)
