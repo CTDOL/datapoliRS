@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/services/api';
-import { Map, Users, Settings, LogOut, Shield, Globe } from 'lucide-react';
+import { Map, Users, FileText, Settings, LogOut, Shield, Globe } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -43,6 +43,7 @@ export default function DashboardLayout({
   const navItems = [
     { name: 'Mapa Tático', href: '/', icon: Map },
     { name: 'Lideranças', href: '/liderancas', icon: Users },
+    { name: 'Emendas', href: '/emendas', icon: FileText },
     { name: 'Configurações', href: '/settings', icon: Settings },
   ];
 

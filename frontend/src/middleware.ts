@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Rotas protegidas (tudo dentro de /dashboard, /liderancas, e root / que seja dashboard)
-const protectedRoutes = ['/', '/liderancas', '/settings'];
+// Rotas protegidas (tudo dentro de /dashboard, /liderancas, /emendas, e root / que seja dashboard)
+const protectedRoutes = ['/', '/liderancas', '/emendas', '/settings'];
 
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  
+
   // Considera root (/) e tudo que não for /login, /api, /_next, etc como protegido pelo matcher
-  const isProtectedRoute = protectedRoutes.includes(path) || path.startsWith('/liderancas') || path.startsWith('/settings');
+  const isProtectedRoute = protectedRoutes.includes(path) || path.startsWith('/liderancas') || path.startsWith('/emendas') || path.startsWith('/settings');
   
   if (isProtectedRoute) {
     // Verifica o cookie de sessão (o nome depende de como o backend/Next actions define)
