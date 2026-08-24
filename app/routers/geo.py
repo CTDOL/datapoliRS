@@ -8,7 +8,7 @@ from app.core.rate_limit import RateLimiter
 router = APIRouter(
     prefix="/api/v1/geo",
     tags=["Geoespacial"],
-    dependencies=[Depends(RateLimiter(times=30, seconds=1))]
+    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="geo"))]
 )
 
 
