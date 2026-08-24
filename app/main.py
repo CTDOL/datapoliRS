@@ -9,13 +9,14 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncpg
 
 from app.core.config import settings
-from app.core.database import initializeDatabasePool, closeDatabasePool
+from app.core.database import initializeDatabasePool, closeDatabasePool, getDatabaseConnection
 from app.core.redis_client import initializeRedisClient, closeRedisClient
 from app.core.dependencies import getDbConnection
 from app.core.bootstrap import ensureAdminUser
 from app.schemas.candidate import CandidataDetalhada
 from app.services.tse_service import TSEService
 from app.services.voting_service import VotingService
+from app.services.system_config_service import SystemConfigService
 from app.routers.geo import router as geo_router
 from app.routers.voting import router as voting_router
 from app.routers.cabinet import router as cabinet_router
@@ -23,6 +24,7 @@ from app.routers.amendments import router as amendments_router
 from app.routers.legislative import router as legislative_router
 from app.routers.tasks import router as tasks_router
 from app.routers.auth import router as auth_router
+from app.routers.admin import router as admin_router
 
 # Configuração de Logging Estruturado
 logging.basicConfig(
@@ -39,6 +41,9 @@ async def lifespan(app: FastAPI):
     await initializeDatabasePool()
     await initializeRedisClient()
     await ensureAdminUser()
+    async for connection in getDatabaseConnection():
+        await SystemConfigService.warmCache(connection)
+        break
     logger.info("=== DATAPOLIRS PRONTO PARA RECEBER REQUISIÇÕES ===")
     yield
     logger.info("=== ENCERRANDO RECURSOS DO DATAPOLIRS ===")
@@ -80,6 +85,7 @@ app.include_router(amendments_router)
 app.include_router(legislative_router)
 app.include_router(tasks_router)
 app.include_router(auth_router)
+app.include_router(admin_router)
 
 tse_service = TSEService(timeout=settings.TSE_TIMEOUT_SECONDS)
 

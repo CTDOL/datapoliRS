@@ -19,7 +19,7 @@ credentials_exception = HTTPException(
 ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60
 
 
-@router.post("/login", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+@router.post("/login", dependencies=[Depends(RateLimiter(times=5, seconds=60, configKey="login"))])
 async def login(
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),

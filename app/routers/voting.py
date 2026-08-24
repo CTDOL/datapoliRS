@@ -18,7 +18,7 @@ def get_voting_service() -> VotingService:
 router = APIRouter(
     prefix="/api/v1", 
     tags=["Inteligência Eleitoral & Votação"],
-    dependencies=[Depends(RateLimiter(times=20, seconds=1))]
+    dependencies=[Depends(RateLimiter(times=20, seconds=1, configKey="voting"))]
 )
 
 

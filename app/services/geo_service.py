@@ -3,6 +3,7 @@ from typing import Dict, Any
 import asyncpg
 from app.core.redis_client import CacheService
 from app.repositories.geo_repository import GeoRepository
+from app.services.system_config_service import SystemConfigService
 
 logger = logging.getLogger("GeoService")
 
@@ -19,7 +20,8 @@ class GeoService:
             return cachedData
         data = await GeoRepository.getMunicipiosList(connection)
         if data:
-            await CacheService.set("geo:rs:municipios:lista", data, ttlSeconds=GEOJSON_CACHE_TTL)
+            ttl = await SystemConfigService.getInt(connection, "cache_ttl.geojson_municipios", GEOJSON_CACHE_TTL)
+            await CacheService.set("geo:rs:municipios:lista", data, ttlSeconds=ttl)
         return data
 
     """Serviço de inteligência geoespacial com cache Redis e processamento PostGIS."""
@@ -39,6 +41,7 @@ class GeoService:
 
         # 3. Gravar no Cache em background sem travar retorno
         if geoJsonData and geoJsonData.get("features"):
-            await CacheService.set(GEOJSON_CACHE_KEY, geoJsonData, ttlSeconds=GEOJSON_CACHE_TTL)
+            ttl = await SystemConfigService.getInt(connection, "cache_ttl.geojson_municipios", GEOJSON_CACHE_TTL)
+            await CacheService.set(GEOJSON_CACHE_KEY, geoJsonData, ttlSeconds=ttl)
 
         return geoJsonData

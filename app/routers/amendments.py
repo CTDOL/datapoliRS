@@ -17,7 +17,7 @@ from app.core.rate_limit import RateLimiter
 router = APIRouter(
     prefix="/api/v1/gabinete/emendas",
     tags=["Gabinete Digital & Emendas Orçamentárias"],
-    dependencies=[Depends(RateLimiter(times=30, seconds=1))]
+    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="amendments"))]
 )
 
 
