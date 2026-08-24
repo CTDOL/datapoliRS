@@ -25,6 +25,7 @@ from app.routers.amendments import router as amendments_router
 from app.routers.legislative import router as legislative_router
 from app.routers.tasks import router as tasks_router
 from app.routers.auth import router as auth_router
+from app.routers.tenant import router as tenant_router
 from app.routers.admin import router as admin_router
 
 # Configuração de Logging Estruturado
@@ -86,6 +87,7 @@ app.include_router(amendments_router)
 app.include_router(legislative_router)
 app.include_router(tasks_router)
 app.include_router(auth_router)
+app.include_router(tenant_router)
 app.include_router(admin_router)
 
 tse_service = TSEService(timeout=settings.TSE_TIMEOUT_SECONDS)

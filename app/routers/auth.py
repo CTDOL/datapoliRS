@@ -5,7 +5,7 @@ from app.core.config import settings
 from app.services.auth_service import AuthService
 from app.core.dependencies import AUTH_COOKIE_NAME, get_current_user, getDbConnection
 from app.core.rate_limit import RateLimiter
-from app.schemas.user import UserInDB
+from app.schemas.user import UserInDB, PasswordChangeRequest
 from datetime import timedelta
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Autenticação"])
@@ -64,3 +64,26 @@ async def read_current_user(current_user: UserInDB = Depends(get_current_user)):
         "tenant_id": str(current_user.tenant_id),
         "role": current_user.role,
     }
+
+
+@router.post("/trocar-senha", dependencies=[Depends(RateLimiter(times=5, seconds=60, configKey="trocar_senha"))])
+async def trocar_senha(
+    payload: PasswordChangeRequest,
+    current_user: UserInDB = Depends(get_current_user),
+    connection: asyncpg.Connection = Depends(getDbConnection)
+):
+    row = await connection.fetchrow(
+        "SELECT hashed_password FROM tb_users WHERE id = $1", current_user.id
+    )
+    if row is None or not AuthService.verify_password(payload.senha_atual, row["hashed_password"]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Senha atual incorreta."
+        )
+
+    newHashedPassword = AuthService.get_password_hash(payload.nova_senha)
+    await connection.execute(
+        "UPDATE tb_users SET hashed_password = $1 WHERE id = $2",
+        newHashedPassword, current_user.id
+    )
+    return {"message": "Senha alterada com sucesso"}
