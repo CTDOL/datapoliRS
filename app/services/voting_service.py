@@ -2,9 +2,11 @@ import logging
 from typing import List, Optional, Dict, Any
 from fastapi import HTTPException, status
 import asyncpg
+from app.core.config import settings
 from app.core.redis_client import CacheService
 from app.repositories.candidate_repository import CandidateRepository
 from app.repositories.voting_repository import VotingRepository
+from app.services.system_config_service import SystemConfigService
 from app.schemas.voting import (
     CandidatoBuscaItem,
     MunicipioVotacaoItem,
@@ -31,7 +33,7 @@ class VotingService:
         cargoCode: Optional[int] = None,
         partidoSigla: Optional[str] = None,
         candidateNumber: Optional[int] = None,
-        ano: int = 2022,
+        ano: int = settings.ELECTION_YEAR,
         limit: int = 50
     ) -> List[CandidatoBuscaItem]:
         """Pesquisa candidaturas no banco de dados com filtros flexíveis."""
@@ -104,7 +106,8 @@ class VotingService:
         )
 
         # 5. Salvar no Cache Redis
-        await CacheService.set(cacheKey, response.model_dump(), ttlSeconds=CANDIDATE_VOTES_CACHE_TTL)
+        ttl = await SystemConfigService.getInt(connection, "cache_ttl.candidate_votes", CANDIDATE_VOTES_CACHE_TTL)
+        await CacheService.set(cacheKey, response.model_dump(), ttlSeconds=ttl)
         return response
 
     async def getCandidateVotesByNumber(
@@ -112,7 +115,7 @@ class VotingService:
         connection: asyncpg.Connection,
         candidateNumber: int,
         cargoCode: Optional[int] = None,
-        ano: int = 2022
+        ano: int = settings.ELECTION_YEAR
     ) -> VotacaoCandidatoResponse:
         """Localiza o candidato pelo número eleitoral e cargo e retorna seus votos."""
         candidate = await self.voting_repo.getVotesByCandidateNumberAndCargo(
@@ -138,5 +141,19 @@ class VotingService:
             return cached
 
         cargos = await self.candidate_repo.listCargos(connection)
-        await CacheService.set(cacheKey, cargos, ttlSeconds=86400 * 30)
+        ttl = await SystemConfigService.getInt(connection, "cache_ttl.cargos", 86400 * 30)
+        await CacheService.set(cacheKey, cargos, ttlSeconds=ttl)
         return cargos
+
+    async def listAvailableEleicoes(self, connection: asyncpg.Connection) -> List[Dict[str, Any]]:
+        """Lista os pleitos com dados carregados (curto TTL — muda quando um novo
+        pleito é ingerido, ao contrário dos cargos que são praticamente estáticos)."""
+        cacheKey = "electoral:eleicoes:list"
+        cached = await CacheService.get(cacheKey)
+        if cached:
+            return cached
+
+        eleicoes = await self.candidate_repo.listEleicoes(connection)
+        ttl = await SystemConfigService.getInt(connection, "cache_ttl.eleicoes", 3600)
+        await CacheService.set(cacheKey, eleicoes, ttlSeconds=ttl)
+        return eleicoes

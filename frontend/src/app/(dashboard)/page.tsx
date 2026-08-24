@@ -15,6 +15,7 @@ const ElectionMap = dynamic(() => import('@/components/map/ElectionMap'), {
 });
 
 import { LiderancaPoint, MapViewMode } from '@/components/map/ElectionMap';
+import { getMapaPadrao } from '@/utils/tacticalPreferences';
 
 interface CandidatoBusca {
   sq_candidato: number;
@@ -38,6 +39,12 @@ const VIEW_MODES: { value: MapViewMode; label: string; icon: typeof MapIcon }[] 
 export default function DashboardPage() {
   const [liderancas, setLiderancas] = useState<LiderancaPoint[]>([]);
   const [viewMode, setViewMode] = useState<MapViewMode>('liderancas');
+
+  // Lido em um efeito (não no useState inicial) para não divergir entre a
+  // renderização do servidor (sem localStorage) e a hidratação no cliente.
+  useEffect(() => {
+    setTimeout(() => setViewMode(getMapaPadrao()), 0);
+  }, []);
 
   const [termoBusca, setTermoBusca] = useState('');
   const [resultadosBusca, setResultadosBusca] = useState<CandidatoBusca[]>([]);

@@ -18,6 +18,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const formatNumber = (num) => new Intl.NumberFormat('pt-BR').format(num);
 
+    // 0. Popula os filtros de Cargo e Ano dinamicamente a partir do banco — assim,
+    // quando um novo cargo ou pleito (ex: eleições 2026) for cadastrado, ele aparece
+    // aqui sozinho, sem precisar editar esta página.
+    const populateFilters = async () => {
+        try {
+            const [cargosRes, eleicoesRes] = await Promise.all([
+                fetch('/api/v1/cargos'),
+                fetch('/api/v1/eleicoes'),
+            ]);
+
+            if (cargosRes.ok) {
+                const cargos = await cargosRes.json();
+                cargos.forEach((c) => {
+                    const opt = document.createElement('option');
+                    opt.value = c.cd_cargo;
+                    opt.textContent = c.ds_cargo;
+                    cargoSelect.appendChild(opt);
+                });
+            }
+
+            const anoSelect = document.getElementById('anoSelect');
+            if (eleicoesRes.ok) {
+                const eleicoes = await eleicoesRes.json();
+                eleicoes.forEach((e, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = e.ano_eleicao;
+                    opt.textContent = e.ano_eleicao;
+                    if (idx === 0) opt.selected = true;
+                    anoSelect.appendChild(opt);
+                });
+            }
+        } catch (err) {
+            console.error('Erro ao carregar filtros de cargo/ano:', err);
+        }
+    };
+
     // 1. Inicialização do Mapa Leaflet
     const initMap = () => {
         if (!mapInstance) {
@@ -300,4 +336,6 @@ document.addEventListener("DOMContentLoaded", () => {
             autocompleteDropdown.classList.add("hidden");
         }
     });
+
+    populateFilters();
 });

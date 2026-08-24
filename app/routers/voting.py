@@ -2,8 +2,10 @@ from typing import List, Optional, Dict, Any
 import httpx
 from fastapi import APIRouter, Depends, Query, Response
 import asyncpg
+from app.core.config import settings
 from app.core.dependencies import getDbConnection
 from app.services.voting_service import VotingService
+from app.services.system_config_service import SystemConfigService
 from app.repositories.candidate_repository import CandidateRepository
 from app.repositories.voting_repository import VotingRepository
 from app.schemas.voting import CandidatoBuscaItem, VotacaoCandidatoResponse
@@ -69,6 +71,21 @@ async def listar_cargos(
 
 
 @router.get(
+    "/eleicoes",
+    response_model=List[Dict[str, Any]],
+    summary="Lista os pleitos com dados carregados no banco"
+)
+async def listar_eleicoes(
+    connection: asyncpg.Connection = Depends(getDbConnection),
+    voting_service: VotingService = Depends(get_voting_service)
+) -> List[Dict[str, Any]]:
+    """Retorna os anos eleitorais com dados já ingeridos, mais recente primeiro —
+    usado para popular seletores de ano dinamicamente conforme novos pleitos
+    (ex.: 2026) forem carregados, sem precisar alterar código."""
+    return await voting_service.listAvailableEleicoes(connection)
+
+
+@router.get(
     "/candidatos",
     response_model=List[CandidatoBuscaItem],
     summary="Pesquisa candidatos multi-cargo com filtros"
@@ -78,19 +95,20 @@ async def pesquisar_candidatos(
     cargo: Optional[int] = Query(None, alias="cd_cargo", description="Código do cargo (ex: 7=Deputado Estadual, 6=Deputado Federal)"),
     partido: Optional[str] = Query(None, alias="sg_partido", description="Sigla do partido (ex: PT, PP, PL, MDB)"),
     numero: Optional[int] = Query(None, alias="nr_candidato", description="Número eleitoral na urna"),
-    ano: int = Query(2022, description="Ano da eleição"),
+    ano: Optional[int] = Query(None, description="Ano da eleição (padrão: configuração da plataforma)"),
     limite: int = Query(50, ge=1, le=200, description="Quantidade máxima de resultados"),
     connection: asyncpg.Connection = Depends(getDbConnection),
     voting_service: VotingService = Depends(get_voting_service)
 ) -> List[CandidatoBuscaItem]:
     """Busca avançada de candidaturas no banco relacional."""
+    anoResolvido = ano if ano is not None else await SystemConfigService.getInt(connection, "eleitoral.election_year", settings.ELECTION_YEAR)
     return await voting_service.searchCandidates(
         connection=connection,
         searchTerm=termo,
         cargoCode=cargo,
         partidoSigla=partido,
         candidateNumber=numero,
-        ano=ano,
+        ano=anoResolvido,
         limit=limite
     )
 
@@ -117,14 +135,15 @@ async def obter_votacao_candidato_por_sq(
 async def obter_votacao_candidato_por_numero(
     numero_urna: int,
     cargo: Optional[int] = Query(None, alias="cd_cargo", description="Filtrar por cargo específico"),
-    ano: int = Query(2022, description="Ano da eleição"),
+    ano: Optional[int] = Query(None, description="Ano da eleição (padrão: configuração da plataforma)"),
     connection: asyncpg.Connection = Depends(getDbConnection),
     voting_service: VotingService = Depends(get_voting_service)
 ) -> VotacaoCandidatoResponse:
     """Busca o candidato pelo número eleitoral e retorna sua distribuição de votos no RS."""
+    anoResolvido = ano if ano is not None else await SystemConfigService.getInt(connection, "eleitoral.election_year", settings.ELECTION_YEAR)
     return await voting_service.getCandidateVotesByNumber(
         connection=connection,
         candidateNumber=numero_urna,
         cargoCode=cargo,
-        ano=ano
+        ano=anoResolvido
     )

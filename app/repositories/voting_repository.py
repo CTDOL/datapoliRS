@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional, Dict, Any
 import asyncpg
+from app.core.config import settings
 
 logger = logging.getLogger("VotingRepository")
 
@@ -38,7 +39,7 @@ class VotingRepository:
         connection: asyncpg.Connection,
         candidateNumber: int,
         cargoCode: Optional[int] = None,
-        ano: int = 2022
+        ano: int = settings.ELECTION_YEAR
     ) -> Optional[Dict[str, Any]]:
         """Busca o candidato pelo número e retorna seu SQ e detalhes de votação."""
         candidateQuery = """

@@ -1,9 +1,9 @@
 from typing import Optional, Dict, Any, List
 import httpx
+from app.core.config import settings
 from app.schemas.candidate import CandidataDetalhada, BemDeclarado
 
 TSE_BASE_URL = "https://divulgacandcontas.tse.jus.br/divulga/rest/v1/candidatura"
-CARGO_DEPUTADO_ESTADUAL = 7
 
 
 class TSEService:
@@ -18,9 +18,9 @@ class TSEService:
                 return response.json()
             return None
 
-    async def buscar_candidatas_rs(self, ano: int, codigo_eleicao: str) -> List[Dict[str, Any]]:
+    async def buscar_candidatas_rs(self, ano: int, codigo_eleicao: str, cd_cargo: int) -> List[Dict[str, Any]]:
         # Formato correto do TSE para listar (ex: listar/2022/RS/2040602022/7/candidatos)
-        dados = await self._get(f"listar/{ano}/RS/{codigo_eleicao}/{CARGO_DEPUTADO_ESTADUAL}/candidatos")
+        dados = await self._get(f"listar/{ano}/RS/{codigo_eleicao}/{cd_cargo}/candidatos")
         if not dados:
             return []
         return dados.get("candidatos", [])
@@ -30,15 +30,22 @@ class TSEService:
         return await self._get(f"buscar/{ano}/RS/{codigo_eleicao}/candidato/{id_candidato}")
 
     async def pesquisar_deputada_rs(
-        self, nome: str, ano: int, codigo_eleicao: str
+        self,
+        nome: str,
+        ano: int,
+        codigo_eleicao: str,
+        cd_cargo: int = settings.DEFAULT_CARGO_CODE
     ) -> Optional[CandidataDetalhada]:
-        candidatos = await self.buscar_candidatas_rs(ano, codigo_eleicao)
+        """Busca por nome no pleito informado. cd_cargo é configurável para permitir
+        escalar a busca a outros cargos (Federal, Senador, Governador...), não só
+        Deputado Estadual, que é apenas o valor padrão quando nada é informado."""
+        candidatos = await self.buscar_candidatas_rs(ano, codigo_eleicao, cd_cargo)
         termo = nome.strip().lower()
 
         candidata_resumo = next(
             (
                 c for c in candidatos
-                if c.get("cargo", {}).get("codigo") == CARGO_DEPUTADO_ESTADUAL
+                if c.get("cargo", {}).get("codigo") == cd_cargo
                 and (termo in c.get("nomeUrna", "").lower() or termo in c.get("nomeCompleto", "").lower())
             ),
             None

@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Optional
 from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Depends
@@ -113,11 +114,16 @@ async def health_check():
 )
 async def consultar_deputada_rs(
     nome: str = Query(..., description="Nome civil ou de urna"),
-    ano: int = Query(2022, description="Ano eleitoral"),
-    codigo_eleicao: str = Query("2040602022", description="Código do pleito no TSE")
+    ano: Optional[int] = Query(None, description="Ano eleitoral (padrão: configuração da plataforma)"),
+    codigo_eleicao: Optional[str] = Query(None, description="Código do pleito no TSE (padrão: configuração da plataforma)"),
+    cd_cargo: Optional[int] = Query(None, description="Código do cargo — 7=Dep. Estadual, 6=Dep. Federal, 5=Senador, 3=Governador (padrão: configuração da plataforma)"),
+    connection: asyncpg.Connection = Depends(getDbConnection)
 ):
     """Consulta direta ao DivulgaCandContas do TSE (mantida para compatibilidade)."""
-    resultado = await tse_service.pesquisar_deputada_rs(nome, ano, codigo_eleicao)
+    ano = ano if ano is not None else await SystemConfigService.getInt(connection, "eleitoral.election_year", settings.ELECTION_YEAR)
+    codigo_eleicao = codigo_eleicao or await SystemConfigService.getStr(connection, "eleitoral.tse_codigo_eleicao", settings.TSE_CODIGO_ELEICAO)
+    cd_cargo = cd_cargo if cd_cargo is not None else await SystemConfigService.getInt(connection, "eleitoral.default_cargo_code", settings.DEFAULT_CARGO_CODE)
+    resultado = await tse_service.pesquisar_deputada_rs(nome, ano, codigo_eleicao, cd_cargo)
     if not resultado:
         raise HTTPException(
             status_code=404,

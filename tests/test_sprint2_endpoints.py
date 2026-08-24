@@ -97,6 +97,19 @@ def test_candidatos_search_endpoint(client: TestClient):
         assert cand["cd_cargo"] == 6
 
 
+def test_eleicoes_endpoint(client: TestClient):
+    """Testa a listagem de pleitos disponíveis — usada para popular seletores de ano
+    dinamicamente (ex: quando os dados de 2026 forem carregados, aparecem sozinhos)."""
+    response = client.get("/api/v1/eleicoes")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) >= 1
+    assert all("ano_eleicao" in item for item in data)
+    anos = [item["ano_eleicao"] for item in data]
+    assert anos == sorted(anos, reverse=True)
+
+
 def test_votacao_candidato_por_numero(client: TestClient):
     """Testa a consulta de votação por número eleitoral."""
     response = client.get("/api/v1/votacao/numero/13123")

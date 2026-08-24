@@ -1,12 +1,13 @@
 import logging
 from typing import List, Optional, Dict, Any
 import asyncpg
+from app.core.config import settings
 
 logger = logging.getLogger("CandidateRepository")
 
 
 class CandidateRepository:
-    """Repositório de dados eleitorais e candidaturas (2022)."""
+    """Repositório de dados eleitorais e candidaturas, multi-pleito (por ano_eleicao)."""
 
     async def searchCandidates(
         self,
@@ -15,7 +16,7 @@ class CandidateRepository:
         cargoCode: Optional[int] = None,
         partidoSigla: Optional[str] = None,
         candidateNumber: Optional[int] = None,
-        ano: int = 2022,
+        ano: int = settings.ELECTION_YEAR,
         limit: int = 50
     ) -> List[Dict[str, Any]]:
         """Pesquisa candidaturas com filtros combinados e paginação."""
@@ -111,5 +112,17 @@ class CandidateRepository:
     async def listCargos(self, connection: asyncpg.Connection) -> List[Dict[str, Any]]:
         """Lista todos os cargos eleitorais cadastrados."""
         query = "SELECT cd_cargo, ds_cargo FROM tb_cargos ORDER BY cd_cargo ASC;"
+        records = await connection.fetch(query)
+        return [dict(record) for record in records]
+
+    async def listEleicoes(self, connection: asyncpg.Connection) -> List[Dict[str, Any]]:
+        """Lista os pleitos com dados carregados, mais recentes primeiro. Usado para
+        popular seletores de ano dinamicamente — quando um novo pleito é ingerido
+        (ex.: 2026), passa a aparecer automaticamente, sem mudança de código."""
+        query = """
+            SELECT DISTINCT ano_eleicao, tp_abrangencia
+            FROM tb_eleicoes
+            ORDER BY ano_eleicao DESC;
+        """
         records = await connection.fetch(query)
         return [dict(record) for record in records]

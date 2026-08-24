@@ -79,3 +79,42 @@ async def test_pesquisar_deputada_rs_nao_encontrada():
     resultado = await service.pesquisar_deputada_rs("Inexistente", ano, codigo_eleicao)
 
     assert resultado is None
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_pesquisar_com_cargo_diferente_do_padrao():
+    """cd_cargo é parametrizável — a busca deve escalar para outros cargos
+    (ex: Senador=5), não ficar travada em Deputado Estadual (padrão=7)."""
+    ano = 2026
+    codigo_eleicao = "2040402026"
+    id_candidato = 54321
+    cd_cargo_senador = 5
+
+    respx.get(f"{TSE_BASE_URL}/listar/{ano}/RS/{codigo_eleicao}/{cd_cargo_senador}/candidatos").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "candidatos": [
+                    {
+                        "id": id_candidato,
+                        "nomeUrna": "SENADOR EXEMPLO",
+                        "nomeCompleto": "JOAO EXEMPLO",
+                        "cargo": {"codigo": cd_cargo_senador, "nome": "Senador"}
+                    }
+                ]
+            }
+        )
+    )
+    respx.get(f"{TSE_BASE_URL}/buscar/{ano}/RS/{codigo_eleicao}/candidato/{id_candidato}").mock(
+        return_value=httpx.Response(
+            200,
+            json={"id": id_candidato, "nomeCompleto": "JOAO EXEMPLO", "nomeUrna": "SENADOR EXEMPLO", "numero": 50}
+        )
+    )
+
+    service = TSEService()
+    resultado = await service.pesquisar_deputada_rs("Joao Exemplo", ano, codigo_eleicao, cd_cargo=cd_cargo_senador)
+
+    assert resultado is not None
+    assert resultado.id_tse == id_candidato

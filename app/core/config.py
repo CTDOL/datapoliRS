@@ -31,6 +31,13 @@ class AppSettings(BaseSettings):
     # TSE
     TSE_BASE_URL: str = "https://divulgacandcontas.tse.jus.br/divulga/rest/v1/candidatura"
     TSE_TIMEOUT_SECONDS: float = 10.0
+
+    # Ciclo eleitoral ativo — único ponto a mudar (aqui ou via variável de ambiente)
+    # quando um novo pleito estiver disponível (ex.: 2022 -> 2026). TSE_CODIGO_ELEICAO
+    # é o código que o TSE atribui a cada pleito e só existe depois que o TSE o publica.
+    ELECTION_YEAR: int = 2022
+    TSE_CODIGO_ELEICAO: str = "2040602022"
+    DEFAULT_CARGO_CODE: int = 7  # Deputado Estadual — cargo padrão quando nenhum é informado
     
     # Auth — sem valor padrão: obrigatório vir de variável de ambiente (.env)
     SECRET_KEY: str
