@@ -204,23 +204,29 @@ def executeDuckDbEtl(csvPath: str) -> None:
                     CAST(t.SQ_CANDIDATO AS BIGINT) AS sq_candidato,
                     CAST(t.CD_MUNICIPIO AS VARCHAR) AS cd_tse_municipio,
                     CAST(t.NR_ZONA AS INTEGER) AS nr_zona,
+                    -- Nome bruto do TSE para esse codigo — persistido porque nem todo
+                    -- cd_tse_municipio bate com o cd_tse ja cadastrado em tb_municipios
+                    -- (ver migration 9c52b0a5679c). E constante por grupo, MAX() so
+                    -- para satisfazer o GROUP BY.
+                    MAX(CAST(t.NM_MUNICIPIO AS VARCHAR)) AS nm_municipio_tse,
                     SUM(CAST(t.QT_VOTOS_NOMINAIS AS INTEGER)) AS qt_votos_nominais,
                     SUM(CAST(t.QT_VOTOS_NOMINAIS_VALIDOS AS INTEGER)) AS qt_votos_validos
                 FROM tse_raw t
                 WHERE t.SQ_CANDIDATO IS NOT NULL
                 GROUP BY t.CD_ELEICAO, t.SQ_CANDIDATO, t.CD_MUNICIPIO, t.NR_ZONA;
             """
-            
+
             duckDbCursor = duckDbConnection.cursor()
             duckDbCursor.execute(votacaoQuery)
 
             insertFatoQuery = """
                 INSERT INTO tb_fato_votacao_munzona (
                     cd_eleicao, sq_candidato, cd_tse_municipio,
-                    nr_zona, qt_votos_nominais, qt_votos_validos
+                    nr_zona, nm_municipio_tse, qt_votos_nominais, qt_votos_validos
                 )
                 VALUES %s
                 ON CONFLICT (cd_eleicao, sq_candidato, cd_tse_municipio, nr_zona) DO UPDATE SET
+                    nm_municipio_tse = EXCLUDED.nm_municipio_tse,
                     qt_votos_nominais = EXCLUDED.qt_votos_nominais,
                     qt_votos_validos = EXCLUDED.qt_votos_validos;
             """

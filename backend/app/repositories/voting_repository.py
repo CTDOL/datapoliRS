@@ -16,9 +16,13 @@ class VotingRepository:
     ) -> List[Dict[str, Any]]:
         """Retorna a votação nominal agregada por município para um candidato (pelo SQ_CANDIDATO)."""
         query = """
-            SELECT 
+            SELECT
                 f.cd_tse_municipio,
-                m.nm_municipio,
+                -- COALESCE: prioriza o nome cadastrado (mesma grafia/acentuacao usada
+                -- no restante do sistema); cai para o nome bruto do TSE quando o
+                -- cd_tse_municipio nao bate com nenhum municipio cadastrado (ver
+                -- migration 9c52b0a5679c).
+                COALESCE(m.nm_municipio, MAX(f.nm_municipio_tse)) AS nm_municipio,
                 m.cd_ibge_7,
                 SUM(f.qt_votos_nominais)::INT AS votos
             FROM tb_fato_votacao_munzona f
