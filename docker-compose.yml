@@ -11,7 +11,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-datapoli_db}
     volumes:
       - datapolirs_postgres_data:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datapoli_user} -d ${POSTGRES_DB:-datapoli_db}"]
       interval: 10s
@@ -38,7 +37,7 @@ services:
 
   api:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: datapoli_api
     restart: "no"
@@ -46,13 +45,11 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
-      - ./app:/app/app
+      - ./backend/app:/app/app
       - ./etl:/app/etl
-      - ./sql:/app/sql
-      - ./tests:/app/tests
-      - ./scripts:/app/scripts
-      - ./alembic:/app/alembic
-      - ./alembic.ini:/app/alembic.ini
+      - ./backend/tests:/app/tests
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
     env_file:
       - .env
     environment:

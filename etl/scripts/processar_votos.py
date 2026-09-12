@@ -4,14 +4,19 @@ import zipfile
 import pandas as pd
 import json
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # etl/
+REPO_ROOT = os.path.dirname(BASE_DIR)
+
 URL = "https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/votacao_candidato_munzona_2022.zip"
-ZIP_FILE = "votacao.zip"
-CSV_FILE = "votacao_candidato_munzona_2022_RS.csv"
-OUTPUT_FILE = "app/data/votos_rs_2022.json"
+DATA_DIR = os.path.join(BASE_DIR, "data")
+CSV_NAME = "votacao_candidato_munzona_2022_RS.csv"
+ZIP_FILE = os.path.join(DATA_DIR, "votacao.zip")
+CSV_FILE = os.path.join(DATA_DIR, CSV_NAME)
+OUTPUT_FILE = os.path.join(REPO_ROOT, "backend", "app", "data", "votos_rs_2022.json")
 
 def main():
-    if not os.path.exists("app/data"):
-        os.makedirs("app/data")
+    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+    os.makedirs(os.path.dirname(ZIP_FILE), exist_ok=True)
 
     if not os.path.exists(ZIP_FILE) and not os.path.exists(CSV_FILE):
         print(f"Baixando {URL}...")
@@ -21,7 +26,7 @@ def main():
     if not os.path.exists(CSV_FILE):
         print("Extraindo arquivo do RS...")
         with zipfile.ZipFile(ZIP_FILE, 'r') as zip_ref:
-            zip_ref.extract(CSV_FILE)
+            zip_ref.extract(CSV_NAME, path=DATA_DIR)
         print("Extracao concluida.")
 
     print("Processando dados com Pandas...")

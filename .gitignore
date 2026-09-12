@@ -12,5 +12,6 @@ htmlcov/
 .idea/
 votacao.zip
 votacao_candidato_munzona_2022_RS.csv
+etl/data/
 .claude/settings.local.json
 claude-skills.tar.gz

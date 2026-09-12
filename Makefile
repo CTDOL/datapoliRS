@@ -16,7 +16,7 @@ help:
 	@echo "  make clean           - Remove caches do Python e testes"
 
 install:
-	pip install -r requirements.txt
+	pip install -r backend/requirements.txt
 
 docker-build:
 	docker compose build
@@ -39,16 +39,16 @@ db-shell:
 	docker exec -it datapoli_postgres psql -U datapoli_user -d datapoli_db
 
 migrate:
-	alembic upgrade head
+	cd backend && alembic upgrade head
 
 migration:
-	alembic revision -m "$(msg)"
+	cd backend && alembic revision -m "$(msg)"
 
 run:
-	uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
-	pytest -v --asyncio-mode=auto
+	cd backend && pytest -v --asyncio-mode=auto
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
