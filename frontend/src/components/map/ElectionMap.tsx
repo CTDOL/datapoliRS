@@ -9,8 +9,17 @@ export interface LiderancaPoint {
   nm_completo: string;
   tp_influencia: string;
   nm_municipio?: string;
+  nr_telefone?: string;
   longitude?: number;
   latitude?: number;
+}
+
+/** Monta o link do WhatsApp Web/App (wa.me) a partir de um telefone BR em qualquer formato. */
+function buildWhatsappLink(nrTelefone: string): string | null {
+  const digits = nrTelefone.replace(/\D/g, '');
+  if (digits.length < 10) return null; // DDD + número, no mínimo
+  const comCodigoPais = digits.startsWith('55') ? digits : `55${digits}`;
+  return `https://wa.me/${comCodigoPais}`;
 }
 
 export type MapViewMode = 'liderancas' | 'votacao' | 'cruzada';
@@ -221,12 +230,27 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
         iconAnchor: [8, 8],
       });
 
+      const whatsappLink = l.nr_telefone ? buildWhatsappLink(l.nr_telefone) : null;
+      const telefoneHtml = l.nr_telefone
+        ? `
+          <div style="margin-top:8px; padding-top:8px; border-top:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <span style="font-size:12px; color:#334155;">📞 ${l.nr_telefone}</span>
+            ${whatsappLink
+              ? `<a href="${whatsappLink}" target="_blank" rel="noopener noreferrer"
+                   style="display:inline-flex; align-items:center; gap:4px; background:#25D366; color:#fff; font-size:11px; font-weight:600; padding:4px 10px; border-radius:9999px; text-decoration:none; white-space:nowrap;">
+                   WhatsApp
+                 </a>`
+              : ''}
+          </div>`
+        : '';
+
       const marker = L.marker([lat, lng], { icon }).addTo(m);
       marker.bindPopup(`
-        <div style="color:#0f172a; padding:4px; font-family:sans-serif;">
+        <div style="color:#0f172a; padding:4px; font-family:sans-serif; min-width:180px;">
           <strong style="color:#0284c7; font-size:14px;">${l.nm_completo}</strong><br/>
           <span style="font-size:12px;">Influência: <b>${l.tp_influencia}</b></span><br/>
           <span style="color:#64748b; font-size:11px;">${l.nm_municipio || ''}</span>
+          ${telefoneHtml}
         </div>
       `);
       markersRef.current.push(marker);
