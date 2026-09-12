@@ -13,8 +13,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ETL_DuckDB_TSE")
 
-CSV_FILE_PATH = "votacao_candidato_munzona_2022_RS.csv"
-ZIP_FILE_PATH = "votacao.zip"
+DATA_DIR = os.path.join("etl", "data")
+CSV_FILE_NAME = "votacao_candidato_munzona_2022_RS.csv"
+CSV_FILE_PATH = os.path.join(DATA_DIR, CSV_FILE_NAME)
+ZIP_FILE_PATH = os.path.join(DATA_DIR, "votacao.zip")
 BATCH_SIZE = 10000
 
 
@@ -26,10 +28,10 @@ def ensureCsvFileExists() -> str:
         return CSV_FILE_PATH
 
     if os.path.exists(ZIP_FILE_PATH):
-        logger.info(f"Extraindo {CSV_FILE_PATH} a partir de {ZIP_FILE_PATH}...")
+        logger.info(f"Extraindo {CSV_FILE_NAME} a partir de {ZIP_FILE_PATH}...")
         try:
             with zipfile.ZipFile(ZIP_FILE_PATH, "r") as zipReference:
-                zipReference.extract(CSV_FILE_PATH)
+                zipReference.extract(CSV_FILE_NAME, path=DATA_DIR)
             logger.info("Extração do CSV do TSE concluída com sucesso.")
             return CSV_FILE_PATH
         except (zipfile.BadZipFile, IOError) as zipError:

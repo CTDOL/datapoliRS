@@ -10,7 +10,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ETL_Municipios_GeoJSON")
 
-GEOJSON_FILE_PATH = os.path.join("app", "static", "rs_municipios.json")
+GEOJSON_FILE_PATH = os.path.join("backend", "app", "static", "rs_municipios.json")
 
 
 def loadMunicipiosGeoJson(filePath: str) -> dict:
