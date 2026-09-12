@@ -17,12 +17,17 @@ export default function LiderancasPage() {
     isSubmitting,
     termo,
     setTermo,
+    filtroCidade,
+    setFiltroCidade,
+    filtroTipo,
+    setFiltroTipo,
     page,
     setPage,
     totalPages,
     total,
     addLideranca,
     updateLideranca,
+    uploadFoto,
     deleteLideranca,
   } = useLiderancas();
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
@@ -57,26 +62,31 @@ export default function LiderancasPage() {
         canDelete={isAdmin}
         termo={termo}
         onTermoChange={setTermo}
+        filtroCidade={filtroCidade}
+        onFiltroCidadeChange={setFiltroCidade}
+        filtroTipo={filtroTipo}
+        onFiltroTipoChange={setFiltroTipo}
         page={page}
         totalPages={totalPages}
         total={total}
         onPageChange={setPage}
       />
-      
-      <LiderancaFormModal 
-        isOpen={isModalOpen} 
+
+      <LiderancaFormModal
+        isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setEditingLideranca(null);
-        }} 
+        }}
         onSubmit={async (data) => {
           if (editingLideranca) {
             return await updateLideranca(editingLideranca.id_lideranca, data);
           } else {
             return await addLideranca(data);
           }
-        }} 
-        isSubmitting={isSubmitting} 
+        }}
+        onUploadFoto={uploadFoto}
+        isSubmitting={isSubmitting}
         initialData={editingLideranca}
       />
     </div>

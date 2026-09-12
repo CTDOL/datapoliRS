@@ -1,6 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2, Edit2, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Lideranca } from './useLiderancas';
+import { api } from '@/services/api';
+
+interface MunicipioItem {
+  cd_ibge_7: string;
+  nm_municipio: string;
+}
+
+const TIPOS_INFLUENCIA = ['Comunitária', 'Religiosa', 'Empresarial', 'Política'];
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 interface LiderancasTableProps {
   liderancas: Lideranca[];
@@ -10,6 +19,10 @@ interface LiderancasTableProps {
   canDelete?: boolean;
   termo: string;
   onTermoChange: (termo: string) => void;
+  filtroCidade: string;
+  onFiltroCidadeChange: (cdIbge7: string) => void;
+  filtroTipo: string;
+  onFiltroTipoChange: (tipo: string) => void;
   page: number;
   totalPages: number;
   total: number;
@@ -24,17 +37,26 @@ export function LiderancasTable({
   canDelete = false,
   termo,
   onTermoChange,
+  filtroCidade,
+  onFiltroCidadeChange,
+  filtroTipo,
+  onFiltroTipoChange,
   page,
   totalPages,
   total,
   onPageChange,
 }: LiderancasTableProps) {
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
+  const [municipios, setMunicipios] = useState<MunicipioItem[]>([]);
+
+  useEffect(() => {
+    api.get('/api/v1/geo/municipios/lista').then((res) => setMunicipios(res.data)).catch(() => {});
+  }, []);
 
   return (
     <div className="flex-1 bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
-      <div className="p-4 border-b border-zinc-800">
-        <div className="relative max-w-sm">
+      <div className="p-4 border-b border-zinc-800 flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
           <input
             type="text"
@@ -44,6 +66,26 @@ export function LiderancasTable({
             className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
           />
         </div>
+        <select
+          value={filtroCidade}
+          onChange={(e) => onFiltroCidadeChange(e.target.value)}
+          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+        >
+          <option value="">Todos os municípios</option>
+          {municipios.map((m) => (
+            <option key={m.cd_ibge_7} value={m.cd_ibge_7}>{m.nm_municipio}</option>
+          ))}
+        </select>
+        <select
+          value={filtroTipo}
+          onChange={(e) => onFiltroTipoChange(e.target.value)}
+          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+        >
+          <option value="">Todos os tipos</option>
+          {TIPOS_INFLUENCIA.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
       </div>
 
       <div className="overflow-x-auto flex-1">
@@ -52,7 +94,7 @@ export function LiderancasTable({
             <tr className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400 text-xs uppercase tracking-wider">
               <th className="px-6 py-4 font-semibold">Nome Completo</th>
               <th className="px-6 py-4 font-semibold">Telefone</th>
-              <th className="px-6 py-4 font-semibold">Cód. IBGE</th>
+              <th className="px-6 py-4 font-semibold">Municípios</th>
               <th className="px-6 py-4 font-semibold">Tipo</th>
               <th className="px-6 py-4 font-semibold">Status</th>
               <th className="px-6 py-4 font-semibold text-right">Ações</th>
@@ -66,12 +108,23 @@ export function LiderancasTable({
             ) : (
               liderancas.map((l) => (
                 <tr key={l.id_lideranca} className="hover:bg-zinc-800/30 transition-colors duration-200">
-                  <td className="px-6 py-4 font-medium text-white flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">{l.nm_completo.charAt(0)}</div>
-                    {l.nm_completo}
+                  <td className="px-6 py-4 font-medium text-white">
+                    <div className="flex items-center gap-3">
+                      {l.ds_foto_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={`${API_BASE_URL}${l.ds_foto_url}`} alt={l.nm_completo} className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">{l.nm_completo.charAt(0)}</div>
+                      )}
+                      {l.nm_completo}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-zinc-300">{l.nr_telefone}</td>
-                  <td className="px-6 py-4 text-zinc-300">{l.nm_municipio || l.cd_ibge_7 || 'N/I'}</td>
+                  <td className="px-6 py-4 text-zinc-300">
+                    {l.municipios && l.municipios.length > 0
+                      ? l.municipios.map((m) => m.nm_municipio || m.cd_ibge_7).join(', ')
+                      : 'N/I'}
+                  </td>
                   <td className="px-6 py-4"><span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{l.tp_influencia}</span></td>
                   <td className="px-6 py-4"><span className={`flex items-center gap-2 ${l.is_ativo ? 'text-teal-400' : 'text-zinc-500'}`}><span className={`w-2 h-2 rounded-full ${l.is_ativo ? 'bg-teal-400' : 'bg-zinc-500'}`} />{l.is_ativo ? 'Ativo' : 'Inativo'}</span></td>
                   <td className="px-6 py-4 text-right">

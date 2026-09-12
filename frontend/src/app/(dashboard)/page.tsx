@@ -30,6 +30,13 @@ interface MunicipioVotacaoItem {
   votos: number;
 }
 
+interface MunicipioItem {
+  cd_ibge_7: string;
+  nm_municipio: string;
+}
+
+const TIPOS_INFLUENCIA = ['Comunitária', 'Religiosa', 'Empresarial', 'Política'];
+
 const VIEW_MODES: { value: MapViewMode; label: string; icon: typeof MapIcon }[] = [
   { value: 'liderancas', label: 'Lideranças', icon: Users },
   { value: 'votacao', label: 'Votação', icon: Vote },
@@ -53,17 +60,31 @@ export default function DashboardPage() {
   const [isBuscando, setIsBuscando] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [filtroCidadeMapa, setFiltroCidadeMapa] = useState('');
+  const [filtroTipoMapa, setFiltroTipoMapa] = useState('');
+  const [municipiosParaFiltro, setMunicipiosParaFiltro] = useState<MunicipioItem[]>([]);
+
+  useEffect(() => {
+    api.get('/api/v1/geo/municipios/lista').then((res) => setMunicipiosParaFiltro(res.data)).catch(() => {});
+  }, []);
+
   useEffect(() => {
     async function loadLiderancas() {
       try {
-        const res = await api.get('/api/v1/gabinete/liderancas', { params: { page_size: 200 } });
+        const res = await api.get('/api/v1/gabinete/liderancas', {
+          params: {
+            page_size: 200,
+            cd_ibge_7: filtroCidadeMapa || undefined,
+            tp_influencia: filtroTipoMapa || undefined,
+          },
+        });
         setLiderancas(res.data.items);
       } catch (err) {
         console.error('Erro ao buscar lideranças:', err);
       }
     }
     loadLiderancas();
-  }, []);
+  }, [filtroCidadeMapa, filtroTipoMapa]);
 
   // Busca de candidatos com debounce — só dispara a API depois de 350ms sem digitar
   useEffect(() => {
@@ -125,6 +146,7 @@ export default function DashboardPage() {
   }
 
   const mostrarBuscaCandidato = viewMode === 'votacao' || viewMode === 'cruzada';
+  const mostrarFiltrosLideranca = viewMode === 'liderancas' || viewMode === 'cruzada';
 
   return (
     <div className="space-y-6">
@@ -205,6 +227,33 @@ export default function DashboardPage() {
               )}
             </>
           )}
+          </>
+        )}
+      </div>
+
+      <div className={mostrarFiltrosLideranca ? 'flex flex-wrap gap-3' : 'hidden'}>
+        {mostrarFiltrosLideranca && (
+          <>
+            <select
+              value={filtroCidadeMapa}
+              onChange={(e) => setFiltroCidadeMapa(e.target.value)}
+              className="bg-zinc-900/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+            >
+              <option value="">Todos os municípios</option>
+              {municipiosParaFiltro.map((m) => (
+                <option key={m.cd_ibge_7} value={m.cd_ibge_7}>{m.nm_municipio}</option>
+              ))}
+            </select>
+            <select
+              value={filtroTipoMapa}
+              onChange={(e) => setFiltroTipoMapa(e.target.value)}
+              className="bg-zinc-900/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+            >
+              <option value="">Todos os tipos</option>
+              {TIPOS_INFLUENCIA.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
           </>
         )}
       </div>

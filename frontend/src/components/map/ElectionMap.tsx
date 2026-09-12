@@ -4,15 +4,24 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+export interface MunicipioAtuacaoPoint {
+  cd_ibge_7: string;
+  nm_municipio?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
 export interface LiderancaPoint {
   id_lideranca: string;
   nm_completo: string;
   tp_influencia: string;
-  nm_municipio?: string;
   nr_telefone?: string;
-  longitude?: number;
-  latitude?: number;
+  ds_foto_url?: string | null;
+  /** Uma liderança pode atuar em vários municípios — um marcador é plotado por município. */
+  municipios: MunicipioAtuacaoPoint[];
 }
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 /** Monta o link do WhatsApp Web/App (wa.me) a partir de um telefone BR em qualquer formato. */
 function buildWhatsappLink(nrTelefone: string): string | null {
@@ -31,7 +40,7 @@ interface ElectionMapProps {
   votosPorMunicipio?: Record<string, number>;
 }
 
-const MUNICIPIOS_GEOJSON_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/geo/municipios`;
+const MUNICIPIOS_GEOJSON_URL = `${API_BASE_URL}/api/v1/geo/municipios`;
 
 // Mesma abordagem (Leaflet + L.geoJson) já comprovadamente funcional no
 // portal público (app/static/script.js) — o MapLibre GL (WebGL) não estava
@@ -208,12 +217,17 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
     // No modo "apenas votação", os pontos de lideranças ficam ocultos.
     if (viewMode === 'votacao') return;
 
-    const validLiderancas = liderancas.filter((l) => l.longitude && l.latitude);
+    // Uma liderança pode atuar em vários municípios — um marcador por (liderança, município).
+    const pontos = liderancas.flatMap((l) =>
+      (l.municipios || [])
+        .filter((mun) => mun.latitude && mun.longitude)
+        .map((mun) => ({ l, mun }))
+    );
 
-    validLiderancas.forEach((l, i) => {
+    pontos.forEach(({ l, mun }, i) => {
       // Pequeno spiderify matemático
-      const lng = Number(l.longitude) + Math.cos(i) * 0.0002;
-      const lat = Number(l.latitude) + Math.sin(i) * 0.0002;
+      const lng = Number(mun.longitude) + Math.cos(i) * 0.0002;
+      const lat = Number(mun.latitude) + Math.sin(i) * 0.0002;
 
       // Elemento externo: é o que o Leaflet posiciona via transform inline.
       // Não pode receber a propriedade CSS `scale` (via hover:scale-*) aqui — no
@@ -244,12 +258,17 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
           </div>`
         : '';
 
+      const fotoHtml = l.ds_foto_url
+        ? `<img src="${API_BASE_URL}${l.ds_foto_url}" alt="${l.nm_completo}" style="width:48px; height:48px; border-radius:9999px; object-fit:cover; float:left; margin-right:10px;" />`
+        : '';
+
       const marker = L.marker([lat, lng], { icon }).addTo(m);
       marker.bindPopup(`
-        <div style="color:#0f172a; padding:4px; font-family:sans-serif; min-width:180px;">
+        <div style="color:#0f172a; padding:4px; font-family:sans-serif; min-width:200px; overflow:hidden;">
+          ${fotoHtml}
           <strong style="color:#0284c7; font-size:14px;">${l.nm_completo}</strong><br/>
           <span style="font-size:12px;">Influência: <b>${l.tp_influencia}</b></span><br/>
-          <span style="color:#64748b; font-size:11px;">${l.nm_municipio || ''}</span>
+          <span style="color:#64748b; font-size:11px;">${mun.nm_municipio || ''}</span>
           ${telefoneHtml}
         </div>
       `);
@@ -262,10 +281,12 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
     const m = map.current;
     if (!m) return;
 
-    const validLiderancas = liderancas.filter((l) => l.longitude && l.latitude);
-    if (validLiderancas.length === 0) return;
+    const pontosValidos = liderancas.flatMap((l) =>
+      (l.municipios || []).filter((mun) => mun.latitude && mun.longitude)
+    );
+    if (pontosValidos.length === 0) return;
 
-    const bounds = L.latLngBounds(validLiderancas.map((l) => [Number(l.latitude), Number(l.longitude)] as [number, number]));
+    const bounds = L.latLngBounds(pontosValidos.map((mun) => [Number(mun.latitude), Number(mun.longitude)] as [number, number]));
     m.fitBounds(bounds, { padding: [60, 60], maxZoom: 12 });
   }, [JSON.stringify(liderancas)]);
 
