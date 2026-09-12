@@ -2,6 +2,7 @@ import os
 import time
 import zipfile
 import logging
+import argparse
 import duckdb
 import psycopg2
 from psycopg2.extras import execute_values
@@ -14,31 +15,41 @@ logging.basicConfig(
 logger = logging.getLogger("ETL_DuckDB_TSE")
 
 DATA_DIR = os.path.join("etl", "data")
-CSV_FILE_NAME = "votacao_candidato_munzona_2022_RS.csv"
-CSV_FILE_PATH = os.path.join(DATA_DIR, CSV_FILE_NAME)
-ZIP_FILE_PATH = os.path.join(DATA_DIR, "votacao.zip")
 BATCH_SIZE = 10000
 
 
-def ensureCsvFileExists() -> str:
-    """Verifica se o CSV do TSE existe. Se não existir, extrai do ZIP."""
-    if os.path.exists(CSV_FILE_PATH):
-        fileSizeMb = os.path.getsize(CSV_FILE_PATH) / (1024 * 1024)
-        logger.info(f"Arquivo CSV localizado: {CSV_FILE_PATH} ({fileSizeMb:.2f} MB)")
-        return CSV_FILE_PATH
+def ensureCsvFileExists(ano: int) -> str:
+    """Verifica se o CSV do TSE do ano informado existe. Se não existir, extrai do ZIP correspondente.
 
-    if os.path.exists(ZIP_FILE_PATH):
-        logger.info(f"Extraindo {CSV_FILE_NAME} a partir de {ZIP_FILE_PATH}...")
+    O TSE publica um ZIP nacional por ano (votacao_candidato_munzona_{ano}.zip)
+    contendo um CSV por UF — extraímos apenas o de RS.
+    """
+    csvFileName = f"votacao_candidato_munzona_{ano}_RS.csv"
+    csvFilePath = os.path.join(DATA_DIR, csvFileName)
+    zipFilePath = os.path.join(DATA_DIR, f"votacao_{ano}.zip")
+
+    if os.path.exists(csvFilePath):
+        fileSizeMb = os.path.getsize(csvFilePath) / (1024 * 1024)
+        logger.info(f"Arquivo CSV localizado: {csvFilePath} ({fileSizeMb:.2f} MB)")
+        return csvFilePath
+
+    if os.path.exists(zipFilePath):
+        logger.info(f"Extraindo {csvFileName} a partir de {zipFilePath}...")
         try:
-            with zipfile.ZipFile(ZIP_FILE_PATH, "r") as zipReference:
-                zipReference.extract(CSV_FILE_NAME, path=DATA_DIR)
+            with zipfile.ZipFile(zipFilePath, "r") as zipReference:
+                zipReference.extract(csvFileName, path=DATA_DIR)
             logger.info("Extração do CSV do TSE concluída com sucesso.")
-            return CSV_FILE_PATH
+            return csvFilePath
         except (zipfile.BadZipFile, IOError) as zipError:
             logger.error(f"Falha ao extrair arquivo ZIP do TSE: {zipError}", exc_info=True)
             raise RuntimeError(f"Erro de extração ZIP: {zipError}") from zipError
 
-    errorMsg = f"Nenhum arquivo de dados ({CSV_FILE_PATH} ou {ZIP_FILE_PATH}) encontrado no workspace."
+    errorMsg = (
+        f"Nenhum arquivo de dados encontrado para o ano {ano} "
+        f"({csvFilePath} ou {zipFilePath}). Baixe o ZIP de "
+        f"https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_candidato_munzona/"
+        f"votacao_candidato_munzona_{ano}.zip e salve como {zipFilePath}."
+    )
     logger.error(errorMsg)
     raise FileNotFoundError(errorMsg)
 
@@ -237,9 +248,24 @@ def executeDuckDbEtl(csvPath: str) -> None:
         raise RuntimeError(f"ETL pipeline failure: {pipelineError}") from pipelineError
 
 
+def parseArgs() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="ETL de votação nominal do TSE (por município/zona) para o RS, via DuckDB."
+    )
+    parser.add_argument(
+        "--ano",
+        type=int,
+        required=True,
+        help="Ano do pleito a processar (ex.: 2022, 2026). Sem valor padrão: "
+             "o resultado só existe depois da apuração do respectivo ano.",
+    )
+    return parser.parse_args()
+
+
 def main():
-    logger.info("=== INICIANDO PIPELINE ANALÍTICO DE DADOS ELEITORAIS COM DUCKDB ===")
-    csvPath = ensureCsvFileExists()
+    args = parseArgs()
+    logger.info(f"=== INICIANDO PIPELINE ANALÍTICO DE DADOS ELEITORAIS COM DUCKDB (ano={args.ano}) ===")
+    csvPath = ensureCsvFileExists(args.ano)
     executeDuckDbEtl(csvPath)
 
 

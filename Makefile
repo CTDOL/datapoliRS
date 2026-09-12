@@ -8,8 +8,8 @@ help:
 	@echo "  make migrate         - Aplica as migrations pendentes (alembic upgrade head)"
 	@echo "  make migration msg='descrição' - Gera uma nova migration vazia"
 	@echo "  make etl-municipios  - Executa a carga geoespacial de municípios no PostGIS"
-	@echo "  make etl-tse         - Executa o pipeline de ingestão do TSE com DuckDB"
-	@echo "  make etl             - Executa todos os pipelines ETL de carga"
+	@echo "  make etl-tse ano=2022 - Executa o pipeline de ingestão do TSE com DuckDB para o ano informado"
+	@echo "  make etl ano=2022    - Executa todos os pipelines ETL de carga (municípios + TSE do ano informado)"
 	@echo "  make db-shell        - Conecta diretamente ao PostgreSQL via psql no container"
 	@echo "  make run             - Executa a API localmente na porta 8000"
 	@echo "  make test            - Executa a suíte de testes com pytest"
@@ -31,7 +31,7 @@ etl-municipios:
 	python -m etl.import_municipios_geojson
 
 etl-tse:
-	python -m etl.ingest_tse
+	python -m etl.ingest_tse --ano $(ano)
 
 etl: etl-municipios etl-tse
 
