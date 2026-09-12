@@ -1,4 +1,4 @@
-.PHONY: help install run test lint clean docker-build docker-up docker-down etl-municipios etl-tse etl db-shell migrate migration
+.PHONY: help install run test lint clean docker-build docker-up docker-down etl-municipios etl-tse etl-comparecimento etl db-shell migrate migration
 
 help:
 	@echo "Comandos disponíveis no ecossistema datapoliRS:"
@@ -9,7 +9,8 @@ help:
 	@echo "  make migration msg='descrição' - Gera uma nova migration vazia"
 	@echo "  make etl-municipios  - Executa a carga geoespacial de municípios no PostGIS"
 	@echo "  make etl-tse ano=2022 - Executa o pipeline de ingestão do TSE com DuckDB para o ano informado"
-	@echo "  make etl ano=2022    - Executa todos os pipelines ETL de carga (municípios + TSE do ano informado)"
+	@echo "  make etl-comparecimento ano=2022 - Executa a carga de eleitorado apto/comparecimento/abstenções para o ano informado"
+	@echo "  make etl ano=2022    - Executa todos os pipelines ETL de carga (municípios + TSE + comparecimento do ano informado)"
 	@echo "  make db-shell        - Conecta diretamente ao PostgreSQL via psql no container"
 	@echo "  make run             - Executa a API localmente na porta 8000"
 	@echo "  make test            - Executa a suíte de testes com pytest"
@@ -33,7 +34,10 @@ etl-municipios:
 etl-tse:
 	python -m etl.ingest_tse --ano $(ano)
 
-etl: etl-municipios etl-tse
+etl-comparecimento:
+	python -m etl.ingest_comparecimento --ano $(ano)
+
+etl: etl-municipios etl-tse etl-comparecimento
 
 db-shell:
 	docker exec -it datapoli_postgres psql -U datapoli_user -d datapoli_db

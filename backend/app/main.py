@@ -20,6 +20,7 @@ from app.services.voting_service import VotingService
 from app.services.system_config_service import SystemConfigService
 from app.routers.geo import router as geo_router
 from app.routers.voting import router as voting_router
+from app.routers.eleitorado import router as eleitorado_router
 from app.routers.cabinet import router as cabinet_router
 from app.routers.amendments import router as amendments_router
 from app.routers.legislative import router as legislative_router
@@ -87,6 +88,7 @@ app.mount("/uploads", StaticFiles(directory="app/uploads"), name="uploads")
 # Registro dos Controladores da Sprint 2
 app.include_router(geo_router)
 app.include_router(voting_router)
+app.include_router(eleitorado_router)
 app.include_router(cabinet_router)
 app.include_router(amendments_router)
 app.include_router(legislative_router)
