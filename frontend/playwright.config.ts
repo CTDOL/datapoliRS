@@ -16,6 +16,20 @@ export default defineConfig({
     timeout: 120_000,
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'setup',
+      testMatch: /global\.setup\.ts/,
+    },
+    {
+      name: 'chromium',
+      testMatch: /auth\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'chromium-autenticado',
+      testMatch: /(dashboard|modulos|settings)\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/user.json' },
+      dependencies: ['setup'],
+    },
   ],
 });
