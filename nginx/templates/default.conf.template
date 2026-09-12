@@ -42,5 +42,12 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # api.* e app.* são subdomínios irmãos, não um subdomínio do outro:
+        # sem isto, o cookie de sessão HttpOnly emitido pela API (Domain=${API_DOMAIN},
+        # ver setting API_DOMAIN em backend/app/core/config.py) nunca seria aceito de
+        # volta em requisições originadas de ${APP_DOMAIN}. Reescreve para o domínio-pai
+        # compartilhado (ROOT_DOMAIN), que ambos os subdomínios casam por RFC 6265bis.
+        proxy_cookie_domain ${API_DOMAIN} ${ROOT_DOMAIN};
     }
 }

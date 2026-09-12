@@ -44,6 +44,7 @@ async def login(
         value=access_token,
         max_age=ACCESS_TOKEN_MAX_AGE_SECONDS,
         path="/",
+        domain=settings.API_DOMAIN,
         httponly=True,
         secure=settings.ENVIRONMENT == "production",
         samesite="lax",
@@ -53,7 +54,7 @@ async def login(
 
 @router.post("/logout")
 async def logout(response: Response):
-    response.delete_cookie(key=AUTH_COOKIE_NAME, path="/")
+    response.delete_cookie(key=AUTH_COOKIE_NAME, path="/", domain=settings.API_DOMAIN)
     return {"message": "Logout efetuado com sucesso"}
 
 

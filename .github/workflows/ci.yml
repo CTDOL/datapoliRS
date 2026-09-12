@@ -2,9 +2,11 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ dev, hml, main ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ dev, hml, main ]
+  release:
+    types: [ published ]
 
 jobs:
   test:
@@ -179,9 +181,120 @@ jobs:
       - name: Testes E2E de Fumaça (Playwright)
         run: npx playwright test
 
+  # HML é efêmero: nunca hospedado, existe só para o tempo deste job. Sobe a
+  # stack de PRODUÇÃO completa (mesmo docker-compose.prod.yml, com Nginx real
+  # na frente) dentro do próprio runner e dispara o Playwright através do
+  # proxy — o único lugar em que roteamento por subdomínio, CORS e o
+  # compartilhamento do cookie de sessão entre app.*/api.* (proxy_cookie_domain)
+  # são de fato exercitados. A suíte "frontend" acima roda em loopback puro e
+  # estruturalmente não consegue ver essa classe de bug (ADR 022/024).
+  #
+  # Débito conhecido e documentado (não bloqueador): este job roda tudo em
+  # HTTP simples (ENVIRONMENT=hml, cookie sem Secure=true) — TLS real via
+  # Certbot só existe na VPS de produção, fora do escopo desta sessão.
+  e2e-parity:
+    needs: [test, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/hml'
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_TAG: ci-${{ github.sha }}
+      APP_DOMAIN: datapoli.local
+      API_DOMAIN: api.datapoli.local
+      ROOT_DOMAIN: datapoli.local
+
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build imagem da API (local, sem push ao GHCR)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: backend/Dockerfile
+          load: true
+          tags: ghcr.io/ctdol/datapolirs-api:${{ env.RELEASE_TAG }}
+          cache-from: type=gha,scope=e2e-api
+          cache-to: type=gha,mode=max,scope=e2e-api
+
+      - name: Build imagem do Frontend (local, sem push ao GHCR)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: frontend/Dockerfile
+          target: production
+          load: true
+          tags: ghcr.io/ctdol/datapolirs-frontend:${{ env.RELEASE_TAG }}
+          cache-from: type=gha,scope=e2e-frontend
+          cache-to: type=gha,mode=max,scope=e2e-frontend
+
+      - name: Registrar domínios de paridade em /etc/hosts
+        run: echo "127.0.0.1 ${{ env.APP_DOMAIN }} ${{ env.API_DOMAIN }}" | sudo tee -a /etc/hosts
+
+      - name: Preparar .env.prod efêmero (segredos só de CI, nunca reais)
+        run: |
+          cat > .env.prod <<EOF
+          RELEASE_TAG=${{ env.RELEASE_TAG }}
+          APP_DOMAIN=${{ env.APP_DOMAIN }}
+          API_DOMAIN=${{ env.API_DOMAIN }}
+          ROOT_DOMAIN=${{ env.ROOT_DOMAIN }}
+          APP_PROTOCOL=http
+          API_PROTOCOL=http
+          ENVIRONMENT=hml
+          POSTGRES_USER=datapoli_user
+          POSTGRES_PASSWORD=ci-only-pass
+          POSTGRES_DB=datapoli_db
+          SECRET_KEY=ci-only-secret-not-for-production
+          ADMIN_EMAIL=operador@campanha.com.br
+          ADMIN_PASSWORD=admin123
+          ADMIN_TENANT_ID=11111111-2222-3333-4444-555555555555
+          EOF
+
+      - name: Subir stack de produção completa (efêmera, com Nginx)
+        run: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+
+      - name: Esperar stack ficar saudável atrás do proxy
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf "http://${{ env.APP_DOMAIN }}/" > /dev/null && \
+            curl -sf "http://${{ env.API_DOMAIN }}/health" > /dev/null && exit 0
+            sleep 3
+          done
+          echo "Stack de paridade não respondeu a tempo:"
+          docker compose -f docker-compose.prod.yml logs
+          exit 1
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar Dependências do Frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Instalar Playwright (Chromium)
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Testes E2E de Paridade (através do Nginx real, não loopback)
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://${{ env.APP_DOMAIN }}
+        run: npx playwright test
+
+      - name: Derrubar stack efêmera (sempre — HML nunca fica hospedado)
+        if: always()
+        run: docker compose -f docker-compose.prod.yml --env-file .env.prod down -v
+
   docker-publish:
     needs: [test, frontend]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'release'
     runs-on: ubuntu-latest
 
     permissions:
@@ -220,17 +333,48 @@ jobs:
         with:
           images: ${{ matrix.image }}
           tags: |
-            type=raw,value=latest
-            type=sha,format=long
+            type=raw,value=latest,enable=${{ github.event_name == 'push' }}
+            type=sha,format=long,enable=${{ github.event_name == 'push' }}
+            type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
 
-      - name: Build e Push
+      - name: Build e Push (multi-arquitetura — VPS Oracle é Ampere A1/ARM64)
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           target: ${{ matrix.target }}
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  # Gatilho ÚNICO de produção: Release publicada (nunca push direto em main).
+  # `environment: producao` exige a configuração manual, no GitHub
+  # (Settings → Environments), de required reviewers e dos secrets de deploy
+  # (ex.: VPS_SSH_HOST, VPS_SSH_USER, VPS_SSH_KEY, GHCR_PULL_TOKEN) — nenhum
+  # desses existe ainda, e é vedado ao Claude Code criá-los ou aprová-los
+  # (Regra 1.1). Este job fica registrado como código pronto, mas como débito
+  # explícito até essa configuração humana ser feita (Regra 13.1).
+  deploy:
+    needs: [docker-publish]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment: producao
+
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v4
+
+      - name: Deploy pull-based na VPS Oracle via SSH
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          echo "TODO (débito explícito — ver ADR_024_datapolirs): configurar secrets"
+          echo "VPS_SSH_HOST/VPS_SSH_USER/VPS_SSH_KEY no environment 'producao'"
+          echo "e substituir este placeholder pelo SSH real que executa, na VPS:"
+          echo "  docker compose -f docker-compose.prod.yml --env-file .env.prod pull"
+          echo "  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d"
+          echo "usando RELEASE_TAG=${RELEASE_TAG} como tag da imagem promovida."
+          exit 1

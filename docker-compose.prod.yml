@@ -42,9 +42,7 @@ services:
       - datapoli_network_prod
 
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/ctdol/datapolirs-api:${RELEASE_TAG}
     container_name: datapoli_api_prod
     restart: unless-stopped
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -61,8 +59,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_URL=redis://redis:6379/0
-      - ENVIRONMENT=production
-      - ALLOWED_ORIGINS=https://${APP_DOMAIN}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - ALLOWED_ORIGINS=${APP_PROTOCOL:-https}://${APP_DOMAIN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,14 +75,11 @@ services:
       - datapoli_network_prod
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: production
+    image: ghcr.io/ctdol/datapolirs-frontend:${RELEASE_TAG}
     container_name: datapoli_frontend_prod
     restart: unless-stopped
     environment:
-      - NEXT_PUBLIC_API_URL=https://${API_DOMAIN}
+      - NEXT_PUBLIC_API_URL=${API_PROTOCOL:-https}://${API_DOMAIN}
     depends_on:
       - api
     networks:
@@ -100,6 +95,7 @@ services:
     environment:
       - APP_DOMAIN=${APP_DOMAIN}
       - API_DOMAIN=${API_DOMAIN}
+      - ROOT_DOMAIN=${ROOT_DOMAIN}
     volumes:
       - ./nginx/templates:/etc/nginx/templates:ro
       # Descomentar quando o certbot estiver configurado (fora de escopo por
