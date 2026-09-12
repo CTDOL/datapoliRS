@@ -1,0 +1,118 @@
+# Orquestração de PRODUÇÃO (VPS Oracle OCI, ADR 015) — não confundir com o
+# docker-compose.yml da raiz, que é exclusivamente para dev local Zero-Trust
+# (binds em 127.0.0.1, restart: "no"). Aqui só o Nginx publica porta no host
+# (80/443); postgres, redis, api e frontend só são alcançáveis pela rede
+# interna do Docker — nenhuma porta de app/banco fica exposta na internet.
+#
+# Uso:
+#   cp .env.prod.example .env.prod   # preencher domínios e segredos reais
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: datapoli_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - datapolirs_postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datapoli_network_prod
+
+  redis:
+    image: redis:7-alpine
+    container_name: datapoli_redis_prod
+    restart: unless-stopped
+    volumes:
+      - datapolirs_redis_data_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - datapoli_network_prod
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: datapoli_api_prod
+    restart: unless-stopped
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    env_file:
+      - .env.prod
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+      - ALLOWED_ORIGINS=https://${APP_DOMAIN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - datapoli_network_prod
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: datapoli_frontend_prod
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_URL=https://${API_DOMAIN}
+    depends_on:
+      - api
+    networks:
+      - datapoli_network_prod
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: datapoli_nginx_prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN}
+      - API_DOMAIN=${API_DOMAIN}
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      # Descomentar quando o certbot estiver configurado (fora de escopo por
+      # enquanto: exige domínio real apontado via DNS para emitir o certificado):
+      # - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - datapoli_network_prod
+
+volumes:
+  datapolirs_postgres_data_prod:
+  datapolirs_redis_data_prod:
+
+networks:
+  datapoli_network_prod:
+    driver: bridge
