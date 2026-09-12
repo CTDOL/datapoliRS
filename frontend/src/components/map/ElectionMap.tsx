@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { buildWhatsappLink } from '@/utils/whatsapp';
 
 export interface MunicipioAtuacaoPoint {
   cd_ibge_7: string;
@@ -22,14 +23,6 @@ export interface LiderancaPoint {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-
-/** Monta o link do WhatsApp Web/App (wa.me) a partir de um telefone BR em qualquer formato. */
-function buildWhatsappLink(nrTelefone: string): string | null {
-  const digits = nrTelefone.replace(/\D/g, '');
-  if (digits.length < 10) return null; // DDD + número, no mínimo
-  const comCodigoPais = digits.startsWith('55') ? digits : `55${digits}`;
-  return `https://wa.me/${comCodigoPais}`;
-}
 
 export type MapViewMode = 'liderancas' | 'votacao' | 'cruzada';
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Edit2, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Edit2, Trash2, Search, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
 import { Lideranca } from './useLiderancas';
 import { api } from '@/services/api';
+import { buildWhatsappLink } from '@/utils/whatsapp';
 
 interface MunicipioItem {
   cd_ibge_7: string;
@@ -119,7 +120,26 @@ export function LiderancasTable({
                       {l.nm_completo}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-zinc-300">{l.nr_telefone}</td>
+                  <td className="px-6 py-4 text-zinc-300">
+                    {l.nr_telefone ? (
+                      <div className="flex items-center gap-2">
+                        <span>{l.nr_telefone}</span>
+                        {buildWhatsappLink(l.nr_telefone) && (
+                          <a
+                            href={buildWhatsappLink(l.nr_telefone)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Chamar no WhatsApp"
+                            className="text-[#25D366] hover:text-[#1ebe5a] transition-colors"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      'N/I'
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-zinc-300">
                     {l.municipios && l.municipios.length > 0
                       ? l.municipios.map((m) => m.nm_municipio || m.cd_ibge_7).join(', ')
