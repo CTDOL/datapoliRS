@@ -46,6 +46,13 @@ const LABEL_URLS: Record<'dark' | 'light', string> = {
   light: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
 };
 
+// Borda branca translúcida (0.2 alpha) some contra o basemap claro do tema
+// Light — precisa de um traço escuro ali para as divisas dos municípios
+// ficarem visíveis; no tema Dark o branco translúcido já contrasta bem.
+function getBorderColor(theme: 'dark' | 'light'): string {
+  return theme === 'light' ? 'rgba(15, 23, 42, 0.35)' : 'rgba(255, 255, 255, 0.2)';
+}
+
 function getChoroplethColor(votos: number, maxVotos: number): string {
   if (!votos) return 'rgba(148, 163, 184, 0.06)';
   const fraction = votos / maxVotos;
@@ -89,7 +96,7 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
       return {
         fillColor: getChoroplethColor(v, maxVotos),
         weight: 0.5,
-        color: 'rgba(255, 255, 255, 0.2)',
+        color: getBorderColor(mapTheme),
         opacity: 1,
         fillOpacity: 0.8,
       };
@@ -132,7 +139,7 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
           style: () => ({
             fillColor: 'rgba(148, 163, 184, 0.06)',
             weight: 0.5,
-            color: 'rgba(255, 255, 255, 0.2)',
+            color: getBorderColor(mapTheme),
             opacity: 1,
             fillOpacity: 0.8,
           }),
@@ -172,6 +179,7 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
       maxZoom: 16,
       pane: 'shadowPane',
     }).addTo(m);
+    applyChoroplethStyle();
   }, [mapTheme]);
 
   // Reaplica cor/visibilidade da coropletia quando os votos ou o modo mudam
