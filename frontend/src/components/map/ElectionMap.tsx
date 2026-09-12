@@ -128,7 +128,13 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    const mapInstance = L.map(mapContainer.current, { zoomControl: true }).setView([-30.0346, -51.2177], 7);
+    // keyboard:false — o Leaflet foca o próprio container do mapa ao clicar em
+    // qualquer camada interativa (marcador, popup); como o <main> do dashboard
+    // é overflow-hidden sem barra de rolagem visível, o navegador faz
+    // scroll-into-view programático nele mesmo assim, empurrando o cabeçalho
+    // para fora da viewport. Zoom (mouse/touch/botões) e cliques continuam
+    // normais — só a navegação por setas do teclado no mapa é removida.
+    const mapInstance = L.map(mapContainer.current, { zoomControl: true, keyboard: false }).setView([-30.0346, -51.2177], 7);
     map.current = mapInstance;
 
     const tileLayer = L.tileLayer(TILE_URLS[mapTheme], {
@@ -255,7 +261,12 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
         ? `<img src="${API_BASE_URL}${l.ds_foto_url}" alt="${l.nm_completo}" style="width:48px; height:48px; border-radius:9999px; object-fit:cover; float:left; margin-right:10px;" />`
         : '';
 
-      const marker = L.marker([lat, lng], { icon }).addTo(m);
+      // keyboard:false — sem isso o Leaflet torna o marcador focável (tabindex)
+      // e chama .focus() nele ao clicar; como o <main> do dashboard tem
+      // overflow-hidden (ADR de layout fixo), o navegador faz scroll-into-view
+      // programático ali mesmo sem barra de rolagem visível, empurrando o
+      // cabeçalho/seletor de modo para fora da viewport ao abrir o popup.
+      const marker = L.marker([lat, lng], { icon, keyboard: false }).addTo(m);
       marker.bindPopup(`
         <div style="color:#0f172a; padding:4px; font-family:sans-serif; min-width:200px; overflow:hidden;">
           ${fotoHtml}
