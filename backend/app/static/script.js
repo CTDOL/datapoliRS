@@ -62,6 +62,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 attribution: '&copy; Esri &copy; OpenStreetMap contributors &copy; datapoliRS',
                 maxZoom: 16
             }).addTo(mapInstance);
+            // Esri separa o canvas base dos nomes de cidade (labels) em dois
+            // servicos distintos — sem esta camada de "Reference" por cima,
+            // o mapa fica em branco/cinza sem nenhum topônimo.
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 16,
+                pane: 'shadowPane'
+            }).addTo(mapInstance);
         }
         setTimeout(() => mapInstance.invalidateSize(), 300);
     };

@@ -33,9 +33,17 @@ const MUNICIPIOS_GEOJSON_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://loc
 // Tiles raster: Esri Canvas (gratuito, sem API key). O CARTO passou a
 // exigir API key nos endpoints basemaps.cartocdn.com/{dark,light}_all —
 // substituído para não depender de credencial paga em ambiente local.
+// Esri separa o canvas base dos rótulos (nomes de cidade) em dois
+// serviços de tile distintos — "Base" sozinho renderiza um mapa em
+// branco/cinza sem nenhum nome; "Reference" é a camada transparente de
+// labels que precisa ser empilhada por cima.
 const TILE_URLS: Record<'dark' | 'light', string> = {
   dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
   light: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+};
+const LABEL_URLS: Record<'dark' | 'light', string> = {
+  dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+  light: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
 };
 
 function getChoroplethColor(votos: number, maxVotos: number): string {
@@ -53,6 +61,7 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const labelLayerRef = useRef<L.TileLayer | null>(null);
   const choroplethLayerRef = useRef<L.GeoJSON | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
 
@@ -110,6 +119,12 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
     }).addTo(mapInstance);
     tileLayerRef.current = tileLayer;
 
+    const labelLayer = L.tileLayer(LABEL_URLS[mapTheme], {
+      maxZoom: 16,
+      pane: 'shadowPane', // acima dos tiles base, abaixo dos vetores (overlayPane)
+    }).addTo(mapInstance);
+    labelLayerRef.current = labelLayer;
+
     fetch(MUNICIPIOS_GEOJSON_URL)
       .then((resp) => resp.json())
       .then((geojson: GeoJSON.FeatureCollection) => {
@@ -132,6 +147,7 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
       mapInstance.remove();
       map.current = null;
       tileLayerRef.current = null;
+      labelLayerRef.current = null;
       choroplethLayerRef.current = null;
     };
   }, []); // Inicialização roda apenas 1x. Tema e dados são atualizados por efeitos próprios.
@@ -150,6 +166,11 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
     tileLayerRef.current = L.tileLayer(TILE_URLS[mapTheme], {
       maxZoom: 16,
       attribution: '&copy; Esri, &copy; OpenStreetMap',
+    }).addTo(m);
+    if (labelLayerRef.current) m.removeLayer(labelLayerRef.current);
+    labelLayerRef.current = L.tileLayer(LABEL_URLS[mapTheme], {
+      maxZoom: 16,
+      pane: 'shadowPane',
     }).addTo(m);
   }, [mapTheme]);
 
