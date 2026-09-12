@@ -24,14 +24,18 @@ interface ElectionMapProps {
 
 const MUNICIPIOS_GEOJSON_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/geo/municipios`;
 
-// Mesma fonte de tiles raster (CARTO) e a mesma abordagem (Leaflet + L.geoJson)
-// já comprovadamente funcional no portal público (app/static/script.js) — o
-// MapLibre GL (WebGL) não estava renderizando camadas de polígono neste
-// ambiente por um motivo ainda não isolado; Leaflet usa SVG/Canvas 2D e
-// funciona de forma confirmada no mesmo navegador.
+// Mesma abordagem (Leaflet + L.geoJson) já comprovadamente funcional no
+// portal público (app/static/script.js) — o MapLibre GL (WebGL) não estava
+// renderizando camadas de polígono neste ambiente por um motivo ainda não
+// isolado; Leaflet usa SVG/Canvas 2D e funciona de forma confirmada no
+// mesmo navegador.
+//
+// Tiles raster: Esri Canvas (gratuito, sem API key). O CARTO passou a
+// exigir API key nos endpoints basemaps.cartocdn.com/{dark,light}_all —
+// substituído para não depender de credencial paga em ambiente local.
 const TILE_URLS: Record<'dark' | 'light', string> = {
-  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+  light: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
 };
 
 function getChoroplethColor(votos: number, maxVotos: number): string {
@@ -101,9 +105,8 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
     map.current = mapInstance;
 
     const tileLayer = L.tileLayer(TILE_URLS[mapTheme], {
-      subdomains: 'abcd',
-      maxZoom: 18,
-      attribution: '&copy; CARTO, &copy; OpenStreetMap',
+      maxZoom: 16,
+      attribution: '&copy; Esri, &copy; OpenStreetMap',
     }).addTo(mapInstance);
     tileLayerRef.current = tileLayer;
 
@@ -145,9 +148,8 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
     if (!m) return;
     if (tileLayerRef.current) m.removeLayer(tileLayerRef.current);
     tileLayerRef.current = L.tileLayer(TILE_URLS[mapTheme], {
-      subdomains: 'abcd',
-      maxZoom: 18,
-      attribution: '&copy; CARTO, &copy; OpenStreetMap',
+      maxZoom: 16,
+      attribution: '&copy; Esri, &copy; OpenStreetMap',
     }).addTo(m);
   }, [mapTheme]);
 

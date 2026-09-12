@@ -58,10 +58,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const initMap = () => {
         if (!mapInstance) {
             mapInstance = L.map('map', { zoomControl: true }).setView([-30.033, -53.23], 6);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO &copy; datapoliRS',
-                subdomains: 'abcd',
-                maxZoom: 18
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '&copy; Esri &copy; OpenStreetMap contributors &copy; datapoliRS',
+                maxZoom: 16
             }).addTo(mapInstance);
         }
         setTimeout(() => mapInstance.invalidateSize(), 300);
