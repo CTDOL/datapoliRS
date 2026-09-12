@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgis/postgis:16-3.4
     container_name: datapoli_postgres
-    restart: unless-stopped
+    restart: "no"
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-datapoli_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-datapoli_pass}
       POSTGRES_DB: ${POSTGRES_DB:-datapoli_db}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - datapolirs_postgres_data:/var/lib/postgresql/data
       - ./sql:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datapoli_user} -d ${POSTGRES_DB:-datapoli_db}"]
@@ -23,11 +23,11 @@ services:
   redis:
     image: redis:7-alpine
     container_name: datapoli_redis
-    restart: unless-stopped
+    restart: "no"
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
-      - redis_data:/data
+      - datapolirs_redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -41,10 +41,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: datapoli_api
-    restart: unless-stopped
+    restart: "no"
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./app:/app/app
       - ./etl:/app/etl
@@ -87,13 +87,13 @@ services:
       dockerfile: Dockerfile
       target: dev
     container_name: datapoli_frontend
-    restart: unless-stopped
+    restart: "no"
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+      - datapolirs_frontend_node_data:/app/node_modules
+      - datapolirs_frontend_next_data:/app/.next
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - WATCHPACK_POLLING=true
@@ -103,8 +103,10 @@ services:
       - datapoli_network
 
 volumes:
-  postgres_data:
-  redis_data:
+  datapolirs_postgres_data:
+  datapolirs_redis_data:
+  datapolirs_frontend_node_data:
+  datapolirs_frontend_next_data:
 
 networks:
   datapoli_network:
