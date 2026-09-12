@@ -82,12 +82,19 @@ class TenantRepository:
 
     @staticmethod
     async def exportLeaderships(connection: asyncpg.Connection, tenantId: uuid.UUID) -> List[Dict[str, Any]]:
+        # Uma liderança agora pode atuar em vários municípios (N:N) — agregados
+        # numa única coluna de texto separada por vírgula para a exportação.
         query = """
-            SELECT l.nm_completo, m.nm_municipio, l.nr_telefone, l.ds_email,
-                   l.tp_influencia, l.is_ativo, l.ds_observacoes, l.created_at
+            SELECT
+                l.nm_completo,
+                STRING_AGG(m.nm_municipio, ', ' ORDER BY m.nm_municipio) AS nm_municipio,
+                l.nr_telefone, l.ds_email,
+                l.tp_influencia, l.is_ativo, l.ds_observacoes, l.created_at
             FROM tb_gabinete_liderancas l
-            LEFT JOIN tb_municipios m ON l.cd_ibge_7 = m.cd_ibge_7
+            LEFT JOIN tb_gabinete_lideranca_municipios lm ON lm.id_lideranca = l.id_lideranca
+            LEFT JOIN tb_municipios m ON m.cd_ibge_7 = lm.cd_ibge_7
             WHERE l.tenant_id = $1
+            GROUP BY l.id_lideranca
             ORDER BY l.created_at ASC;
         """
         records = await connection.fetch(query, tenantId)

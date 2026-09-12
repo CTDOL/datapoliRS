@@ -95,6 +95,23 @@ class CabinetService:
         return LiderancaResponse(**updatedRecord)
 
     @staticmethod
+    async def setFotoUrl(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+        leadershipId: uuid.UUID,
+        fotoUrl: str
+    ) -> LiderancaResponse:
+        """Associa a URL da foto (já salva em disco pelo router) à liderança."""
+        await CabinetService.getLeadershipById(connection, tenantId, leadershipId)
+        updatedRecord = await CabinetRepository.setFotoUrl(connection, tenantId, leadershipId, fotoUrl)
+        if not updatedRecord:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Falha ao associar a foto à liderança informada."
+            )
+        return LiderancaResponse(**updatedRecord)
+
+    @staticmethod
     async def deleteLeadership(
         connection: asyncpg.Connection,
         tenantId: uuid.UUID,

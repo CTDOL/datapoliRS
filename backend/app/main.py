@@ -79,6 +79,11 @@ register_exception_handlers(app)
 os.makedirs("app/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+# Fotos de liderança enviadas via upload — volume dedicado e persistente
+# (datapolirs_uploads_data), separado de app/static que é conteúdo do build.
+os.makedirs("app/uploads/liderancas", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="app/uploads"), name="uploads")
+
 # Registro dos Controladores da Sprint 2
 app.include_router(geo_router)
 app.include_router(voting_router)

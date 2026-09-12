@@ -48,6 +48,8 @@ services:
     container_name: datapoli_api_prod
     restart: unless-stopped
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    volumes:
+      - datapolirs_uploads_data_prod:/app/app/uploads
     env_file:
       - .env.prod
     environment:
@@ -112,6 +114,7 @@ services:
 volumes:
   datapolirs_postgres_data_prod:
   datapolirs_redis_data_prod:
+  datapolirs_uploads_data_prod:
 
 networks:
   datapoli_network_prod:

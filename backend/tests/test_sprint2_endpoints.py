@@ -129,7 +129,7 @@ def test_gabinete_liderancas_multi_tenancy_crud(client: TestClient):
     # 1. Falha sem autenticação
     failResponse = client.post(
         "/api/v1/gabinete/liderancas",
-        json={"nm_completo": "Liderança Sem Tenant"}
+        json={"nm_completo": "Liderança Sem Tenant", "municipios": ["4314902"]}
     )
     assert failResponse.status_code == 401
 
@@ -142,7 +142,7 @@ def test_gabinete_liderancas_multi_tenancy_crud(client: TestClient):
             "nr_telefone": "51999998888",
             "ds_email": "lider@portoalegre.org",
             "tp_influencia": "Comunitária",
-            "cd_ibge_7": "4314902"
+            "municipios": ["4314902"]
         }
     )
     assert createResponse.status_code == 201
@@ -150,6 +150,7 @@ def test_gabinete_liderancas_multi_tenancy_crud(client: TestClient):
     leadershipId = createdData["id_lideranca"]
     assert createdData["tenant_id"] == tenantA
     assert createdData["nm_completo"] == "Liderança Comunitária Porto Alegre"
+    assert createdData["municipios"][0]["cd_ibge_7"] == "4314902"
 
     # 3. Listagem no Tenant A (deve retornar 1 registro, envelope paginado)
     listAResponse = client.get(
@@ -203,7 +204,7 @@ def test_delete_lideranca_requer_papel_admin(client: TestClient):
     createResponse = client.post(
         "/api/v1/gabinete/liderancas",
         headers=bearerHeader(tenant, role="admin"),
-        json={"nm_completo": "Liderança RBAC Teste"}
+        json={"nm_completo": "Liderança RBAC Teste", "municipios": ["4314902"]}
     )
     assert createResponse.status_code == 201
     leadershipId = createResponse.json()["id_lideranca"]

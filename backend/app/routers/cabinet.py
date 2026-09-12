@@ -1,6 +1,7 @@
+import os
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
 import asyncpg
 from app.core.dependencies import getDbConnection, get_current_user, require_role
 from app.schemas.user import UserInDB
@@ -12,6 +13,10 @@ from app.schemas.leadership import (
     LiderancaPageResponse
 )
 from app.core.rate_limit import RateLimiter
+
+UPLOADS_DIR = "app/uploads/liderancas"
+ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_FOTO_SIZE_BYTES = 5 * 1024 * 1024  # 5MB
 
 router = APIRouter(
     prefix="/api/v1/gabinete/liderancas",
@@ -92,6 +97,44 @@ async def atualizar_lideranca(
     return await CabinetService.updateLeadership(connection, current_user.tenant_id, id_lideranca, payload)
 
 
+@router.post(
+    "/{id_lideranca}/foto",
+    response_model=LiderancaResponse,
+    summary="Faz upload da foto de uma liderança (JPEG/PNG/WebP, até 5MB)"
+)
+async def enviar_foto_lideranca(
+    id_lideranca: uuid.UUID,
+    arquivo: UploadFile = File(...),
+    current_user: UserInDB = Depends(get_current_user),
+    connection: asyncpg.Connection = Depends(getDbConnection)
+) -> LiderancaResponse:
+    """Salva a foto em disco (volume dedicado) e associa a URL pública à liderança."""
+    if arquivo.content_type not in ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Formato de imagem não suportado. Envie JPEG, PNG ou WebP."
+        )
+
+    conteudo = await arquivo.read()
+    if len(conteudo) > MAX_FOTO_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Imagem excede o limite de 5MB."
+        )
+
+    # Valida que a liderança existe e pertence a este tenant antes de tocar no disco.
+    await CabinetService.getLeadershipById(connection, current_user.tenant_id, id_lideranca)
+
+    extensao = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}[arquivo.content_type]
+    os.makedirs(UPLOADS_DIR, exist_ok=True)
+    caminhoArquivo = os.path.join(UPLOADS_DIR, f"{id_lideranca}.{extensao}")
+    with open(caminhoArquivo, "wb") as destino:
+        destino.write(conteudo)
+
+    fotoUrl = f"/uploads/liderancas/{id_lideranca}.{extensao}"
+    return await CabinetService.setFotoUrl(connection, current_user.tenant_id, id_lideranca, fotoUrl)
+
+
 @router.delete(
     "/{id_lideranca}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -102,5 +145,9 @@ async def remover_lideranca(
     current_user: UserInDB = Depends(require_role(["admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> None:
-    """Exclui a liderança do gabinete garantindo isolamento por tenant_id."""
+    """Exclui a liderança do gabinete garantindo isolamento por tenant_id (e a foto em disco, se houver)."""
+    for extensao in ("jpg", "png", "webp"):
+        caminhoArquivo = os.path.join(UPLOADS_DIR, f"{id_lideranca}.{extensao}")
+        if os.path.exists(caminhoArquivo):
+            os.remove(caminhoArquivo)
     await CabinetService.deleteLeadership(connection, current_user.tenant_id, id_lideranca)
