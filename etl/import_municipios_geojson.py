@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import psycopg2
+import redis
 from etl.db_connection import getPostgresConnection
 
 logging.basicConfig(
@@ -91,10 +92,27 @@ def insertMunicipiosSpatialData(geoJsonPayload: dict) -> int:
         pgConnection.close()
 
 
+def invalidateGeoCache() -> None:
+    """Invalida o cache Redis da FeatureCollection servida por /api/v1/geo/municipios.
+
+    Sem isso, uma carga/recarga desta ETL fica invisível no mapa até o TTL do
+    cache expirar — o endpoint continua servindo a FeatureCollection antiga
+    (ou vazia, numa base recém-criada) direto do Redis.
+    """
+    redisUrl = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    try:
+        redisClient = redis.Redis.from_url(redisUrl)
+        deletedKeys = redisClient.delete("geo:rs:municipios:feature_collection", "geo:rs:municipios:lista")
+        logger.info(f"Cache Redis de municípios invalidado ({deletedKeys} chave(s) removida(s)).")
+    except redis.RedisError as redisError:
+        logger.warning(f"Não foi possível invalidar o cache Redis (endpoint pode servir dados desatualizados até o TTL expirar): {redisError}")
+
+
 def main():
     logger.info("=== INICIANDO PIPELINE DE INGESTÃO ESPACIAL DE MUNICÍPIOS ===")
     geoJsonData = loadMunicipiosGeoJson(GEOJSON_FILE_PATH)
     totalImported = insertMunicipiosSpatialData(geoJsonData)
+    invalidateGeoCache()
     logger.info(f"=== PIPELINE ESPACIAL FINALIZADO COM SUCESSO. TOTAL: {totalImported} ===")
 
 
