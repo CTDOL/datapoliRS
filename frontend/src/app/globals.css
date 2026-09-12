@@ -24,3 +24,21 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Animação de entrada em CSS puro — não depende de hidratação JS/React.
+   Usada em telas críticas (ex.: login) para evitar que o elemento fique
+   preso em opacity:0 caso o bundle do cliente demore ou seja bloqueado. */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out both;
+}

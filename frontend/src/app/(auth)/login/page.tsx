@@ -53,13 +53,9 @@ export default function LoginPage() {
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
 
-      {/* Entry Animation */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="w-full max-w-md"
-      >
+      {/* Entry Animation em CSS puro — visível mesmo se a hidratação
+          JS/React demorar ou for bloqueada (ver globals.css) */}
+      <div className="w-full max-w-md animate-fade-in-up">
         {/* Glassmorphism Card */}
         <div className="backdrop-blur-xl bg-zinc-900/40 border border-zinc-700/50 p-8 rounded-3xl shadow-2xl relative z-10 overflow-hidden">
           {/* Subtle top glare */}
@@ -121,7 +117,7 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
