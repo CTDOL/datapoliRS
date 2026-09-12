@@ -95,7 +95,7 @@ services:
       - datapolirs_frontend_node_data:/app/node_modules
       - datapolirs_frontend_next_data:/app/.next
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
       - WATCHPACK_POLLING=true
     depends_on:
       - api
