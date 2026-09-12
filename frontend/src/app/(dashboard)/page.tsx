@@ -62,11 +62,26 @@ export default function DashboardPage() {
 
   const [filtroCidadeMapa, setFiltroCidadeMapa] = useState('');
   const [filtroTipoMapa, setFiltroTipoMapa] = useState('');
+  const [filtroNomeLideranca, setFiltroNomeLideranca] = useState('');
+  const [filtroNomeLiderancaDebounced, setFiltroNomeLiderancaDebounced] = useState('');
   const [municipiosParaFiltro, setMunicipiosParaFiltro] = useState<MunicipioItem[]>([]);
+  const debounceNomeLiderancaRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     api.get('/api/v1/geo/municipios/lista').then((res) => setMunicipiosParaFiltro(res.data)).catch(() => {});
   }, []);
+
+  // Filtro por nome da liderança tem seu próprio debounce (input de texto) —
+  // cidade/tipo são <select>, disparam a busca na hora.
+  useEffect(() => {
+    if (debounceNomeLiderancaRef.current) clearTimeout(debounceNomeLiderancaRef.current);
+    debounceNomeLiderancaRef.current = setTimeout(() => {
+      setFiltroNomeLiderancaDebounced(filtroNomeLideranca);
+    }, 350);
+    return () => {
+      if (debounceNomeLiderancaRef.current) clearTimeout(debounceNomeLiderancaRef.current);
+    };
+  }, [filtroNomeLideranca]);
 
   useEffect(() => {
     async function loadLiderancas() {
@@ -76,6 +91,7 @@ export default function DashboardPage() {
             page_size: 200,
             cd_ibge_7: filtroCidadeMapa || undefined,
             tp_influencia: filtroTipoMapa || undefined,
+            termo: filtroNomeLiderancaDebounced.trim() || undefined,
           },
         });
         setLiderancas(res.data.items);
@@ -84,7 +100,7 @@ export default function DashboardPage() {
       }
     }
     loadLiderancas();
-  }, [filtroCidadeMapa, filtroTipoMapa]);
+  }, [filtroCidadeMapa, filtroTipoMapa, filtroNomeLiderancaDebounced]);
 
   // Busca de candidatos com debounce — só dispara a API depois de 350ms sem digitar
   useEffect(() => {
@@ -234,6 +250,16 @@ export default function DashboardPage() {
       <div className={mostrarFiltrosLideranca ? 'flex flex-wrap gap-3' : 'hidden'}>
         {mostrarFiltrosLideranca && (
           <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+              <input
+                type="text"
+                value={filtroNomeLideranca}
+                onChange={(e) => setFiltroNomeLideranca(e.target.value)}
+                placeholder="Buscar liderança por nome..."
+                className="bg-zinc-900/60 border border-zinc-700/50 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:ring-2 focus:ring-purple-500/50 w-56"
+              />
+            </div>
             <select
               value={filtroCidadeMapa}
               onChange={(e) => setFiltroCidadeMapa(e.target.value)}
