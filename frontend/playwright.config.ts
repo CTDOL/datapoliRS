@@ -6,12 +6,17 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    // 127.0.0.1, não localhost: o cookie de sessão HttpOnly é SameSite=Lax
+    // e o backend roda em 127.0.0.1:8000 — "localhost" e "127.0.0.1" são
+    // sites distintos para o navegador, então o cookie do login nunca é
+    // persistido/enviado se o front for acessado por um host diferente do
+    // backend. Ver ADR de confinamento em 127.0.0.1 no CLAUDE.md.
+    baseURL: 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
   },
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:3000',
+    url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

@@ -92,7 +92,13 @@ services:
       - datapolirs_frontend_node_data:/app/node_modules
       - datapolirs_frontend_next_data:/app/.next
     environment:
-      - NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+      # Sem NEXT_PUBLIC_API_URL: o axios (src/services/api.ts) usa baseURL
+      # relativa e o rewrite do Next.js (next.config.ts) encaminha para a
+      # API real via rede interna do Docker — evita o cookie de sessão se
+      # perder quando o navegador acessa via "localhost" em vez de
+      # "127.0.0.1" (127.0.0.1:8000 só é alcançável do host, não de dentro
+      # deste container).
+      - API_INTERNAL_URL=http://api:8000
       - WATCHPACK_POLLING=true
     depends_on:
       - api

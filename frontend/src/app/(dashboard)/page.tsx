@@ -49,8 +49,11 @@ export default function DashboardPage() {
 
   // Lido em um efeito (não no useState inicial) para não divergir entre a
   // renderização do servidor (sem localStorage) e a hidratação no cliente.
+  // Sem setTimeout: um clique do usuário no seletor de modo, entre o mount e
+  // o timeout, era sobrescrito por este efeito restaurando o valor salvo.
   useEffect(() => {
-    setTimeout(() => setViewMode(getMapaPadrao()), 0);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratação única de preferência client-only (localStorage), sem equivalente no SSR
+    setViewMode(getMapaPadrao());
   }, []);
 
   const [termoBusca, setTermoBusca] = useState('');

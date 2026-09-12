@@ -51,7 +51,7 @@ test.describe('Emendas Orçamentárias', () => {
     ]);
 
     await expect(page.getByRole('columnheader', { name: 'Situação' })).toBeVisible();
-    await expect(page.getByText(/emendas? no total|Nenhuma emenda encontrada/)).toBeVisible();
+    await expect(page.getByText(/emendas? no total|Nenhuma emenda encontrada/).first()).toBeVisible();
   });
 });
 
@@ -61,14 +61,14 @@ test.describe('Projetos de Lei', () => {
   });
 
   test('monitoramento legislativo carrega com busca externa e filtros', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Projetos de Lei' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projetos de Lei', exact: true })).toBeVisible();
 
     // Busca nas fontes oficiais (ALRS, Câmara, Senado).
     await expect(page.getByText('Buscar nas fontes oficiais')).toBeVisible();
     await expect(page.getByPlaceholder('Nome do parlamentar (ex: Delegada Nadine)')).toBeVisible();
 
     // Listagem e filtro por fonte.
-    await expect(page.getByText('Projetos de lei acompanhados')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Projetos de lei acompanhados' })).toBeVisible();
     const fonteSelect = page.locator('select').filter({ hasText: 'Todas as fontes' });
     await expect(fonteSelect).toBeVisible();
     await expect(fonteSelect.locator('option')).toHaveText([

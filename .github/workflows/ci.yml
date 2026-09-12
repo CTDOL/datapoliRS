@@ -78,9 +78,78 @@ jobs:
       run:
         working-directory: frontend
 
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: datapoli_user
+          POSTGRES_PASSWORD: datapoli_pass
+          POSTGRES_DB: datapoli_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U datapoli_user -d datapoli_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Os testes E2E fazem login de verdade — precisam de uma API real
+      # respondendo em 127.0.0.1:8000. NEXT_PUBLIC_API_URL fica de fora de
+      # propósito: sem ela, o axios usa baseURL relativa e o rewrite do
+      # Next.js (next.config.ts) encaminha same-origin para a API — o mesmo
+      # caminho usado em dev local, que elimina o mismatch de cookie entre
+      # "localhost" e "127.0.0.1" (ver nota no playwright.config.ts).
+      DATABASE_URL: postgresql://datapoli_user:datapoli_pass@localhost:5432/datapoli_db
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ci-only-secret-not-for-production
+      ALLOWED_ORIGINS: http://127.0.0.1:3000
+      ADMIN_EMAIL: operador@campanha.com.br
+      ADMIN_PASSWORD: admin123
+      ADMIN_TENANT_ID: 11111111-2222-3333-4444-555555555555
+      ENVIRONMENT: test
+
     steps:
       - name: Checkout Código
         uses: actions/checkout@v4
+
+      - name: Configurar Python (API para os testes E2E)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Instalar Dependências do Backend
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Aplicar Migrations (Alembic)
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Subir API em background (uvicorn)
+        working-directory: backend
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/health > /dev/null && exit 0
+            sleep 2
+          done
+          echo "API não respondeu a tempo:"
+          cat backend.log
+          exit 1
 
       - name: Configurar Node
         uses: actions/setup-node@v4
