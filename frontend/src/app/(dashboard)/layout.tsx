@@ -87,7 +87,7 @@ export default function DashboardLayout({
           
           {/* External Link to Public Portal */}
           <a
-            href="http://localhost:8000/"
+            href={process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/50 border border-transparent transition-all duration-300 mt-4"
