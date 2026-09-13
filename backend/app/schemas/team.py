@@ -26,3 +26,4 @@ class TeamMemberCreate(BaseModel):
 class TeamMemberUpdate(BaseModel):
     role: Optional[str] = Field(None, pattern="^(admin|operador|leitor)$")
     is_active: Optional[bool] = None
+    password: Optional[str] = Field(None, min_length=8, max_length=128)

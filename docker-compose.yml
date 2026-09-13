@@ -1,7 +1,7 @@
 services:
   postgres:
-    image: postgis/postgis:16-3.4
-    container_name: datapoli_postgres
+    image: imresamu/postgis:16-3.4
+    container_name: datapoli_postgres_non_prod
     restart: "no"
     ports:
       - "127.0.0.1:5432:5432"
@@ -9,37 +9,44 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-datapoli_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-datapoli_pass}
       POSTGRES_DB: ${POSTGRES_DB:-datapoli_db}
+      DATABASE_ENV: NON_PRODUCTION
     volumes:
-      - datapolirs_postgres_data:/var/lib/postgresql/data
+      - datapolirs_postgres_non_prod_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datapoli_user} -d ${POSTGRES_DB:-datapoli_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - datapoli_network
+      datapoli_network_non_prod:
+        aliases:
+          - postgres
+          - datapoli_postgres_non_prod
 
   redis:
     image: redis:7-alpine
-    container_name: datapoli_redis
+    container_name: datapoli_redis_non_prod
     restart: "no"
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
-      - datapolirs_redis_data:/data
+      - datapolirs_redis_non_prod_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - datapoli_network
+      datapoli_network_non_prod:
+        aliases:
+          - redis
+          - datapoli_redis_non_prod
 
   api:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: datapoli_api
+    container_name: datapoli_api_dev
     restart: "no"
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
@@ -65,6 +72,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=development
+      - DATABASE_ENV=NON_PRODUCTION
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,14 +84,17 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - datapoli_network
+      datapoli_network_non_prod:
+        aliases:
+          - api
+          - datapoli_api_dev
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       target: dev
-    container_name: datapoli_frontend
+    container_name: datapoli_frontend_dev
     restart: "no"
     ports:
       - "127.0.0.1:3000:3000"
@@ -92,29 +103,21 @@ services:
       - datapolirs_frontend_node_data:/app/node_modules
       - datapolirs_frontend_next_data:/app/.next
     environment:
-      # Sem NEXT_PUBLIC_API_URL: o axios (src/services/api.ts) usa baseURL
-      # relativa e o rewrite do Next.js (next.config.ts) encaminha para a
-      # API real via rede interna do Docker — evita o cookie de sessão se
-      # perder quando o navegador acessa via "localhost" em vez de
-      # "127.0.0.1" (127.0.0.1:8000 só é alcançável do host, não de dentro
-      # deste container).
       - API_INTERNAL_URL=http://api:8000
       - WATCHPACK_POLLING=true
-      # Selo visual de ambiente (ADR universal governanca/047): npm run dev
-      # não faz build estático, então NEXT_PUBLIC_* é lido do processo a
-      # cada início do servidor — sem precisar rebuildar a imagem.
       - NEXT_PUBLIC_ENV_LABEL=DESENVOLVIMENTO
     depends_on:
       - api
     networks:
-      - datapoli_network
+      - datapoli_network_non_prod
 
 volumes:
-  datapolirs_postgres_data:
-  datapolirs_redis_data:
+  datapolirs_postgres_non_prod_data:
+  datapolirs_redis_non_prod_data:
   datapolirs_frontend_node_data:
   datapolirs_frontend_next_data:
 
 networks:
-  datapoli_network:
+  datapoli_network_non_prod:
+    name: datapoli_network_non_prod
     driver: bridge

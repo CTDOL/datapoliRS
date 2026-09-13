@@ -53,7 +53,16 @@ class TeamService:
         if not existing:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado neste gabinete.")
 
+        hashedPassword = AuthService.get_password_hash(payload.password) if payload.password else None
+
         updatedRecord = await UserRepository.updateInTenant(
-            connection, tenantId, targetUserId, role=payload.role, isActive=payload.is_active
+            connection,
+            tenantId,
+            targetUserId,
+            role=payload.role,
+            isActive=payload.is_active,
+            hashedPassword=hashedPassword
         )
+        if payload.password:
+            logger.info(f"Senha do usuário {targetUserId} redefinida pelo administrador {currentUserId} (tenant {tenantId}).")
         return TeamMemberResponse(**updatedRecord)

@@ -16,7 +16,19 @@ document.addEventListener("DOMContentLoaded", () => {
     let geojsonData = null;
     let debounceTimer = null;
 
-    const formatNumber = (num) => new Intl.NumberFormat('pt-BR').format(num);
+    const formatNumber = (num) => new Intl.NumberFormat("pt-BR").format(num);
+
+    // Ajuste dinâmico do link de Acesso Restrito ao Gabinete
+    const btnAcessoRestrito = document.getElementById("btnAcessoRestrito");
+    if (btnAcessoRestrito) {
+        const host = window.location.hostname;
+        const port = window.location.port;
+        if (host === "localhost" || host === "127.0.0.1") {
+            btnAcessoRestrito.href = port === "8081" ? "http://localhost:8080/" : "http://localhost:3000/";
+        } else if (host.includes("datapoli.ctdol.com.br")) {
+            btnAcessoRestrito.href = "https://datapoli.ctdol.com.br/";
+        }
+    }
 
     // 0. Popula os filtros de Cargo e Ano dinamicamente a partir do banco — assim,
     // quando um novo cargo ou pleito (ex: eleições 2026) for cadastrado, ele aparece
@@ -83,12 +95,13 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const cargoVal = cargoSelect.value;
-        const cargoParam = cargoVal ? `&cd_cargo=${cargoVal}` : "";
         const anoVal = document.getElementById("anoSelect").value;
-        const anoParam = `&ano=${anoVal}`;
+        const params = new URLSearchParams({ termo: query, limite: "8" });
+        if (cargoVal) params.set("cd_cargo", cargoVal);
+        if (anoVal) params.set("ano", anoVal);
 
         try {
-            const res = await fetch(`/api/v1/candidatos?termo=${encodeURIComponent(query)}${cargoParam}${anoParam}&limite=8`);
+            const res = await fetch(`/api/v1/candidatos?${params.toString()}`);
             if (!res.ok) return;
             const candidates = await res.json();
 
@@ -134,14 +147,17 @@ document.addEventListener("DOMContentLoaded", () => {
         loader.classList.remove("hidden");
 
         const cargoVal = cargoSelect.value;
-        const cargoParam = cargoVal ? `cd_cargo=${cargoVal}&` : "";
         const anoVal = document.getElementById("anoSelect").value;
-        const anoParam = `ano=${anoVal}`;
+        const baseParams = new URLSearchParams();
+        if (cargoVal) baseParams.set("cd_cargo", cargoVal);
+        if (anoVal) baseParams.set("ano", anoVal);
 
         try {
             // Se for número puro, busca direto por número
             if (!isNaN(query) && parseInt(query) > 0) {
-                const res = await fetch(`/api/v1/votacao/numero/${query}?${cargoParam}${anoParam}`);
+                const numParams = new URLSearchParams(baseParams);
+                const qStr = numParams.toString() ? `?${numParams.toString()}` : "";
+                const res = await fetch(`/api/v1/votacao/numero/${query}${qStr}`);
                 if (!res.ok) throw new Error("Candidato não localizado para o número informado.");
                 const votingData = await res.json();
                 renderVotingDashboard(votingData);
@@ -149,7 +165,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // Senão, busca por nome na API
-            const res = await fetch(`/api/v1/candidatos?termo=${encodeURIComponent(query)}&${cargoParam}${anoParam}&limite=1`);
+            const searchParams = new URLSearchParams(baseParams);
+            searchParams.set("termo", query);
+            searchParams.set("limite", "1");
+            const res = await fetch(`/api/v1/candidatos?${searchParams.toString()}`);
             if (!res.ok) throw new Error("Erro ao buscar dados no servidor.");
             const candidates = await res.json();
 

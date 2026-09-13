@@ -60,6 +60,12 @@ export interface TeamMemberCreate {
   role: TeamRole;
 }
 
+export interface TeamMemberUpdatePayload {
+  role?: TeamRole;
+  is_active?: boolean;
+  password?: string;
+}
+
 export function useSettings(isAdmin: boolean) {
   const [profile, setProfile] = useState<TenantProfile | null>(null);
   const [options, setOptions] = useState<FormOptions | null>(null);
@@ -132,7 +138,7 @@ export function useSettings(isAdmin: boolean) {
     }
   }, [fetchTeam]);
 
-  const updateMember = useCallback(async (id: string, data: { role?: TeamRole; is_active?: boolean }): Promise<boolean> => {
+  const updateMember = useCallback(async (id: string, data: TeamMemberUpdatePayload): Promise<boolean> => {
     try {
       await api.patch(`/api/v1/gabinete/usuarios/${id}`, data);
       await fetchTeam();
