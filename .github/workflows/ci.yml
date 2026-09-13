@@ -320,6 +320,12 @@ jobs:
       - name: Checkout Código
         uses: actions/checkout@v4
 
+      # Runner é x86_64; sem binfmt registrado via QEMU, a etapa linux/arm64
+      # do build multi-arquitetura falha ou cai num caminho de emulação lento
+      # e não confiável — a VPS Oracle é Ampere A1/ARM64 de verdade.
+      - name: Configurar QEMU (emulação ARM64)
+        uses: docker/setup-qemu-action@v3
+
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -354,30 +360,93 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   # Gatilho ÚNICO de produção: Release publicada (nunca push direto em main).
-  # `environment: producao` exige a configuração manual, no GitHub
-  # (Settings → Environments), de required reviewers e dos secrets de deploy
-  # (ex.: VPS_SSH_HOST, VPS_SSH_USER, VPS_SSH_KEY, GHCR_PULL_TOKEN) — nenhum
-  # desses existe ainda, e é vedado ao Claude Code criá-los ou aprová-los
-  # (Regra 1.1). Este job fica registrado como código pronto, mas como débito
-  # explícito até essa configuração humana ser feita (Regra 13.1).
+  # `environment: producao` exige a configuração manual, no GitHub (Settings →
+  # Environments) de required reviewers e dos secrets VPS_SSH_HOST/
+  # VPS_SSH_USER/VPS_SSH_KEY — nenhum existe ainda, e é vedado ao Claude Code
+  # criá-los ou aprovar o environment (Regra 1.1): sem eles, este job falha
+  # nos passos de SSH, o que é o comportamento correto até a configuração
+  # humana ser feita.
   deploy:
     needs: [docker-publish]
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     environment: producao
 
+    # Só leitura: o GITHUB_TOKEN efêmero deste job precisa apenas puxar as
+    # imagens já publicadas pelo docker-publish (que usou permissions mais
+    # amplas para publicá-las) — nunca escrever no registry a partir daqui.
+    permissions:
+      contents: read
+      packages: read
+
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      VPS_DEPLOY_PATH: ${{ vars.VPS_DEPLOY_PATH || '/opt/datapolirs' }}
+
     steps:
       - name: Checkout Código
         uses: actions/checkout@v4
 
-      - name: Deploy pull-based na VPS Oracle via SSH
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+      - name: Configurar chave SSH e known_hosts (sem StrictHostKeyChecking=no)
         run: |
-          echo "TODO (débito explícito — ver ADR_024_datapolirs): configurar secrets"
-          echo "VPS_SSH_HOST/VPS_SSH_USER/VPS_SSH_KEY no environment 'producao'"
-          echo "e substituir este placeholder pelo SSH real que executa, na VPS:"
-          echo "  docker compose -f docker-compose.prod.yml --env-file .env.prod pull"
-          echo "  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d"
-          echo "usando RELEASE_TAG=${RELEASE_TAG} como tag da imagem promovida."
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/vps_deploy_key
+          chmod 600 ~/.ssh/vps_deploy_key
+          ssh-keyscan -H "${{ secrets.VPS_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sincronizar manifestos (compose + Nginx) — nunca o .env.prod real
+        run: |
+          ssh -i ~/.ssh/vps_deploy_key "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}" \
+            "mkdir -p '${{ env.VPS_DEPLOY_PATH }}/nginx/templates'"
+          scp -i ~/.ssh/vps_deploy_key docker-compose.prod.yml \
+            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}:${{ env.VPS_DEPLOY_PATH }}/docker-compose.prod.yml"
+          scp -i ~/.ssh/vps_deploy_key nginx/templates/default.conf.template \
+            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}:${{ env.VPS_DEPLOY_PATH }}/nginx/templates/default.conf.template"
+          # .env.prod NUNCA é copiado daqui: guarda os segredos reais de produção
+          # e é mantido à mão na VPS (fora do alcance deste pipeline).
+
+      - name: Login no GHCR na VPS (token efêmero via stdin, nunca em ps/arquivo)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | ssh -i ~/.ssh/vps_deploy_key \
+            "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}" \
+            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+
+      - name: Pull + up (imagem taggeada pela Release, nunca :latest)
+        run: |
+          ssh -i ~/.ssh/vps_deploy_key "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}" \
+            bash -s -- "${{ env.VPS_DEPLOY_PATH }}" "${{ env.RELEASE_TAG }}" <<'REMOTO'
+          set -e
+          cd "$1"
+          export RELEASE_TAG="$2"
+          docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+          docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+          REMOTO
+
+      - name: Health check pós-deploy (sem depender de curl dentro das imagens)
+        run: |
+          ssh -i ~/.ssh/vps_deploy_key "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}" \
+            bash -s -- "${{ env.VPS_DEPLOY_PATH }}" <<'REMOTO'
+          set -e
+          cd "$1"
+          total=$(docker compose -f docker-compose.prod.yml config --services | wc -l)
+          for i in $(seq 1 30); do
+            running=$(docker compose -f docker-compose.prod.yml ps --status running --services | wc -l)
+            if [ "$running" -eq "$total" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Nem todos os serviços subiram ($running/$total esperados):"
+          docker compose -f docker-compose.prod.yml logs --tail=100
           exit 1
+          REMOTO
+
+      - name: Logout do GHCR na VPS (sempre, mesmo em falha)
+        if: always()
+        run: |
+          ssh -i ~/.ssh/vps_deploy_key "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}" \
+            "docker logout ghcr.io" || true
+
+      - name: Remover chave SSH do runner (sempre)
+        if: always()
+        run: rm -f ~/.ssh/vps_deploy_key
