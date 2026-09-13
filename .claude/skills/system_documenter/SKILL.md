@@ -13,7 +13,7 @@ Esta skill fornece à IA os templates, padrões e atalhos técnicos para inspeci
 
 Ao documentar ou auditar uma base de código:
 
-### 1. Extração do Modelo C4 Integral (Mermaid & [[ADR_045]])
+### 1. Extração do Modelo C4 Integral (Mermaid & [[ADR_045_governanca_Padrao_CTDOL_Desenvolvimento_Docs_as_Code_C4_Canvas]])
 - **Nível 1 (Contexto):** Mapeie os usuários/atores, o sistema central e todos os serviços externos (TSE, IBGE, Gateways de Pagamento, Keycloak).
 - **Nível 2 (Contêineres):** Mapeie os processos executáveis (Frontend SPA, Backend API, Bancos Relacionais, Motores Analíticos/DuckDB, Caches e Queues) e os protocolos de comunicação (HTTPS/JSON, WSS, TCP).
 - **Nível 3 (Componentes):** Mapeie a arquitetura em camadas (Controllers, Use Cases, Services, Repositories).
