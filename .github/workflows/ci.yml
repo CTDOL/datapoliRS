@@ -201,7 +201,6 @@ jobs:
       RELEASE_TAG: ci-${{ github.sha }}
       APP_DOMAIN: datapoli.local
       API_DOMAIN: api.datapoli.local
-      ROOT_DOMAIN: datapoli.local
 
     steps:
       - name: Checkout Código
@@ -243,7 +242,6 @@ jobs:
           RELEASE_TAG=${{ env.RELEASE_TAG }}
           APP_DOMAIN=${{ env.APP_DOMAIN }}
           API_DOMAIN=${{ env.API_DOMAIN }}
-          ROOT_DOMAIN=${{ env.ROOT_DOMAIN }}
           APP_PROTOCOL=http
           API_PROTOCOL=http
           ENVIRONMENT=hml
@@ -311,10 +309,16 @@ jobs:
             context: ./backend
             dockerfile: backend/Dockerfile
             target: ""
+            buildArgs: ""
           - image: ghcr.io/ctdol/datapolirs-frontend
             context: ./frontend
             dockerfile: frontend/Dockerfile
             target: production
+            # Link externo pro portal público (ADR_026_datapolirs) — URL real,
+            # não secreta, assada no bundle porque NEXT_PUBLIC_* só existe em
+            # build-time. NEXT_PUBLIC_ENV_LABEL fica de fora de propósito:
+            # produção real não mostra selo de ambiente.
+            buildArgs: NEXT_PUBLIC_PORTAL_URL=https://api-datapoli.ctdol.com.br
 
     steps:
       - name: Checkout Código
@@ -356,6 +360,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.buildArgs }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 

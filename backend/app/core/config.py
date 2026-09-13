@@ -54,13 +54,6 @@ class AppSettings(BaseSettings):
     # CORS - lista separada por vírgula das origens do frontend
     ALLOWED_ORIGINS: str = "http://localhost:3000"
 
-    # Hostname da API (ex.: "api.seudominio.com.br"), usado apenas como o atributo
-    # Domain= do cookie de sessão HttpOnly. None (dev/loopback) = cookie host-only,
-    # comportamento atual inalterado. Em produção/hml, o Nginx reescreve esse Domain
-    # de API_DOMAIN para o domínio-pai compartilhado via proxy_cookie_domain — sem
-    # este valor presente no cookie, não há o que a borda reescrever (ADR 022/024).
-    API_DOMAIN: str | None = None
-
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
