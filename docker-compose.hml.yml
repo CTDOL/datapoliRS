@@ -1,0 +1,79 @@
+# Orquestração do Ambiente de HOMOLOGAÇÃO (HML Local - Sandbox de Paridade)
+# Coexiste simultaneamente com DEV (docker-compose.yml) e compartilha o banco não-produtivo.
+# Portas locais: Frontend HML -> 127.0.0.1:8080 | API HML -> 127.0.0.1:8081
+
+services:
+  api_hml:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: datapoli_api_hml
+    restart: "no"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "127.0.0.1:8081:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./etl:/app/etl
+      - ./backend/tests:/app/tests
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8000
+      - POSTGRES_HOST=datapoli_postgres_non_prod
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-datapoli_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-datapoli_pass}
+      - POSTGRES_DB=${POSTGRES_DB:-datapoli_db}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-datapoli_user}:${POSTGRES_PASSWORD:-datapoli_pass}@datapoli_postgres_non_prod:5432/${POSTGRES_DB:-datapoli_db}
+      - REDIS_HOST=datapoli_redis_non_prod
+      - REDIS_PORT=6379
+      - REDIS_URL=redis://datapoli_redis_non_prod:6379/0
+      - ENVIRONMENT=hml
+      - DATABASE_ENV=NON_PRODUCTION
+      - SECRET_KEY=${SECRET_KEY:-hml-secret-key-for-local-testing-only-12345}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-operador@campanha.com.br}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - ALLOWED_ORIGINS=http://127.0.0.1:8080,http://localhost:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      datapoli_network_non_prod:
+        aliases:
+          - api_hml
+          - datapoli_api_hml
+
+  frontend_hml:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: datapoli_frontend_hml
+    restart: "no"
+    ports:
+      - "127.0.0.1:8080:3000"
+    volumes:
+      - ./frontend:/app
+      - datapolirs_frontend_hml_node_data:/app/node_modules
+      - datapolirs_frontend_hml_next_data:/app/.next
+    environment:
+      - API_INTERNAL_URL=http://api_hml:8000
+      - WATCHPACK_POLLING=true
+      - NEXT_PUBLIC_ENV_LABEL=HOMOLOGACAO
+    depends_on:
+      - api_hml
+    networks:
+      - datapoli_network_non_prod
+
+volumes:
+  datapolirs_frontend_hml_node_data:
+  datapolirs_frontend_hml_next_data:
+
+networks:
+  datapoli_network_non_prod:
+    name: datapoli_network_non_prod
+    external: true

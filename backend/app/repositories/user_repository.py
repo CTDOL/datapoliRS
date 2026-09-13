@@ -63,8 +63,9 @@ class UserRepository:
         connection: asyncpg.Connection,
         tenantId: uuid.UUID,
         userId: uuid.UUID,
-        role: Optional[str],
-        isActive: Optional[bool]
+        role: Optional[str] = None,
+        isActive: Optional[bool] = None,
+        hashedPassword: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         setFields = []
         params: List[Any] = [tenantId, userId]
@@ -77,6 +78,10 @@ class UserRepository:
         if isActive is not None:
             setFields.append(f"is_active = ${paramIndex}")
             params.append(isActive)
+            paramIndex += 1
+        if hashedPassword is not None:
+            setFields.append(f"hashed_password = ${paramIndex}")
+            params.append(hashedPassword)
             paramIndex += 1
 
         if not setFields:

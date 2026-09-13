@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, ShieldAlert, UserPlus, Users } from 'lucide-react';
-import { TeamMember, TeamMemberCreate, TeamRole } from './useSettings';
+import { Loader2, ShieldAlert, UserPlus, Users, KeyRound } from 'lucide-react';
+import { TeamMember, TeamMemberCreate, TeamRole, TeamMemberUpdatePayload } from './useSettings';
 import { UserFormModal } from './UserFormModal';
+import { ResetPasswordModal } from './ResetPasswordModal';
 
 interface Props {
   team: TeamMember[];
@@ -12,7 +13,7 @@ interface Props {
   isAdmin: boolean;
   currentUserEmail: string | null;
   onInvite: (data: TeamMemberCreate) => Promise<{ ok: true } | { ok: false; status?: number }>;
-  onUpdateMember: (id: string, data: { role?: TeamRole; is_active?: boolean }) => Promise<boolean>;
+  onUpdateMember: (id: string, data: TeamMemberUpdatePayload) => Promise<boolean>;
 }
 
 const ROLE_LABELS: Record<TeamRole, string> = {
@@ -22,7 +23,8 @@ const ROLE_LABELS: Record<TeamRole, string> = {
 };
 
 export function EquipeSettingsTab({ team, isLoading, isSubmitting, isAdmin, currentUserEmail, onInvite, onUpdateMember }: Props) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [memberForPasswordReset, setMemberForPasswordReset] = useState<TeamMember | null>(null);
 
   if (!isAdmin) {
     return (
@@ -46,7 +48,7 @@ export function EquipeSettingsTab({ team, isLoading, isSubmitting, isAdmin, curr
           </div>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setIsInviteModalOpen(true)}
           className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2"
         >
           <UserPlus className="w-4 h-4" />
@@ -81,7 +83,10 @@ export function EquipeSettingsTab({ team, isLoading, isSubmitting, isAdmin, curr
                 const isSelf = member.email === currentUserEmail;
                 return (
                   <tr key={member.id} className="border-t border-zinc-800/60">
-                    <td className="px-4 py-3 text-white">{member.email}{isSelf && <span className="text-zinc-500 text-xs ml-2">(você)</span>}</td>
+                    <td className="px-4 py-3 text-white">
+                      {member.email}
+                      {isSelf && <span className="text-zinc-500 text-xs ml-2">(você)</span>}
+                    </td>
                     <td className="px-4 py-3">
                       <select
                         value={member.role}
@@ -100,14 +105,25 @@ export function EquipeSettingsTab({ team, isLoading, isSubmitting, isAdmin, curr
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => onUpdateMember(member.id, { is_active: !member.is_active })}
-                        disabled={isSelf}
-                        title={isSelf ? 'Você não pode desativar a própria conta' : undefined}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        {member.is_active ? 'Desativar' : 'Ativar'}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setMemberForPasswordReset(member)}
+                          title="Redefinir senha deste membro"
+                          className="text-xs px-2.5 py-1.5 rounded-lg border border-purple-800/50 text-purple-300 hover:bg-purple-950/40 hover:border-purple-700 transition-colors flex items-center gap-1.5"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>Senha</span>
+                        </button>
+
+                        <button
+                          onClick={() => onUpdateMember(member.id, { is_active: !member.is_active })}
+                          disabled={isSelf}
+                          title={isSelf ? 'Você não pode desativar a própria conta' : undefined}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {member.is_active ? 'Desativar' : 'Ativar'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -118,10 +134,19 @@ export function EquipeSettingsTab({ team, isLoading, isSubmitting, isAdmin, curr
       </div>
 
       <UserFormModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
         onSubmit={onInvite}
         isSubmitting={isSubmitting}
+      />
+
+      <ResetPasswordModal
+        isOpen={memberForPasswordReset !== null}
+        member={memberForPasswordReset}
+        onClose={() => setMemberForPasswordReset(null)}
+        onSubmit={async (id, data) => {
+          return await onUpdateMember(id, data);
+        }}
       />
     </div>
   );

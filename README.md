@@ -50,5 +50,3 @@ python scripts/processar_votos.py
 ```
 Esse script vai baixar os resultados oficiais do TSE, cruzar os dados, somar os votos por município e gerar o arquivo hiper-compactado `votos_rs_2022.json`.
 
----
-*Construído com sangue, suor e Inteligência Artificial. Democratizando o acesso à informação política de forma elegante.*
