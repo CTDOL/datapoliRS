@@ -10,7 +10,7 @@ test.describe('Lideranças', () => {
     await expect(page.getByRole('columnheader', { name: 'Nome Completo' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'Status' })).toBeVisible();
     // Sem lideranças cadastradas no ambiente de teste, a tabela exibe o estado vazio.
-    await expect(page.getByText(/lideranças? no total|Nenhuma liderança encontrada/)).toBeVisible();
+    await expect(page.getByText(/lideranças? no total|Nenhuma liderança encontrada/).first()).toBeVisible();
   });
 
   test('botão de cadastro abre o modal de nova liderança', async ({ page }) => {

@@ -18,6 +18,24 @@ CMD ["npm", "run", "dev"]
 # ---- builder: compila o build de produção (não usado localmente) ----
 FROM deps AS builder
 WORKDIR /app
+# Selo visual de ambiente (ADR universal governanca/047): NEXT_PUBLIC_* é
+# inlinado no bundle do cliente durante "next build" — precisa existir ANTES
+# do build, não em runtime. Vazio por padrão (produção real não mostra selo);
+# o job e2e-parity do ci.yml passa --build-arg NEXT_PUBLIC_ENV_LABEL=HOMOLOGACAO.
+ARG NEXT_PUBLIC_ENV_LABEL=""
+ENV NEXT_PUBLIC_ENV_LABEL=${NEXT_PUBLIC_ENV_LABEL}
+# URL absoluta do portal público (link externo no Command Center) — mesma
+# restrição de build-time que NEXT_PUBLIC_ENV_LABEL acima (ADR_026_datapolirs).
+ARG NEXT_PUBLIC_PORTAL_URL=""
+ENV NEXT_PUBLIC_PORTAL_URL=${NEXT_PUBLIC_PORTAL_URL}
+# API_INTERNAL_URL não é NEXT_PUBLIC_*, mas sofre a MESMA restrição: o
+# rewrites() de next.config.ts é resolvido durante "next build" e gravado em
+# .next/routes-manifest.json — defini-la só em runtime (docker-compose
+# environment:) não tem efeito nenhum no build standalone. Default já correto
+# porque o serviço se chama sempre "api" na rede interna do
+# docker-compose.prod.yml (produção real e paridade hml usam a mesma topologia).
+ARG API_INTERNAL_URL="http://api:8000"
+ENV API_INTERNAL_URL=${API_INTERNAL_URL}
 COPY . .
 RUN npx next typegen && npm run build
 
