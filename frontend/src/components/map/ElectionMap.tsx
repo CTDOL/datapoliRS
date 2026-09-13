@@ -22,8 +22,6 @@ export interface LiderancaPoint {
   municipios: MunicipioAtuacaoPoint[];
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-
 export type MapViewMode = 'liderancas' | 'votacao' | 'cruzada';
 
 interface ElectionMapProps {
@@ -33,7 +31,10 @@ interface ElectionMapProps {
   votosPorMunicipio?: Record<string, number>;
 }
 
-const MUNICIPIOS_GEOJSON_URL = `${API_BASE_URL}/api/v1/geo/municipios`;
+// Caminho relativo: o navegador sempre fala com o próprio host que serviu a
+// página, e o rewrite same-origin (next.config.ts) encaminha pra API real —
+// nunca monte URL absoluta com NEXT_PUBLIC_API_URL aqui (ADR_026_datapolirs).
+const MUNICIPIOS_GEOJSON_URL = '/api/v1/geo/municipios';
 
 // Mesma abordagem (Leaflet + L.geoJson) já comprovadamente funcional no
 // portal público (app/static/script.js) — o MapLibre GL (WebGL) não estava
@@ -258,7 +259,7 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
         : '';
 
       const fotoHtml = l.ds_foto_url
-        ? `<img src="${API_BASE_URL}${l.ds_foto_url}" alt="${l.nm_completo}" style="width:48px; height:48px; border-radius:9999px; object-fit:cover; float:left; margin-right:10px;" />`
+        ? `<img src="${l.ds_foto_url}" alt="${l.nm_completo}" style="width:48px; height:48px; border-radius:9999px; object-fit:cover; float:left; margin-right:10px;" />`
         : '';
 
       // keyboard:false — sem isso o Leaflet torna o marcador focável (tabindex)

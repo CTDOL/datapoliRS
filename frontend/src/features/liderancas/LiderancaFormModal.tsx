@@ -21,8 +21,6 @@ interface ModalProps {
   initialData?: Lideranca | null;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-
 const EMPTY_FORM: FormDataLideranca = {
   nm_completo: '',
   nr_telefone: '',
@@ -46,7 +44,7 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
           tp_influencia: initialData.tp_influencia || 'Comunitária',
           municipios: initialData.municipios?.map((m) => m.cd_ibge_7) || [],
         });
-        setFotoPreview(initialData.ds_foto_url ? `${API_BASE_URL}${initialData.ds_foto_url}` : null);
+        setFotoPreview(initialData.ds_foto_url || null);
       } else {
         setFormData(EMPTY_FORM);
         setFotoPreview(null);

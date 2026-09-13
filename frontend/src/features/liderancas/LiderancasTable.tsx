@@ -10,7 +10,6 @@ interface MunicipioItem {
 }
 
 const TIPOS_INFLUENCIA = ['Comunitária', 'Religiosa', 'Empresarial', 'Política'];
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 interface LiderancasTableProps {
   liderancas: Lideranca[];
@@ -113,7 +112,7 @@ export function LiderancasTable({
                     <div className="flex items-center gap-3">
                       {l.ds_foto_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={`${API_BASE_URL}${l.ds_foto_url}`} alt={l.nm_completo} className="w-8 h-8 rounded-full object-cover" />
+                        <img src={l.ds_foto_url} alt={l.nm_completo} className="w-8 h-8 rounded-full object-cover" />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">{l.nm_completo.charAt(0)}</div>
                       )}

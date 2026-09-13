@@ -42,9 +42,7 @@ services:
       - datapoli_network_prod
 
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/ctdol/datapolirs-api:${RELEASE_TAG}
     container_name: datapoli_api_prod
     restart: unless-stopped
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -61,8 +59,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_URL=redis://redis:6379/0
-      - ENVIRONMENT=production
-      - ALLOWED_ORIGINS=https://${APP_DOMAIN}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - ALLOWED_ORIGINS=${APP_PROTOCOL:-https}://${APP_DOMAIN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,14 +75,16 @@ services:
       - datapoli_network_prod
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: production
+    image: ghcr.io/ctdol/datapolirs-frontend:${RELEASE_TAG}
     container_name: datapoli_frontend_prod
     restart: unless-stopped
-    environment:
-      - NEXT_PUBLIC_API_URL=https://${API_DOMAIN}
+    # Sem NEXT_PUBLIC_API_URL: o axios (src/services/api.ts) usa baseURL
+    # relativa e o rewrite same-origin de next.config.ts (/api/:path*,
+    # /uploads/:path*) encaminha para a API real via rede interna do Docker —
+    # cookie de sessão host-only, sem depender de domínio compartilhado entre
+    # app.*/api.* (ADR_026_datapolirs). Sem API_INTERNAL_URL aqui: o
+    # rewrites() do Next.js é resolvido em build-time (routes-manifest.json
+    # do standalone), não em runtime — ver ARG API_INTERNAL_URL no Dockerfile.
     depends_on:
       - api
     networks:

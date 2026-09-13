@@ -100,6 +100,10 @@ services:
       # deste container).
       - API_INTERNAL_URL=http://api:8000
       - WATCHPACK_POLLING=true
+      # Selo visual de ambiente (ADR universal governanca/047): npm run dev
+      # não faz build estático, então NEXT_PUBLIC_* é lido do processo a
+      # cada início do servidor — sem precisar rebuildar a imagem.
+      - NEXT_PUBLIC_ENV_LABEL=DESENVOLVIMENTO
     depends_on:
       - api
     networks:

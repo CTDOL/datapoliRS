@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// PLAYWRIGHT_BASE_URL, quando definida, aponta para uma stack já no ar por fora
+// (job e2e-parity do CI: docker-compose.prod.yml + Nginx efêmero) — nesse caso não
+// há webServer próprio para subir, os testes só apontam para o proxy já rodando.
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -11,15 +16,17 @@ export default defineConfig({
     // sites distintos para o navegador, então o cookie do login nunca é
     // persistido/enviado se o front for acessado por um host diferente do
     // backend. Ver ADR de confinamento em 127.0.0.1 no CLAUDE.md.
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL,
     trace: 'on-first-retry',
   },
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://127.0.0.1:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: process.env.PLAYWRIGHT_BASE_URL
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://127.0.0.1:3000',
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
   projects: [
     {
       name: 'setup',
