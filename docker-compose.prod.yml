@@ -10,7 +10,7 @@
 
 services:
   postgres:
-    image: postgis/postgis:16-3.4
+    image: imresamu/postgis:16-3.4
     container_name: datapoli_postgres_prod
     restart: unless-stopped
     environment:
@@ -104,7 +104,7 @@ services:
       - ./nginx/templates:/etc/nginx/templates:ro
       # Descomentar quando o certbot estiver configurado (fora de escopo por
       # enquanto: exige domínio real apontado via DNS para emitir o certificado):
-      # - ./nginx/certs:/etc/nginx/certs:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - api
       - frontend

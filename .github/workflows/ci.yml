@@ -8,6 +8,9 @@ on:
   release:
     types: [ published ]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,7 +21,7 @@ jobs:
 
     services:
       postgres:
-        image: postgis/postgis:16-3.4
+        image: imresamu/postgis:16-3.4
         env:
           POSTGRES_USER: datapoli_user
           POSTGRES_PASSWORD: datapoli_pass
@@ -52,10 +55,10 @@ jobs:
 
     steps:
       - name: Checkout Código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -82,7 +85,7 @@ jobs:
 
     services:
       postgres:
-        image: postgis/postgis:16-3.4
+        image: imresamu/postgis:16-3.4
         env:
           POSTGRES_USER: datapoli_user
           POSTGRES_PASSWORD: datapoli_pass
@@ -122,10 +125,10 @@ jobs:
 
     steps:
       - name: Checkout Código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar Python (API para os testes E2E)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
           cache: 'pip'
@@ -154,7 +157,7 @@ jobs:
           exit 1
 
       - name: Configurar Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: 'npm'
@@ -204,13 +207,13 @@ jobs:
 
     steps:
       - name: Checkout Código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build imagem da API (local, sem push ao GHCR)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           file: backend/Dockerfile
@@ -220,7 +223,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=e2e-api
 
       - name: Build imagem do Frontend (local, sem push ao GHCR)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           file: frontend/Dockerfile
@@ -269,7 +272,7 @@ jobs:
           exit 1
 
       - name: Configurar Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: 'npm'
@@ -322,19 +325,19 @@ jobs:
 
     steps:
       - name: Checkout Código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Runner é x86_64; sem binfmt registrado via QEMU, a etapa linux/arm64
       # do build multi-arquitetura falha ou cai num caminho de emulação lento
       # e não confiável — a VPS Oracle é Ampere A1/ARM64 de verdade.
       - name: Configurar QEMU (emulação ARM64)
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Configurar Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login no GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -342,7 +345,7 @@ jobs:
 
       - name: Metadados da Imagem
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ matrix.image }}
           tags: |
@@ -351,7 +354,7 @@ jobs:
             type=raw,value=${{ github.event.release.tag_name }},enable=${{ github.event_name == 'release' }}
 
       - name: Build e Push (multi-arquitetura — VPS Oracle é Ampere A1/ARM64)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
@@ -390,7 +393,7 @@ jobs:
 
     steps:
       - name: Checkout Código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar chave SSH e known_hosts (sem StrictHostKeyChecking=no)
         run: |

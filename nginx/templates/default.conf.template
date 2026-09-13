@@ -1,19 +1,13 @@
-# Reverse proxy de produção — datapoliRS
-#
-# Dois subdomínios, cada um roteado para seu container interno (nunca exposto
-# diretamente ao host): ${APP_DOMAIN} é o Command Center (Next.js, exige
-# login) e ${API_DOMAIN} é a API + o portal público de pesquisa (FastAPI, que
-# já serve seu próprio HTML/JS em "/" e "/static"). Assim nenhum dos dois
-# apps precisa mudar caminho relativo nenhum — cada um continua "dono" da
-# sua própria raiz, exatamente como já roda em dev.
-#
-# ${APP_DOMAIN} e ${API_DOMAIN} vêm de variáveis de ambiente do host,
-# substituídas neste template pelo entrypoint oficial da imagem nginx
-# (/etc/nginx/templates/*.template -> /etc/nginx/conf.d/*.conf via envsubst).
+# Reverse proxy de produção — datapoliRS (HTTP + HTTPS via Cloudflare Proxied)
 
 server {
     listen 80;
+    listen 443 ssl;
     server_name ${APP_DOMAIN};
+
+    ssl_certificate /etc/nginx/certs/server.crt;
+    ssl_certificate_key /etc/nginx/certs/server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
 
     location / {
         proxy_pass http://frontend:3000;
@@ -21,11 +15,8 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto https;
 
-        # Next.js dev usa websocket para Fast Refresh/HMR; em produção o
-        # standalone build não abre esse canal, mas manter o upgrade
-        # configurado é inofensivo e evita reconfigurar se um dia isso mudar.
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
     }
@@ -33,7 +24,12 @@ server {
 
 server {
     listen 80;
+    listen 443 ssl;
     server_name ${API_DOMAIN};
+
+    ssl_certificate /etc/nginx/certs/server.crt;
+    ssl_certificate_key /etc/nginx/certs/server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
 
     location / {
         proxy_pass http://api:8000;
@@ -41,6 +37,6 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto https;
     }
 }
