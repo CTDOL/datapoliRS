@@ -228,6 +228,9 @@ jobs:
           target: production
           load: true
           tags: ghcr.io/ctdol/datapolirs-frontend:${{ env.RELEASE_TAG }}
+          # Selo visual de ambiente (ADR universal governanca/047): identifica
+          # para quem testar que esta é a stack de paridade hml, não produção.
+          build-args: NEXT_PUBLIC_ENV_LABEL=HOMOLOGACAO
           cache-from: type=gha,scope=e2e-frontend
           cache-to: type=gha,mode=max,scope=e2e-frontend
 

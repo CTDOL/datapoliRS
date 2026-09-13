@@ -18,6 +18,12 @@ CMD ["npm", "run", "dev"]
 # ---- builder: compila o build de produção (não usado localmente) ----
 FROM deps AS builder
 WORKDIR /app
+# Selo visual de ambiente (ADR universal governanca/047): NEXT_PUBLIC_* é
+# inlinado no bundle do cliente durante "next build" — precisa existir ANTES
+# do build, não em runtime. Vazio por padrão (produção real não mostra selo);
+# o job e2e-parity do ci.yml passa --build-arg NEXT_PUBLIC_ENV_LABEL=HOMOLOGACAO.
+ARG NEXT_PUBLIC_ENV_LABEL=""
+ENV NEXT_PUBLIC_ENV_LABEL=${NEXT_PUBLIC_ENV_LABEL}
 COPY . .
 RUN npx next typegen && npm run build
 
