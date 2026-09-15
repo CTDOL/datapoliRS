@@ -257,6 +257,21 @@ jobs:
           ADMIN_TENANT_ID=11111111-2222-3333-4444-555555555555
           EOF
 
+      # nginx/certs/ não é versionado (chave privada nunca entra no Git) e o
+      # template do proxy declara `listen 443 ssl` com ssl_certificate — sem
+      # este par o Nginx aborta com [emerg] cannot load certificate e a stack
+      # nunca fica saudável. Self-signed só de CI, como o .env.prod acima: a
+      # paridade é exercida sobre HTTP, o certificado existe apenas para o
+      # Nginx conseguir carregar o bloco de 443 e subir.
+      - name: Gerar certificado self-signed efêmero para o proxy
+        run: |
+          mkdir -p nginx/certs
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+            -keyout nginx/certs/server.key \
+            -out nginx/certs/server.crt \
+            -subj "/CN=${{ env.APP_DOMAIN }}" \
+            -addext "subjectAltName=DNS:${{ env.APP_DOMAIN }},DNS:${{ env.API_DOMAIN }}"
+
       - name: Subir stack de produção completa (efêmera, com Nginx)
         run: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 
