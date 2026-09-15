@@ -17,3 +17,7 @@ etl/data/
 backend/app/uploads/
 .claude/settings.local.json
 claude-skills.tar.gz
+
+# Certificados TLS do proxy reverso — chave privada nunca entra no Git.
+# Em CI sao gerados self-signed efemeros; na VPS sao provisionados no host.
+nginx/certs/

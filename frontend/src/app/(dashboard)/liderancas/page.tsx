@@ -33,18 +33,18 @@ export default function LiderancasPage() {
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
 
   return (
-    <div className="w-full h-full p-8 flex flex-col relative">
-      <div className="flex justify-between items-center mb-8">
+    <div className="w-full h-full p-4 sm:p-8 flex flex-col relative">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Lideranças Políticas</h1>
-          <p className="text-zinc-400 mt-1">Gestão de contatos e influenciadores do Gabinete.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Lideranças Políticas</h1>
+          <p className="text-zinc-400 mt-1 text-sm sm:text-base">Gestão de contatos e influenciadores do Gabinete.</p>
         </div>
         <button
           onClick={() => {
             setEditingLideranca(null);
             setIsModalOpen(true);
           }}
-          className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2"
+          className="shrink-0 bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
         >
           <Plus className="w-5 h-5" />
           Adicionar Liderança

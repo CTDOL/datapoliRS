@@ -43,20 +43,22 @@ export default function SettingsPage() {
   const { configuracoes, isLoading: isLoadingConfig, isSubmitting: isSubmittingConfig, salvarConfiguracoes } = usePlatformConfig(isAdmin);
 
   return (
-    <div className="w-full h-full p-8 flex flex-col gap-6 overflow-y-auto">
+    <div className="w-full h-full p-4 sm:p-8 flex flex-col gap-6 overflow-y-auto">
       <div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">Configurações do Gabinete</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Configurações do Gabinete</h1>
         <p className="text-zinc-400 mt-1">Perfil do mandato, equipe, preferências e segurança.</p>
       </div>
 
-      <div className="flex gap-2 border-b border-zinc-800/60">
+      {/* shrink-0 + overflow-x-auto: sem isso as abas se comprimem e quebram o
+          rótulo em duas linhas no mobile em vez de rolarem lateralmente. */}
+      <div className="flex gap-2 border-b border-zinc-800/60 overflow-x-auto">
         {TABS.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all -mb-px ${
+              className={`flex shrink-0 items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all -mb-px ${
                 isActive
                   ? 'text-purple-400 border-purple-500'
                   : 'text-zinc-400 border-transparent hover:text-white'
