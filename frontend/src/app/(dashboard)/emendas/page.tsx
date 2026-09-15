@@ -34,10 +34,10 @@ export default function EmendasPage() {
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
 
   return (
-    <div className="w-full h-full p-8 flex flex-col gap-6 relative overflow-y-auto">
-      <div className="flex justify-between items-center">
+    <div className="w-full h-full p-4 sm:p-8 flex flex-col gap-6 relative overflow-y-auto">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Emendas Orçamentárias</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Emendas Orçamentárias</h1>
           <p className="text-zinc-400 mt-1">Acompanhamento de indicações, empenhos e pagamentos do mandato.</p>
         </div>
         <button

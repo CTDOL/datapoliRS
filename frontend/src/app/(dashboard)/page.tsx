@@ -8,7 +8,7 @@ import { Map as MapIcon, Users, Vote, Layers, Search, X } from 'lucide-react';
 const ElectionMap = dynamic(() => import('@/components/map/ElectionMap'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[600px] rounded-2xl border border-zinc-800 bg-zinc-950 flex items-center justify-center text-zinc-500">
+    <div className="w-full h-[420px] sm:h-[600px] rounded-2xl border border-zinc-800 bg-zinc-950 flex items-center justify-center text-zinc-500">
       Carregando mapa tático...
     </div>
   ),
@@ -168,20 +168,20 @@ export default function DashboardPage() {
   const mostrarFiltrosLideranca = viewMode === 'liderancas' || viewMode === 'cruzada';
 
   return (
-    <div className="space-y-6">
+    <div className="w-full h-full p-4 sm:p-8 space-y-6 overflow-y-auto">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Mapa Tático</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Mapa Tático</h1>
           <p className="text-zinc-400 text-sm">Geolocalização de lideranças e distribuição de votação eleitoral.</p>
         </div>
 
-        {/* Seletor de modo de visualização */}
-        <div className="flex bg-zinc-900/60 backdrop-blur-md rounded-xl p-1 border border-zinc-700/50">
+        {/* Seletor de modo de visualização — rola na horizontal quando não cabe */}
+        <div className="flex max-w-full overflow-x-auto bg-zinc-900/60 backdrop-blur-md rounded-xl p-1 border border-zinc-700/50">
           {VIEW_MODES.map(({ value, label, icon: Icon }) => (
             <button
               key={value}
               onClick={() => setViewMode(value)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
                 viewMode === value
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
                   : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
@@ -253,20 +253,20 @@ export default function DashboardPage() {
       <div className={mostrarFiltrosLideranca ? 'flex flex-wrap gap-3' : 'hidden'}>
         {mostrarFiltrosLideranca && (
           <>
-            <div className="relative">
+            <div className="relative w-full sm:w-56">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
               <input
                 type="text"
                 value={filtroNomeLideranca}
                 onChange={(e) => setFiltroNomeLideranca(e.target.value)}
                 placeholder="Buscar liderança por nome..."
-                className="bg-zinc-900/60 border border-zinc-700/50 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:ring-2 focus:ring-purple-500/50 w-56"
+                className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:ring-2 focus:ring-purple-500/50"
               />
             </div>
             <select
               value={filtroCidadeMapa}
               onChange={(e) => setFiltroCidadeMapa(e.target.value)}
-              className="bg-zinc-900/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+              className="w-full sm:w-auto sm:flex-1 sm:min-w-[12rem] sm:max-w-xs bg-zinc-900/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
             >
               <option value="">Todos os municípios</option>
               {municipiosParaFiltro.map((m) => (
@@ -276,7 +276,7 @@ export default function DashboardPage() {
             <select
               value={filtroTipoMapa}
               onChange={(e) => setFiltroTipoMapa(e.target.value)}
-              className="bg-zinc-900/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+              className="w-full sm:w-auto sm:min-w-[10rem] bg-zinc-900/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
             >
               <option value="">Todos os tipos</option>
               {TIPOS_INFLUENCIA.map((t) => (

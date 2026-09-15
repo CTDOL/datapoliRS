@@ -70,7 +70,7 @@ export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, 
               className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1.5">Nova Senha</label>
               <input
