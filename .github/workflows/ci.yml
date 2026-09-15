@@ -195,9 +195,17 @@ jobs:
   # Débito conhecido e documentado (não bloqueador): este job roda tudo em
   # HTTP simples (ENVIRONMENT=hml, cookie sem Secure=true) — TLS real via
   # Certbot só existe na VPS de produção, fora do escopo desta sessão.
+  #
+  # Roda em PR para hml/main além do push em hml. Enquanto era exclusivo de
+  # push, o PR ficava verde sem exercitar paridade nenhuma e só o merge
+  # quebrava: foi assim que a falta dos certificados do Nginx sobreviveu aos
+  # PRs #5, #7 e #9 sem ninguém perceber. main entra porque o PR de release é
+  # a última porta antes da produção.
   e2e-parity:
     needs: [test, frontend]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/hml'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/hml') ||
+      (github.event_name == 'pull_request' && (github.base_ref == 'hml' || github.base_ref == 'main'))
     runs-on: ubuntu-latest
 
     env:
@@ -383,12 +391,15 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   # Gatilho ÚNICO de produção: Release publicada (nunca push direto em main).
-  # `environment: producao` exige a configuração manual, no GitHub (Settings →
-  # Environments) de required reviewers e dos secrets VPS_SSH_HOST/
-  # VPS_SSH_USER/VPS_SSH_KEY — nenhum existe ainda, e é vedado ao Claude Code
-  # criá-los ou aprovar o environment (Regra 1.1): sem eles, este job falha
-  # nos passos de SSH, o que é o comportamento correto até a configuração
-  # humana ser feita.
+  #
+  # Estado do environment `producao` (verificado em 2026-09-15, release v0.1.2):
+  # os secrets VPS_SSH_HOST/VPS_SSH_USER/VPS_SSH_KEY JÁ estão provisionados, e
+  # o environment NÃO tem nenhuma protection rule — sem required reviewers,
+  # publicar uma Release deploya direto na VPS, sem aprovação intermediária.
+  # Definir reviewers aqui é decisão humana pendente (Settings → Environments).
+  #
+  # A Regra 1.1 segue valendo: é vedado ao Claude Code criar esses secrets ou
+  # aprovar o environment. Só a operação humana faz isso.
   deploy:
     needs: [docker-publish]
     if: github.event_name == 'release'
@@ -445,22 +456,28 @@ jobs:
           docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
           REMOTO
 
+      # Mesma forma do "Pull + up" acima (tag em $2 + --env-file): o compose
+      # interpola ${RELEASE_TAG} nos image: da API e do frontend, e sem isso
+      # cada invocação aqui emitia "RELEASE_TAG is not set. Defaulting to a
+      # blank string". Inofensivo enquanto só se conta serviços, mas passaria
+      # a resolver a imagem errada se esta verificação crescer.
       - name: Health check pós-deploy (sem depender de curl dentro das imagens)
         run: |
           ssh -i ~/.ssh/vps_deploy_key "${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}" \
-            bash -s -- "${{ env.VPS_DEPLOY_PATH }}" <<'REMOTO'
+            bash -s -- "${{ env.VPS_DEPLOY_PATH }}" "${{ env.RELEASE_TAG }}" <<'REMOTO'
           set -e
           cd "$1"
-          total=$(docker compose -f docker-compose.prod.yml config --services | wc -l)
+          export RELEASE_TAG="$2"
+          total=$(docker compose -f docker-compose.prod.yml --env-file .env.prod config --services | wc -l)
           for i in $(seq 1 30); do
-            running=$(docker compose -f docker-compose.prod.yml ps --status running --services | wc -l)
+            running=$(docker compose -f docker-compose.prod.yml --env-file .env.prod ps --status running --services | wc -l)
             if [ "$running" -eq "$total" ]; then
               exit 0
             fi
             sleep 5
           done
           echo "Nem todos os serviços subiram ($running/$total esperados):"
-          docker compose -f docker-compose.prod.yml logs --tail=100
+          docker compose -f docker-compose.prod.yml --env-file .env.prod logs --tail=100
           exit 1
           REMOTO
 
