@@ -126,7 +126,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1.5">Número da Emenda</label>
                   <input
@@ -149,7 +149,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1.5">Tipo de Emenda</label>
                   <select
@@ -190,7 +190,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1.5">Valor Indicado (R$)</label>
                   <input

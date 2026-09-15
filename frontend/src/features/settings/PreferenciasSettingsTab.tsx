@@ -88,7 +88,7 @@ export function PreferenciasSettingsTab() {
 
       <div>
         <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Modo padrão do Mapa Tático ao entrar</label>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {viewModeOptions.map((opt) => (
             <button
               key={opt.value}

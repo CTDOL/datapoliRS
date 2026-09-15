@@ -56,8 +56,8 @@ export function EquipeSettingsTab({ team, isLoading, isSubmitting, isAdmin, curr
         </button>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-2xl border border-zinc-800 overflow-hidden overflow-x-auto">
+        <table className="w-full min-w-[32rem] text-sm">
           <thead className="bg-zinc-900/60 text-zinc-400 uppercase text-xs">
             <tr>
               <th className="text-left px-4 py-3 font-semibold">E-mail</th>

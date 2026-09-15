@@ -296,11 +296,11 @@ export default function ElectionMap({ liderancas = [], viewMode = 'liderancas', 
   }, [JSON.stringify(liderancas)]);
 
   return (
-    <div className="w-full h-[600px] min-h-[600px] rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 bg-zinc-950 relative">
+    <div className="w-full h-[420px] min-h-[420px] sm:h-[600px] sm:min-h-[600px] rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 bg-zinc-950 relative">
       <div ref={mapContainer} className="w-full h-full" />
 
       {/* Controle de Mapa Base */}
-      <div className="absolute top-4 right-4 z-[1000] flex bg-zinc-900/80 backdrop-blur-md rounded-xl p-1 border border-zinc-700/50 shadow-xl">
+      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-[1000] flex bg-zinc-900/80 backdrop-blur-md rounded-xl p-1 border border-zinc-700/50 shadow-xl">
         <button
           onClick={() => setMapTheme('dark')}
           className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
