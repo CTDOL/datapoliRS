@@ -31,8 +31,9 @@ api.interceptors.response.use(
       // Força o logout no frontend e limpa a store
       useAuthStore.getState().logout();
 
-      // Redirecionamento impiedoso para a tela de login
+      // Redirecionamento impiedoso para a tela de login.
       if (typeof window !== 'undefined') {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- interceptor do axios está fora da árvore React (useRouter é hook, redirect é de server component) e a recarga dura é intencional: garante que nenhum estado de cliente sobreviva à expiração da sessão
         window.location.href = '/login';
       }
     }
