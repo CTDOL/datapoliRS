@@ -58,8 +58,18 @@ class ProjetoLeiResponse(BaseModel):
     url_fonte: Optional[str] = None
     data_apresentacao: Optional[date] = None
     created_at: datetime
+    ultima_sincronizacao: Optional[datetime] = Field(
+        None, description="Quando a situação foi conferida pela última vez na fonte oficial"
+    )
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProjetoLeiSyncResponse(BaseModel):
+    """Resultado de uma ressincronização manual com a fonte oficial."""
+    projeto: ProjetoLeiResponse
+    situacao_anterior: Optional[str] = None
+    situacao_alterada: bool = Field(False, description="True quando a fonte reportou situação diferente da guardada")
 
 
 class ProjetoLeiPageResponse(BaseModel):

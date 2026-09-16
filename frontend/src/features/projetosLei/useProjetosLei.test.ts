@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useProjetosLei, FONTES_EXTERNAS } from './useProjetosLei';
+import { useProjetosLei, FONTES_EXTERNAS, descreverConferencia } from './useProjetosLei';
 import { api } from '@/services/api';
 import type { AxiosRequestConfig } from 'axios';
 
@@ -105,5 +105,68 @@ describe('useProjetosLei — busca nas fontes oficiais', () => {
 
     await waitFor(() => expect(result.current.resultadosExternos).toEqual([]));
     expect(result.current.fontesComErro).toEqual([]);
+  });
+});
+
+describe('descreverConferencia — idade da situação guardada', () => {
+  const agora = new Date('2026-09-16T15:00:00Z');
+
+  it('sem carimbo diz que nunca foi conferida', () => {
+    expect(descreverConferencia(null, agora)).toBe('nunca conferida');
+  });
+
+  it('hoje, 1 dia e N dias', () => {
+    expect(descreverConferencia('2026-09-16T09:00:00Z', agora)).toBe('conferida hoje');
+    expect(descreverConferencia('2026-09-15T09:00:00Z', agora)).toBe('conferida há 1 dia');
+    expect(descreverConferencia('2026-09-04T09:00:00Z', agora)).toBe('conferida há 12 dias');
+  });
+});
+
+describe('useProjetosLei — sincronizar com a fonte oficial', () => {
+  const mockedPost = vi.mocked(api.post);
+  const projetoGuardado = {
+    id_projeto_lei: 'pl-1', fonte: 'ALRS', identificador_externo: 'bc22b5f7', tipo: 'PL', numero: '5', ano: 2026,
+    ementa: 'Dispõe sobre fisioterapeutas nas maternidades', situacao: 'Para Parecer', created_at: '2026-09-16T12:00:00Z',
+    ultima_sincronizacao: '2026-09-16T12:00:00Z',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedGet.mockResolvedValue({ data: { items: [projetoGuardado], total: 1, total_pages: 1 } } as never);
+  });
+
+  it('troca só a linha sincronizada e anuncia a mudança de situação', async () => {
+    mockedPost.mockResolvedValue({
+      data: {
+        projeto: { ...projetoGuardado, situacao: 'Aprovado em Plenário', ultima_sincronizacao: '2026-09-16T15:00:00Z' },
+        situacao_anterior: 'Para Parecer',
+        situacao_alterada: true,
+      },
+    } as never);
+    const { result } = renderHook(() => useProjetosLei());
+    await waitFor(() => expect(result.current.projetosLei).toHaveLength(1));
+
+    let retorno: unknown;
+    await act(async () => { retorno = await result.current.sincronizar('pl-1'); });
+
+    expect(mockedPost).toHaveBeenCalledWith('/api/v1/gabinete/projetos-lei/pl-1/sincronizar');
+    expect(result.current.projetosLei[0].situacao).toBe('Aprovado em Plenário');
+    expect(result.current.syncFeedback).toEqual({
+      id_projeto_lei: 'pl-1', tipo: 'alterada', mensagem: 'Situação mudou: Para Parecer → Aprovado em Plenário',
+    });
+    expect(result.current.sincronizandoId).toBeNull();
+    expect(retorno).toMatchObject({ situacao: 'Aprovado em Plenário' });
+  });
+
+  it('fonte fora do ar: mantém a linha e mostra o motivo vindo da API', async () => {
+    mockedPost.mockRejectedValue({ response: { status: 503, data: { detail: 'ALRS não respondeu agora. A situação guardada foi mantida; tente de novo em instantes.' } } });
+    const { result } = renderHook(() => useProjetosLei());
+    await waitFor(() => expect(result.current.projetosLei).toHaveLength(1));
+
+    await act(async () => { await result.current.sincronizar('pl-1'); });
+
+    expect(result.current.projetosLei[0].situacao).toBe('Para Parecer');
+    expect(result.current.syncFeedback?.tipo).toBe('erro');
+    expect(result.current.syncFeedback?.mensagem).toContain('mantida');
   });
 });

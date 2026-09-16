@@ -9,6 +9,7 @@ from app.schemas.legislative import (
     BuscaExternaResponse,
     ProjetoLeiImport,
     ProjetoLeiResponse,
+    ProjetoLeiSyncResponse,
     ProjetoLeiPageResponse,
     ObservadorAdd,
     ObservadorResponse,
@@ -85,6 +86,22 @@ async def obter_projeto_lei(
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> ProjetoLeiResponse:
     return await LegislativeService.getProjetoLeiById(connection, current_user.tenant_id, id_projeto_lei)
+
+
+@router.post(
+    "/{id_projeto_lei}/sincronizar",
+    response_model=ProjetoLeiSyncResponse,
+    summary="Reconsulta a fonte oficial e atualiza a situação do projeto de lei importado"
+)
+async def sincronizar_projeto_lei(
+    id_projeto_lei: uuid.UUID,
+    current_user: UserInDB = Depends(get_current_user),
+    connection: asyncpg.Connection = Depends(getDbConnection)
+) -> ProjetoLeiSyncResponse:
+    """Atualiza situação/ementa a partir da fonte (ALRS, Câmara ou Senado) sem apagar
+    observadores nem tarefas. 503 se a fonte não responder; 502 se a proposição
+    não puder ser confirmada — em ambos, o registro guardado é mantido."""
+    return await LegislativeService.sincronizarProjetoLei(connection, current_user.tenant_id, id_projeto_lei)
 
 
 @router.delete(

@@ -6,11 +6,12 @@ import asyncpg
 import math
 from app.repositories.legislative_repository import LegislativeRepository
 from app.repositories.cabinet_repository import CabinetRepository
-from app.services.legislative_sources import buscar_em_todas_fontes, obter_adaptador
+from app.services.legislative_sources import buscar_em_todas_fontes, obter_adaptador, FonteIndisponivelError
 from app.schemas.legislative import (
     BuscaExternaResponse,
     ProjetoLeiImport,
     ProjetoLeiResponse,
+    ProjetoLeiSyncResponse,
     ProjetoLeiPageResponse,
     ObservadorResponse,
 )
@@ -73,6 +74,57 @@ class LegislativeService:
         registro = await LegislativeRepository.importarProjetoLei(connection, tenantId, dados)
         logger.info(f"Projeto de lei {dados['fonte']}/{payload.identificador_externo} importado pro gabinete {tenantId}.")
         return ProjetoLeiResponse(**registro)
+
+    @staticmethod
+    async def sincronizarProjetoLei(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+        projetoLeiId: uuid.UUID,
+    ) -> ProjetoLeiSyncResponse:
+        """Reconsulta a fonte oficial e atualiza situação/ementa do projeto já importado,
+        preservando observadores e tarefas. A fonte é a única autoridade: nada vem
+        do cliente além do id."""
+        atual = await LegislativeRepository.getProjetoLeiById(connection, tenantId, projetoLeiId)
+        if not atual:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Projeto de lei '{projetoLeiId}' não encontrado para este Gabinete."
+            )
+
+        adaptador = obter_adaptador(atual["fonte"])
+        try:
+            detalhe = await adaptador.buscar_detalhe(
+                atual["identificador_externo"],
+                tipo=atual.get("tipo"), numero=atual.get("numero"),
+                ano=atual.get("ano"), autor=atual.get("autor"),
+            )
+        except FonteIndisponivelError as erro:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"{atual['fonte']} não respondeu agora. A situação guardada foi mantida; tente de novo em instantes."
+            ) from erro
+        if not detalhe:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Não foi possível confirmar essa proposição na fonte oficial. A situação guardada foi mantida."
+            )
+
+        situacao_nova = detalhe.get("situacao")
+        registro = await LegislativeRepository.sincronizarProjetoLei(
+            connection, tenantId, projetoLeiId,
+            situacao=situacao_nova, ementa=detalhe.get("ementa"),
+        )
+        alterada = (situacao_nova or "") != (atual.get("situacao") or "")
+        if alterada:
+            logger.info(
+                f"PL {atual['fonte']}/{atual['identificador_externo']} mudou de situação: "
+                f"{atual.get('situacao')!r} -> {situacao_nova!r} (gabinete {tenantId})."
+            )
+        return ProjetoLeiSyncResponse(
+            projeto=ProjetoLeiResponse(**registro),
+            situacao_anterior=atual.get("situacao"),
+            situacao_alterada=alterada,
+        )
 
     @staticmethod
     async def listProjetosLei(

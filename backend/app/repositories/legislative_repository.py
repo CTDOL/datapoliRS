@@ -20,15 +20,17 @@ class LegislativeRepository:
         query = """
             INSERT INTO tb_gabinete_projetos_lei (
                 tenant_id, fonte, identificador_externo, tipo, numero, ano,
-                ementa, situacao, autor, url_fonte, data_apresentacao
+                ementa, situacao, autor, url_fonte, data_apresentacao,
+                ultima_sincronizacao
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
             ON CONFLICT (tenant_id, fonte, identificador_externo) DO UPDATE
-                SET situacao = EXCLUDED.situacao
+                SET situacao = EXCLUDED.situacao,
+                    ultima_sincronizacao = NOW()
             RETURNING
                 id_projeto_lei, tenant_id, fonte, identificador_externo, tipo,
                 numero, ano, ementa, situacao, autor, url_fonte,
-                data_apresentacao, created_at;
+                data_apresentacao, created_at, ultima_sincronizacao;
         """
         try:
             record = await connection.fetchrow(
@@ -82,7 +84,7 @@ class LegislativeRepository:
         dataQuery = f"""
             SELECT id_projeto_lei, tenant_id, fonte, identificador_externo, tipo,
                    numero, ano, ementa, situacao, autor, url_fonte,
-                   data_apresentacao, created_at
+                   data_apresentacao, created_at, ultima_sincronizacao
             FROM tb_gabinete_projetos_lei
             WHERE {whereClause}
             ORDER BY created_at DESC
@@ -95,6 +97,35 @@ class LegislativeRepository:
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao listar projetos de lei para tenant {tenantId}: {dbError}", exc_info=True)
             raise RuntimeError(f"Database query error: {dbError}") from dbError
+
+    @staticmethod
+    async def sincronizarProjetoLei(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+        projetoLeiId: uuid.UUID,
+        situacao: Optional[str],
+        ementa: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Atualiza só o que a fonte oficial pode mudar (situação e ementa) e carimba
+        a conferência. Observadores e tarefas ficam intactos — é o que diferencia
+        isto de apagar e reimportar."""
+        query = """
+            UPDATE tb_gabinete_projetos_lei
+            SET situacao = $3,
+                ementa = COALESCE($4, ementa),
+                ultima_sincronizacao = NOW()
+            WHERE tenant_id = $1 AND id_projeto_lei = $2
+            RETURNING
+                id_projeto_lei, tenant_id, fonte, identificador_externo, tipo,
+                numero, ano, ementa, situacao, autor, url_fonte,
+                data_apresentacao, created_at, ultima_sincronizacao;
+        """
+        try:
+            record = await connection.fetchrow(query, tenantId, projetoLeiId, situacao, ementa)
+            return dict(record) if record else None
+        except asyncpg.PostgresError as dbError:
+            logger.error(f"Erro ao sincronizar projeto de lei {projetoLeiId}: {dbError}", exc_info=True)
+            raise RuntimeError(f"Database update error: {dbError}") from dbError
 
     @staticmethod
     async def listChavesImportadas(
@@ -120,7 +151,7 @@ class LegislativeRepository:
         query = """
             SELECT id_projeto_lei, tenant_id, fonte, identificador_externo, tipo,
                    numero, ano, ementa, situacao, autor, url_fonte,
-                   data_apresentacao, created_at
+                   data_apresentacao, created_at, ultima_sincronizacao
             FROM tb_gabinete_projetos_lei
             WHERE tenant_id = $1 AND id_projeto_lei = $2;
         """

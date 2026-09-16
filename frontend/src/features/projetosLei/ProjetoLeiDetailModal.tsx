@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, UserPlus, Trash2, Plus, Loader2, CheckCircle2, Circle, Clock } from 'lucide-react';
 import { api } from '@/services/api';
-import { ProjetoLei } from './useProjetosLei';
+import { ProjetoLei, descreverConferencia } from './useProjetosLei';
 import { useProjetoLeiDetalhe } from './useProjetoLeiDetalhe';
 
 interface LiderancaOption {
@@ -93,6 +93,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                 <p className="text-sm text-zinc-400 mt-1">{projetoLei.ementa}</p>
                 <div className="flex items-center gap-3 mt-2 text-xs text-zinc-500">
                   {projetoLei.situacao && <span>Situação: {projetoLei.situacao}</span>}
+                  <span title="Última conferência na fonte oficial">({descreverConferencia(projetoLei.ultima_sincronizacao)})</span>
                   {projetoLei.url_fonte && (
                     <a href={projetoLei.url_fonte} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300">
                       Fonte oficial <ExternalLink className="w-3 h-3" />
