@@ -31,15 +31,28 @@ export interface ProjetoLei {
   created_at: string;
 }
 
+export interface BuscaExternaResponse {
+  resultados: ProposicaoExterna[];
+  // Fontes que não responderam nesta consulta (timeout/5xx). Lista de
+  // resultados vazia só significa "nada encontrado" quando isto também está vazio.
+  fontes_com_erro: string[];
+}
+
+export const FONTES_EXTERNAS = ['ALRS', 'CAMARA', 'SENADO'];
+
 const PAGE_SIZE = 20;
 const DEBOUNCE_MS = 400;
 
 export function useProjetosLei() {
   const [nomeBusca, setNomeBusca] = useState('');
   const [resultadosExternos, setResultadosExternos] = useState<ProposicaoExterna[]>([]);
+  const [fontesComErro, setFontesComErro] = useState<string[]>([]);
   const [isBuscando, setIsBuscando] = useState(false);
   const [importandoChave, setImportandoChave] = useState<string | null>(null);
   const buscaDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A ALRS pode levar 25s pra responder: a resposta de "nad" chegaria depois
+  // da de "nadine" e sobrescreveria a lista — só a consulta mais recente vale.
+  const buscaSequenciaRef = useRef(0);
 
   const [projetosLei, setProjetosLei] = useState<ProjetoLei[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,23 +120,34 @@ export function useProjetosLei() {
   useEffect(() => {
     if (buscaDebounceRef.current) clearTimeout(buscaDebounceRef.current);
     if (nomeBusca.trim().length < 3) {
-      buscaDebounceRef.current = setTimeout(() => setResultadosExternos([]), 0);
+      buscaSequenciaRef.current += 1;
+      buscaDebounceRef.current = setTimeout(() => {
+        setResultadosExternos([]);
+        setFontesComErro([]);
+        setIsBuscando(false);
+      }, 0);
       return () => {
         if (buscaDebounceRef.current) clearTimeout(buscaDebounceRef.current);
       };
     }
     buscaDebounceRef.current = setTimeout(async () => {
+      const sequencia = ++buscaSequenciaRef.current;
       setIsBuscando(true);
       try {
-        const response = await api.get('/api/v1/gabinete/projetos-lei/buscar-externo', {
+        const response = await api.get<BuscaExternaResponse>('/api/v1/gabinete/projetos-lei/buscar-externo', {
           params: { nome: nomeBusca.trim() },
         });
-        setResultadosExternos(response.data);
+        if (sequencia !== buscaSequenciaRef.current) return;
+        setResultadosExternos(response.data.resultados);
+        setFontesComErro(response.data.fontes_com_erro);
       } catch (error) {
+        if (sequencia !== buscaSequenciaRef.current) return;
         console.error('Erro ao buscar proposições nas fontes oficiais', error);
+        // A requisição inteira falhou (rede, 5xx, proxy): nenhuma fonte respondeu.
         setResultadosExternos([]);
+        setFontesComErro(FONTES_EXTERNAS);
       } finally {
-        setIsBuscando(false);
+        if (sequencia === buscaSequenciaRef.current) setIsBuscando(false);
       }
     }, DEBOUNCE_MS);
     return () => {
@@ -180,6 +204,7 @@ export function useProjetosLei() {
     nomeBusca,
     setNomeBusca,
     resultadosExternos,
+    fontesComErro,
     isBuscando,
     importandoChave,
     importar,

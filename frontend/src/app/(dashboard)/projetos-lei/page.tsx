@@ -10,7 +10,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 export default function ProjetosLeiPage() {
   const [projetoAberto, setProjetoAberto] = useState<ProjetoLei | null>(null);
   const {
-    nomeBusca, setNomeBusca, resultadosExternos, isBuscando, importandoChave, importar,
+    nomeBusca, setNomeBusca, resultadosExternos, fontesComErro, isBuscando, importandoChave, importar,
     projetosLei, isLoading, termo, setTermo, fonte, setFonte,
     page, setPage, totalPages, total, deleteProjetoLei,
   } = useProjetosLei();
@@ -27,6 +27,7 @@ export default function ProjetosLeiPage() {
         nomeBusca={nomeBusca}
         onNomeBuscaChange={setNomeBusca}
         resultados={resultadosExternos}
+        fontesComErro={fontesComErro}
         isBuscando={isBuscando}
         importandoChave={importandoChave}
         onImportar={importar}

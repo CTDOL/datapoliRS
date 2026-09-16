@@ -8,7 +8,7 @@ from app.repositories.legislative_repository import LegislativeRepository
 from app.repositories.cabinet_repository import CabinetRepository
 from app.services.legislative_sources import buscar_em_todas_fontes, obter_adaptador
 from app.schemas.legislative import (
-    ProposicaoExterna,
+    BuscaExternaResponse,
     ProjetoLeiImport,
     ProjetoLeiResponse,
     ProjetoLeiPageResponse,
@@ -26,9 +26,10 @@ class LegislativeService:
         connection: asyncpg.Connection,
         tenantId: uuid.UUID,
         nome: str,
-    ) -> list[ProposicaoExterna]:
-        """Agrega ALRS + Câmara + Senado e marca quais já foram importados por este gabinete."""
-        resultados = await buscar_em_todas_fontes(nome)
+    ) -> BuscaExternaResponse:
+        """Agrega ALRS + Câmara + Senado, marca quais já foram importados por este
+        gabinete e repassa quais fontes falharam nesta consulta."""
+        resultados, fontes_com_erro = await buscar_em_todas_fontes(nome)
 
         importados = await LegislativeRepository.listChavesImportadas(connection, tenantId)
         chaves_importadas = {(r["fonte"], r["identificador_externo"]): r["id_projeto_lei"] for r in importados}
@@ -39,7 +40,7 @@ class LegislativeService:
                 proposicao.ja_importado = True
                 proposicao.id_projeto_lei = chaves_importadas[chave]
 
-        return resultados
+        return BuscaExternaResponse(resultados=resultados, fontes_com_erro=fontes_com_erro)
 
     @staticmethod
     async def importarProjetoLei(
