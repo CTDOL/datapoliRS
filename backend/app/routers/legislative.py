@@ -6,7 +6,7 @@ from app.core.dependencies import getDbConnection, get_current_user, require_rol
 from app.schemas.user import UserInDB
 from app.services.legislative_service import LegislativeService
 from app.schemas.legislative import (
-    ProposicaoExterna,
+    BuscaExternaResponse,
     ProjetoLeiImport,
     ProjetoLeiResponse,
     ProjetoLeiPageResponse,
@@ -24,16 +24,18 @@ router = APIRouter(
 
 @router.get(
     "/buscar-externo",
-    response_model=list[ProposicaoExterna],
+    response_model=BuscaExternaResponse,
     summary="Busca proposições por nome do parlamentar direto nas fontes oficiais (ALRS, Câmara, Senado)"
 )
 async def buscar_proposicoes_externas(
-    nome: str = Query(..., min_length=3, description="Nome do parlamentar a buscar"),
+    nome: str = Query(..., min_length=3, description="Nome (ou parte) do parlamentar a buscar"),
     current_user: UserInDB = Depends(get_current_user),
     connection: asyncpg.Connection = Depends(getDbConnection)
-) -> list[ProposicaoExterna]:
+) -> BuscaExternaResponse:
     """Agrega resultados de ALRS (scraping), Câmara e Senado (APIs oficiais) em uma
-    única lista, marcando quais já foram importados por este gabinete."""
+    única lista, marcando quais já foram importados por este gabinete. Fontes que
+    não responderam (timeout/5xx) vêm em `fontes_com_erro` em vez de sumirem em
+    silêncio — o cliente deve avisar o usuário que a lista pode estar incompleta."""
     return await LegislativeService.buscarExterno(connection, current_user.tenant_id, nome)
 
 
