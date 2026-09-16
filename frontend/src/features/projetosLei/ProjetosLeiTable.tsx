@@ -1,6 +1,6 @@
-import { Loader2, ExternalLink, Trash2, ChevronLeft, ChevronRight, Users } from 'lucide-react';
+import { Loader2, ExternalLink, Trash2, ChevronLeft, ChevronRight, Users, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import { ProjetoLei } from './useProjetosLei';
+import { ProjetoLei, SyncFeedback, descreverConferencia } from './useProjetosLei';
 
 const FONTE_LABEL: Record<string, string> = {
   ALRS: 'Assembleia RS',
@@ -14,6 +14,9 @@ interface ProjetosLeiTableProps {
   onAbrir: (projetoLei: ProjetoLei) => void;
   onDelete?: (projetoLei: ProjetoLei) => void;
   canDelete?: boolean;
+  onSincronizar?: (projetoLei: ProjetoLei) => void;
+  sincronizandoId?: string | null;
+  syncFeedback?: SyncFeedback | null;
   termo: string;
   onTermoChange: (termo: string) => void;
   fonte: string;
@@ -30,6 +33,9 @@ export function ProjetosLeiTable({
   onAbrir,
   onDelete,
   canDelete = false,
+  onSincronizar,
+  sincronizandoId,
+  syncFeedback,
   termo,
   onTermoChange,
   fonte,
@@ -88,9 +94,31 @@ export function ProjetosLeiTable({
                   <td className="px-6 py-4 font-medium text-white whitespace-nowrap">{pl.tipo} {pl.numero}/{pl.ano}</td>
                   <td className="px-6 py-4 text-zinc-300 max-w-sm"><p className="truncate" title={pl.ementa}>{pl.ementa}</p></td>
                   <td className="px-6 py-4 text-zinc-400 text-xs">{FONTE_LABEL[pl.fonte] || pl.fonte}</td>
-                  <td className="px-6 py-4 text-zinc-300">{pl.situacao || '—'}</td>
+                  <td className="px-6 py-4 text-zinc-300">
+                    <div>{pl.situacao || '—'}</div>
+                    <div className="text-[11px] text-zinc-500 mt-0.5">{descreverConferencia(pl.ultima_sincronizacao)}</div>
+                    {syncFeedback?.id_projeto_lei === pl.id_projeto_lei && (
+                      <div
+                        className={`text-[11px] mt-1 ${
+                          syncFeedback.tipo === 'alterada' ? 'text-teal-400' : syncFeedback.tipo === 'erro' ? 'text-amber-400' : 'text-zinc-400'
+                        }`}
+                      >
+                        {syncFeedback.mensagem}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
+                      {onSincronizar && (
+                        <button
+                          onClick={() => onSincronizar(pl)}
+                          disabled={sincronizandoId === pl.id_projeto_lei}
+                          className="text-zinc-400 hover:text-teal-400 p-2 transition-colors disabled:opacity-60"
+                          title="Atualizar situação na fonte oficial"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${sincronizandoId === pl.id_projeto_lei ? 'animate-spin' : ''}`} />
+                        </button>
+                      )}
                       <button onClick={() => onAbrir(pl)} className="text-zinc-400 hover:text-purple-400 p-2 transition-colors" title="Observadores e tarefas">
                         <Users className="w-4 h-4" />
                       </button>

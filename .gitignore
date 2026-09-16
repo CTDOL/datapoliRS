@@ -16,6 +16,8 @@ votacao_candidato_munzona_2022_RS.csv
 etl/data/
 backend/app/uploads/
 .claude/settings.local.json
+.claude/settings.json
+.claude/skills/
 claude-skills.tar.gz
 
 # Certificados TLS do proxy reverso — chave privada nunca entra no Git.

@@ -29,6 +29,30 @@ export interface ProjetoLei {
   url_fonte?: string | null;
   data_apresentacao?: string | null;
   created_at: string;
+  // Quando a situação foi conferida pela última vez na fonte oficial.
+  ultima_sincronizacao?: string | null;
+}
+
+export interface ProjetoLeiSyncResponse {
+  projeto: ProjetoLei;
+  situacao_anterior?: string | null;
+  situacao_alterada: boolean;
+}
+
+export interface SyncFeedback {
+  id_projeto_lei: string;
+  tipo: 'inalterada' | 'alterada' | 'erro';
+  mensagem: string;
+}
+
+// "hoje", "há 1 dia", "há 12 dias" — o gabinete precisa saber quão velha é a
+// situação que está vendo, não a data exata.
+export function descreverConferencia(iso?: string | null, agora: Date = new Date()): string {
+  if (!iso) return 'nunca conferida';
+  const dias = Math.floor((agora.getTime() - new Date(iso).getTime()) / 86_400_000);
+  if (dias <= 0) return 'conferida hoje';
+  if (dias === 1) return 'conferida há 1 dia';
+  return `conferida há ${dias} dias`;
 }
 
 export interface BuscaExternaResponse {
@@ -184,6 +208,40 @@ export function useProjetosLei() {
     }
   };
 
+  const [sincronizandoId, setSincronizandoId] = useState<string | null>(null);
+  const [syncFeedback, setSyncFeedback] = useState<SyncFeedback | null>(null);
+
+  // Reconsulta a fonte oficial para UM projeto já importado. Só o registro
+  // daquela linha é trocado — observadores, tarefas e a paginação ficam como estão.
+  const sincronizar = async (id: string) => {
+    setSincronizandoId(id);
+    setSyncFeedback(null);
+    try {
+      const response = await api.post<ProjetoLeiSyncResponse>(`/api/v1/gabinete/projetos-lei/${id}/sincronizar`);
+      const { projeto, situacao_alterada, situacao_anterior } = response.data;
+      setProjetosLei((atual) => atual.map((pl) => (pl.id_projeto_lei === id ? projeto : pl)));
+      setSyncFeedback({
+        id_projeto_lei: id,
+        tipo: situacao_alterada ? 'alterada' : 'inalterada',
+        mensagem: situacao_alterada
+          ? `Situação mudou: ${situacao_anterior || '—'} → ${projeto.situacao || '—'}`
+          : 'Situação confirmada na fonte oficial',
+      });
+      return projeto;
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setSyncFeedback({
+        id_projeto_lei: id,
+        tipo: 'erro',
+        mensagem: detail || 'Fonte oficial não respondeu. A situação guardada foi mantida.',
+      });
+      console.error('Erro ao sincronizar projeto de lei', error);
+      return null;
+    } finally {
+      setSincronizandoId(null);
+    }
+  };
+
   const deleteProjetoLei = async (id: string) => {
     try {
       await api.delete(`/api/v1/gabinete/projetos-lei/${id}`);
@@ -219,5 +277,8 @@ export function useProjetosLei() {
     totalPages,
     total,
     deleteProjetoLei,
+    sincronizar,
+    sincronizandoId,
+    syncFeedback,
   };
 }
