@@ -1,4 +1,4 @@
-import { Loader2, Search, ExternalLink, Check, Plus } from 'lucide-react';
+import { Loader2, Search, ExternalLink, Check, Plus, AlertTriangle } from 'lucide-react';
 import { ProposicaoExterna } from './useProjetosLei';
 
 const FONTE_LABEL: Record<string, string> = {
@@ -17,6 +17,7 @@ interface BuscaExternaProps {
   nomeBusca: string;
   onNomeBuscaChange: (nome: string) => void;
   resultados: ProposicaoExterna[];
+  fontesComErro: string[];
   isBuscando: boolean;
   importandoChave: string | null;
   onImportar: (proposicao: ProposicaoExterna) => void;
@@ -26,10 +27,12 @@ export function BuscaExternaProjetosLei({
   nomeBusca,
   onNomeBuscaChange,
   resultados,
+  fontesComErro,
   isBuscando,
   importandoChave,
   onImportar,
 }: BuscaExternaProps) {
+  const nomesFontesComErro = fontesComErro.map((f) => FONTE_LABEL[f] || f).join(', ');
   return (
     <div className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-2xl p-5 shadow-xl">
       <h2 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Buscar nas fontes oficiais</h2>
@@ -51,7 +54,19 @@ export function BuscaExternaProjetosLei({
         </div>
       )}
 
-      {!isBuscando && nomeBusca.trim().length >= 3 && resultados.length === 0 && (
+      {!isBuscando && fontesComErro.length > 0 && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 mt-4 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm"
+        >
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            Sem resposta de: <strong>{nomesFontesComErro}</strong>. {resultados.length > 0 ? 'A lista abaixo pode estar incompleta' : 'Não foi possível consultar'} — tente novamente em instantes.
+          </span>
+        </div>
+      )}
+
+      {!isBuscando && nomeBusca.trim().length >= 3 && resultados.length === 0 && fontesComErro.length === 0 && (
         <p className="text-zinc-500 text-sm mt-4">Nenhuma proposição encontrada para esse nome nas fontes oficiais.</p>
       )}
 

@@ -20,6 +20,15 @@ class ProposicaoExterna(BaseModel):
     id_projeto_lei: Optional[UUID] = None
 
 
+class BuscaExternaResponse(BaseModel):
+    """Resultado agregado de ALRS + Câmara + Senado. `fontes_com_erro` lista as
+    fontes que não responderam (timeout/5xx) nesta consulta — lista vazia de
+    resultados só significa "nada encontrado" quando `fontes_com_erro` também
+    está vazia."""
+    resultados: list[ProposicaoExterna]
+    fontes_com_erro: list[str] = Field(default_factory=list, description="Ex.: ['ALRS'] quando a Assembleia deu timeout")
+
+
 class ProjetoLeiImport(BaseModel):
     """Só identifica QUAL proposição importar — ementa/situação/url são
 
