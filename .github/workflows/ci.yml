@@ -392,14 +392,17 @@ jobs:
 
   # Gatilho ÚNICO de produção: Release publicada (nunca push direto em main).
   #
-  # Estado do environment `producao` (verificado em 2026-09-15, release v0.1.2):
-  # os secrets VPS_SSH_HOST/VPS_SSH_USER/VPS_SSH_KEY JÁ estão provisionados, e
-  # o environment NÃO tem nenhuma protection rule — sem required reviewers,
-  # publicar uma Release deploya direto na VPS, sem aprovação intermediária.
-  # Definir reviewers aqui é decisão humana pendente (Settings → Environments).
+  # Estado do environment `producao` (verificado em 2026-09-16, release v0.1.6):
+  # os secrets VPS_SSH_HOST/VPS_SSH_USER/VPS_SSH_KEY estão provisionados e o
+  # environment TEM protection rule `required_reviewers` (jonasCTDOL). Publicar
+  # uma Release publica as imagens e deixa este job em `waiting` até a
+  # aprovação humana (Review deployments). Evidência: run 35113572980 parou no
+  # gate e só executou após aprovação. A regra vale porque o repo é público
+  # (plano free); se virar privado, migrar para workflow_dispatch com tag.
   #
   # A Regra 1.1 segue valendo: é vedado ao Claude Code criar esses secrets ou
-  # aprovar o environment. Só a operação humana faz isso.
+  # aprovar o environment por conta própria — só mediante comando expresso do
+  # operador na sessão.
   deploy:
     needs: [docker-publish]
     if: github.event_name == 'release'
