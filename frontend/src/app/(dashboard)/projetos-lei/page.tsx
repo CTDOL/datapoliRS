@@ -13,6 +13,7 @@ export default function ProjetosLeiPage() {
     nomeBusca, setNomeBusca, resultadosExternos, fontesComErro, isBuscando, importandoChave, importar,
     projetosLei, isLoading, termo, setTermo, fonte, setFonte,
     page, setPage, totalPages, total, deleteProjetoLei,
+    sincronizar, sincronizandoId, syncFeedback,
   } = useProjetosLei();
   const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
 
@@ -39,6 +40,13 @@ export default function ProjetosLeiPage() {
         onAbrir={setProjetoAberto}
         onDelete={(pl) => deleteProjetoLei(pl.id_projeto_lei)}
         canDelete={isAdmin}
+        onSincronizar={async (pl) => {
+          const atualizado = await sincronizar(pl.id_projeto_lei);
+          // Se o modal desta proposição estiver aberto, ele passa a mostrar a situação nova.
+          if (atualizado && projetoAberto?.id_projeto_lei === pl.id_projeto_lei) setProjetoAberto(atualizado);
+        }}
+        sincronizandoId={sincronizandoId}
+        syncFeedback={syncFeedback}
         termo={termo}
         onTermoChange={setTermo}
         fonte={fonte}

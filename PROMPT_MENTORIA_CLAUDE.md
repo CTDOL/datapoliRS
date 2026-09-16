@@ -1,134 +1,120 @@
-# 🏛️ Missão Operações Especiais: datapolirs — esteira cicd paridade hml deploy oci e resolucao de pendencias
+# 🏛️ Missão Operações Especiais: DATAPOLIRS — Diagnóstico e Correção da Busca de Projetos de Lei nas Fontes Oficiais (ALRS, Câmara e Senado)
 
-Você está atuando como a unidade de **Operações Especiais (Claude Code)** do ecossistema CTDOL, governado pela âncora `CLAUDE.md` e pelos macro-fluxos [[Fluxo_013_Comissionamento_Sistemas_e_Analise_Legado]] e [[Fluxo_007_Mentoria_Externa]].
+Você está atuando como a unidade de **Operações Especiais (Claude Code)** do ecossistema CTDOL, governado pela âncora `CLAUDE.md`, pelos macro-fluxos [[Fluxo_013_Comissionamento_Sistemas_e_Analise_Legado]], [[Fluxo_006_Arquitetura_Alta_Complexidade]] e [[Fluxo_007_Mentoria_Externa]].
 
 ---
 
 ### 1. Contexto & Estado Consolidado da SSoT (Cofre CTDOL)
-- **Projeto Alvo:** `datapolirs` (Diretório: `/Users/cpinfo/Documents/datapoliRS`)
+- **Projeto Alvo:** `DATAPOLIRS` (Diretório do Monorepo: `/Users/cpinfo/Documents/datapoliRS`)
 - **SSoT Central:** `/Users/cpinfo/Documents/COFRE_CTDOL_2026`
-- **Domínios & Tags:** indice, datapolirs
+- **Domínios & Tags:** `indice`, `datapolirs`, `legislativo`, `scraping`, `resiliencia`
 - **Stack Tecnológico Homologado & Detectado:** Docker, PostgreSQL/PostGIS, Python FastAPI, DuckDB, Next.js, Alembic, Playwright, Esri Canvas, TypeScript, Tailwind CSS, Leaflet, Vitest, Redis
 - **Governança Docker Local & Inicialização:**
-- **Porta Canônica Local:** `127.0.0.1:3000` (Frontend) e `127.0.0.1:8000` (API) - Confinamento estrito em `127.0.0.1`.
- - **Política de Boot Local:** `restart: "no"` obrigatório no compose local (sem inicialização automática no boot).
- - **Eliminação de Volumes Anônimos:** Named Volumes explícitos (`datapolirs_frontend_node_data`, `datapolirs_frontend_next_data`, `datapolirs_postgres_data`, `datapolirs_redis_data`).
- - **Orquestrador Canônico:** `Makefile` com alvos `make up`, `make down`, `make test`, `make etl-municipios`, `make etl-tse ano=2022`, `make etl-comparecimento ano=2022`.
- - **Playbook Universal:** [[DOC_OF_005_Playbook_Universal_Docker_CTDOL]] e [[DOC_005_Playbook_Infra_Docker]].
-- **Decisões Arquiteturais Vigentes (ADRs do Projeto):**
-- **ADR_001_datapolirs_Plano_Arquitetura_datapoliRS.md** (Proposto): 🏗️ Plano de Arquitetura e Desenvolvimento: datapoliRS
-- **ADR_002_datapolirs_MultiTenancy_JWT.md** (Ativo): ADR 002: Arquitetura de Autenticação e Isolamento Multi-Tenant
-- **ADR_003_datapolirs_Frontend_Monorepo.md** (Ativo): ADR 003: Fundação Frontend e Padrão Mono-repo
-- **ADR_004_datapolirs_Homologacao_QA_Docker.md** (Ativo): ADR 004: Homologação QA e Isolamento via Docker
-- **ADR_005_datapolirs_Refatoracao_Seguranca_Frontend.md** (Aceito): ADR 005: Refatoração de Segurança e Performance do Frontend (Zero Trust & Edge)
-- **ADR_006_datapolirs_Cookie_HttpOnly_Autenticacao.md** (Aprovado): 📜 ADR 006: Transporte de JWT via Cookie HttpOnly e Proteção XSS
-- **ADR_007_datapolirs_MapLibre_DOM_Markers_Gabinete.md** (Aprovado): 📜 ADR 007: Adoção de DOM Markers no MapLibre GL e Registro de Débito Técnico
-- **ADR_008_datapolirs_Alembic_Tenants_RBAC.md** (Aprovado): 📜 ADR 008: Adoção de Alembic, Tabela Central de Tenants e RBAC
-- **ADR_009_datapolirs_Unificacao_Mapa_Leaflet.md** (Aprovado): 📜 ADR 009: Unificação da Stack de Mapas no Frontend com Leaflet (3 Modos)
-- **ADR_010_datapolirs_Emendas_Orcamentarias_e_Legislativo_MultiFonte.md** (Aceito): ADR 010: Módulos de Emendas Orçamentárias e Monitoramento Legislativo Multi-Fonte
-- **ADR_011_datapolirs_Blindagem_CI_CD_Migrations_e_Quality_Gates.md** (Aceito): ADR 011: Blindagem da Esteira CI/CD com Migrations Alembic Reais e Quality Gates Frontend
-- **ADR_012_datapolirs_Configuracoes_Gabinete_Tenant_Profile_RBAC_Exportacao.md** (Aceito): ADR 012: Módulo de Configurações do Gabinete, Gestão de Membros e Exportação de Dados
-- **ADR_013_datapolirs_Parametrizacao_Eleicoes_MultiAno_MultiCargo.md** (Aceito): ADR 013: Parametrização Dinâmica de Pleitos Eleitorais e Suporte Multi-Cargo/Multi-Ano
-- **ADR_014_datapolirs_Runtime_Dynamic_Config_Redis_Cache_TTL_RateLimits.md** (Aceito): ADR 014: Configurações Dinâmicas de Sistema em Runtime com Cache Redis e Rate Limiting Editável
-- **ADR_015_datapolirs_Blindagem_ZeroTrust_Poda_Git_e_Estrategia_Deploy_OCI.md** (Homologado): 📜 ADR 015: Blindagem Docker Zero-Trust, Poda do Repositório Git e Eleição da VPS OCI para Deploy — *Implementação formal da governança Docker Zero-Trust (ADRs 035 e 036), poda do repositório Git reduzindo o tamanho de **558 MB para 1.8 MB** (recuperação de 99,7%), e eleição da **VPS Oracle (OCI Always Free Ampere A1)** como ambiente exclusivo de hospedagem web, rejeitando terminantemente a VPS CTDOL comercial (HostGator/cPanel).*
-- **ADR_016_datapolirs_Refatoracao_Monorepo_Canonico.md** (Homologado): 📜 ADR 016: Refatoração para Monorepo Canônico, Segregação Backend/Frontend e Higienização Sanitária — *Adoção formal do padrão **Monorepo Canônico Simétrico** para o `datapoliRS`, segregando integralmente o backend em `backend/` (`app/`, `alembic/`, `tests/`, `alembic.ini`, `Dockerfile`, `requirements.txt`), encapsulando os dados brutos em `etl/data/`, eliminando artefatos soltos na raiz (`claude-skills.tar.gz`) e arquivando DDLs legados (`sql/`).*
-- **ADR_017_datapolirs_Migracao_Basemap_Esri_Dual_Layer_e_Cache_GeoJSON.md** (Homologado): 📜 ADR 017: Migração de Basemap para Esri Canvas Dual-Layer, Invalidação Automática de Cache GeoJSON e Parametrização do ETL — *Substituição compulsória dos tiles de mapa CARTO (`cartocdn.com`) por **Esri Canvas Dual-Layer** (`World_Light_Gray_Base`/`World_Dark_Gray_Base` + overlay de topônimos `World_Light_Gray_Reference`/`World_Dark_Gray_Reference`), implementação de **invalidação automática de cache no Redis** (`geo:rs:municipios:feature_collection`) ao final do ETL de municípios, e **parametrização compulsória por ano** (`--ano`) nos scripts de ingestão de votação.*
-- **ADR_018_datapolirs_Reverse_Proxy_Nginx_Producao_e_Subdominios.md** (Homologado): 📜 ADR 018: Adoção de Reverse Proxy Nginx para Produção e Segregação por Subdomínios (App vs API) — *Implementação formal de uma camada de **Reverse Proxy com Nginx** dedicada exclusivamente ao ambiente de produção (`docker-compose.prod.yml`), blindando a exposição direta de portas da aplicação (`3000` e `8000`) e roteando o tráfego externo através de **dois subdomínios segregados** (`${APP_DOMAIN}` e `${API_DOMAIN}`) via `envsubst` em portas padrão HTTP/HTTPS (`80`/`443`).*
-- **ADR_019_datapolirs_Liderancas_Modelagem_NN_Municipios_e_Upload_Midia.md** (Homologado): 📜 ADR 019: Modelagem N:N de Lideranças por Municípios, Upload Seguro de Mídia e Preservação de Rótulos do TSE — *Evolução do Módulo de Lideranças Políticas de relacionamento 1:N (município único) para **relacionamento N:N** através da tabela associativa `tb_gabinete_lideranca_municipios` (com backfill automático dos registros anteriores), implementação de **upload físico de fotos reais** com validação de tipo/tamanho e expurgo no disco, e enriquecimento do pipeline eleitoral com a coluna `nm_municipio_tse` para erradicar rótulos órfãos em relatórios ("Município 88013" $\rightarrow$ "Porto Alegre").*
-- **ADR_020_datapolirs_Blindagem_FullStack_CI_Playwright_e_Confinamento_Loopback.md** (Homologado): 📜 ADR 020: Blindagem Full-Stack do CI/CD com Playwright E2E e Erradicação do Antipadrão Loopback Localhost — *Implementação formal de **serviços reais de backend no runner de CI do Frontend** (`postgis/postgis:16-3.4`, `redis:7-alpine`, `uvicorn` e migrations Alembic), alinhamento compulsório do host de testes Playwright para `127.0.0.1` (erradicando o antipadrão `localhost` cross-host para cookies `HttpOnly`/`SameSite=Lax`), eliminação de condição de corrida na seleção de modo do mapa (`page.tsx`) e desacoplamento do erro `401` da tela de login no interceptor Axios (`api.ts`).*
-- **ADR_021_datapolirs_Adocao_Shadcn_UI_e_Contorno_Turbopack_tw_animate.md** (Aceito): 🏛️ ADR 021: Adoção de Matriz de Componentes shadcn/ui sob Tailwind v4 e Contorno do Bug de Resolução no Turbopack — *Homologação do spike técnico que atesta a viabilidade do **`shadcn/ui` (com primitivos `@base-ui/react`) sobre Next.js 16.3 + React 19 + Tailwind CSS v4**, sem qualquer regressão visual ou interferência no motor cartográfico **Leaflet 1.9.4 / Esri Canvas**, condicionada à aplicação do **contorno (*workaround*) de caminho relativo para o `tw-animate-css`** exigido pela limitação do resolvedor de CSS do Turbopack.*
-- **ADR_022_datapolirs_Esteira_CICD_Paridade_Producao_Deploy_OCI.md** (Executada / Homologada em HML): 📜 ADR 022: Esteira de CI/CD com Paridade de Produção e Deploy Pull-Based na VPS Oracle (Piloto) — *Instituição de um modelo de **3 branches por ambiente** (`dev` → `hml` → `main`), com promoção `dev→hml` e `hml→main` via Pull Request e o **deploy real em produção disparado exclusivamente por Release publicada** (tag `vX.Y.Z`), consumindo imagens já versionadas no GitHub Container Registry (GHCR) construídas com suporte multi-arquitetura (`linux/amd64,linux/arm64`) para a VPS Oracle Ampere A1.*
-- **ADR_023_datapolirs_Setup_Inicial.md** (Aceito): ADR 031: Comissionamento Arquitetural do Projeto datapoliRS
-- **ADR_024_datapolirs_Implementacao_Esteira_CICD_e_Correcao_Cookie_Cross_Subdominio.md** (Implementado (código) — pendente configuração humana no GitHub): 📜 ADR 024: Implementação da Esteira de CI/CD (ADR_022) e Correção do Mecanismo de Cookie Cross-Subdomínio — *Implementada a estrutura de branches `dev`→`hml`→`main` (com proteção de PR obrigatório, inclusive para admin) e reestruturado o `ci.yml` conforme a Definition of Done da [[ADR_022_datapolirs_Esteira_CICD_Paridade_Producao_Deploy_OCI]]. **Uma correção técnica foi necessária**: a diretiva `proxy_cookie_domain api.${APP_DOMAIN} ${APP_DOMAIN};` prescrita no §3.3.3 da ADR 022 não funcionaria — o Nginx só *reescreve* um atributo `Domain=` já presente no `Set-Cookie`, nunca *adiciona* um que não existe. O backend precisou emitir explicitamente esse atributo para a borda ter o que reescrever.*
-- **ADR_025_datapolirs_Selo_Visual_de_Ambiente_Dev_Hml.md** (Aceito): 📜 ADR 025: Selo Visual de Ambiente (Desenvolvimento/Homologação) na Interface — *Aplicação, no frontend do `datapoliRS`, do padrão universal [[ADR_047_governanca_Selo_Visual_de_Ambiente_em_Interfaces]]: uma faixa visual fixa no topo da interface identifica quando o usuário está em `dev` ("AMBIENTE DE DESENVOLVIMENTO") ou `hml` ("AMBIENTE DE HOMOLOGAÇÃO"), ausente em produção real.*
-- **ADR_026_datapolirs_Cookie_Host_Only_via_Rewrite_Same_Origin.md** (Aceita): 📜 ADR 026: Cookie de Sessão *Host-Only* via Reescrita Same-Origin — *O cookie de sessão do datapoliRS passa a ser **host-only** em `datapoli.ctdol.com.br`. O compartilhamento cross-subdomínio implementado na [[ADR_024_datapolirs_Implementacao_Esteira_CICD_e_Correcao_Cookie_Cross_Subdominio]] §2.3 — `proxy_cookie_domain ${API_DOMAIN} ${ROOT_DOMAIN}` mais emissão explícita de `Domain=` pelo backend — é **revogado**.*
-
+  - **Portas Canônicas:** `127.0.0.1:3000` (Frontend) e `127.0.0.1:8000` (API) - Confinamento estrito em `127.0.0.1`.
+  - **Política de Boot Local:** `restart: "no"` obrigatório no compose local (sem inicialização automática no boot).
+  - **Eliminação de Volumes Anônimos:** Named Volumes explícitos (`datapolirs_frontend_node_data`, `datapolirs_frontend_next_data`, `datapolirs_postgres_data`, `datapolirs_redis_data`).
+  - **Orquestrador Canônico:** `Makefile` com alvos `make up`, `make down`, `make test`.
+- **Decisões Arquiteturais Vigentes (ADRs Críticas para esta Demanda):**
+  - **[[ADR_010_datapolirs_Emendas_Orcamentarias_e_Legislativo_MultiFonte]]:** Centraliza a busca externa em endpoint polimórfico `/api/v1/gabinete/projetos-lei/buscar-externo` delegando para adaptadores dedicados (`AlrsAdapter`, `CamaraAdapter`, `SenadoAdapter`). O `AlrsAdapter` opera via web scraping assíncrono sobre o portal Drupal da ALRS.
+  - **[[ADR_016_datapolirs_Refatoracao_Monorepo_Canonico]]:** Monorepo Simétrico (`backend/` e `frontend/`).
+  - **[[ADR_020_datapolirs_Blindagem_FullStack_CI_Playwright_e_Confinamento_Loopback]]:** Testes E2E sem dependência de hosts abertos.
+  - **[[ADR_026_datapolirs_Cookie_Host_Only_via_Rewrite_Same_Origin]]:** Roteamento em produção com Nginx e cookies Host-Only.
 
 ---
 
 ### 2. Doutrina Arquitetural da BIBLIOTECA (RAG Local CTDOL)
 > [!quote] Fundamentos Clássicos & Diretrizes Epistêmicas
-🧠 [Resultados para: 'datapolirs Docker PostgreSQL/PostGIS Python FastAPI DuckDB Clean Architecture Docker']
-
-### 📌 Resultado 1: `[[DATAPOLIRS/DOC_OF-datapolirs/ADR_016_datapolirs_Refatoracao_Monorepo_Canonico.md]]`
-**Seção:** 3. Decisão Tomada
-> ...==Clean== ==Architecture== e Governança do Cofre CTDOL:
-
-```text
-==datapoliRS==/
-├── .claude/               # Governança do Claude Code
-├── .github/               # Workflows de CI/CD
-├── backend/               # [ENCAPSULADO] Todo o backend ==Python==...
-
-### 📌 Resultado 2: `[[REINO_MENTAL/01_ZONAS_DE_POUSO/OUTPUTs_CLAUDE/2026-09-11_Relatorio_Handover_DATAPOLIRS_Refatoracao_Estrutural_para_Monorepo_Can.md]]`
-**Seção:** 1.4 Stack detectado (inalterado)
-> ==Docker==, PostgreSQL/PostGIS, ==Python== ==FastAPI==, ==DuckDB==, Next.js, Alembic, Playwright, Pytest, TypeScript, Tailwind CSS, Leaflet, Vitest, Redis — nenhuma dependência foi adicionada, removida ou versionada nesta...
-
-### 📌 Resultado 3: `[[BIBLIOTECA/_FONTES_BRUTAS/WEB/duckdb-analytics/fonte_oficial.md]]`
-**Seção:** 2. Python Integration & Ecosystem Architecture
-> ==DuckDB== provides native, high-speed ==Python== bindings with full SQL-92 and extensive PostgreSQL dialect extensions.
-
-```==python==
-import ==duckdb==
-
-*(Dica: Caso precise de aprofundamento durante a codificação, você pode reconsultar a Biblioteca clássica via `python3 "/Users/cpinfo/Documents/COFRE_CTDOL_2026/.agents/skills/rag_local/scripts/rag_engine.py" search "<sua_duvida>" --top-k 3`)*
+> - **Resiliência de Integração Externa (Michael Nygard — Release It!):** Serviços de terceiros e portais web falham sem aviso prévio. Todo adaptador externo deve implementar timeouts explícitos, tratamento defensivo de payloads vazios ou malformados, isolamento de falhas (a falha de uma fonte estadual não pode derrubar a busca federal) e circuit breakers / logging semântico.
+> - **Engenharia de Restrição Ponytail (The 7-Rung Ladder):** Antes de propor bibliotecas pesadas de automação de browser (Selenium/Playwright) no backend para scraping, esgote os degraus 1 a 4: (1) YAGNI; (2) Reuso do cliente `httpx` assíncrono já existente; (3) Identificação de rotas de dados estruturados (APIs JSON não documentadas ou feeds XML/RSS do portal da ALRS); (4) Parsing cirúrgico com `BeautifulSoup` sem introdução de dependências acidentais.
 
 ---
 
 ### 3. Manifesto Clean Code & Quality Gates Inegociáveis
-1. **SOLID & Fail-Fast:** Early Return em condicionais; proibição de blocos 'else' aninhados; interfaces e contratos explícitos.
+1. **SOLID & Fail-Fast:** Early Return em condicionais; proibição de blocos 'else' aninhados; interfaces e contratos de adapters explícitos.
 2. **Docker Local Zero-Trust (ADR 035/036):** Confinamento estrito em `127.0.0.1`, proibição de binds em `0.0.0.0`, política `restart: "no"` e Named Volumes.
-3. **Idempotência & Migrations:** Migrations DDL/DML devem ser reversíveis, transacionais e testadas via `alembic upgrade head`.
+3. **Idempotência & Contratos de Dados:** Objetos retornados pelos adaptadores devem mapear estritamente para os schemas Pydantic esperados (`ProposicaoExternaSchema`), garantindo campos obrigatórios (`ementa`, `autor`, `identificador_externo`, `ano`, `url_fonte`) com fallbacks seguros para valores nulos.
 4. **Validação Sanitária Obrigatória:** Passagem com zero erros nos comandos de verificação: `pytest tests/` (ou `pytest -v`), `npm run test` (Vitest), `npm run lint` e `npm run build` (Type-checking / Frontend).
 
 ---
 
-### 4. Roteiro Operacional da Sessão: Diagnóstico e Resolução de Erros da Esteira
+### 4. O Problema Relatado (Bug Report de Produção)
 
-> [!important] Modo de Resolução de Erros Ativado (Instrução Prioritária)
-> **Atenção Claude Code:** O desenvolvedor vai apresentar erros de execução (do CI, do terminal ou de outra IDE). Sua primeira prioridade é **ler atentamente os logs de erro apresentados, identificar a causa-raiz com precisão cirúrgica e aplicar a correção mínima necessária** sem violar o isolamento do monorepo nem quebrar testes existentes.
-
-> [!bug] Erro Detectado em Tempo Real no CI (Job e2e-parity na branch hml):
-> - **Falha:** `frontend/e2e/modulos.spec.ts:13:87`
-> - **Mensagem:** `Error: strict mode violation: getByText(/lideranças? no total|Nenhuma liderança encontrada/) resolved to 2 elements`
->   - Elemento 1: `<td colspan="6" ...>Nenhuma liderança encontrada.</td>`
->   - Elemento 2: `<span>0 lideranças no total</span>`
-> - **Causa-Raiz:** O seletor regex casou com ambos os elementos simultâneos na página de Lideranças. O Playwright opera em strict mode por padrão e aborta quando `getByText` encontra > 1 elemento.
-> - **Correção Prescrita:** Especificar o seletor com precisão, por exemplo:
->   `await expect(page.getByRole('cell', { name: 'Nenhuma liderança encontrada.' })).toBeVisible();`
->   ou isolar o contador específico no footer/card.
-
-#### Etapas da Sessão:
-
-1. **Ingerir e Resolver os Erros Apresentados pelo Desenvolvedor:**
-   - Leia atentamente qualquer stack trace, log do Playwright/Pytest ou mensagem de erro que o desenvolvedor colar ou indicar nesta sessão.
-   - Aplique o conserto cirúrgico no arquivo afetado (ex: `frontend/e2e/modulos.spec.ts`).
-
-2. **Validar a Suíte Localmente:**
-   - Rode o teste afetado para garantir que passou:
-     ```bash
-     cd frontend && npx playwright test e2e/modulos.spec.ts
-     ```
-
-3. **Commit e Push na branch correspondente (`hml` ou `dev`):**
-   - Comite com mensagem semântica clara (ex: `fix(e2e): resolve strict mode violation no seletor de liderancas`).
-   - Verifique que o pipeline volta a ficar 100% verde no GitHub.
-
-4. **Gerar Relatório de Handover na Zona de Pouso:**
-   - Grave seu relatório em `REINO_MENTAL/01_ZONAS_DE_POUSO/OUTPUTs_CLAUDE/2026-09-13_Relatorio_Handover_DATAPOLIRS_Correcao_Erros_CI.md` seguindo o Padrão Ouro SLC.
+- **URL do Incidente:** `https://datapoli.ctdol.com.br/projetos-lei`
+- **Sintoma Visual:** Na aba **"BUSCAR NAS FONTES OFICIAIS"**, ao digitar o termo **`nadine`** (referente à Deputada Estadual **Delegada Nadine Anflor** — ALRS), o sistema retorna imediatamente:
+  > *"Nenhuma proposição encontrada para esse nome nas fontes oficiais."*
+- **Gravidade / Impacto:** O módulo legislativo é crucial para o gabinete acompanhar matérias de parlamentares estaduais do Rio Grande do Sul. Se a ALRS estiver inoperante ou quebrando silenciosamente, o usuário perde 100% da visibilidade de matérias estaduais (a Câmara e o Senado só retornarão dados para deputados federais e senadores).
 
 ---
 
-### 5. Entregável Obrigatório (Handover na Zona de Pouso)
-Ao concluir sua análise e trabalho, gere um relatório técnico completo e exaustivo no **Padrão Ouro SLC** com a sua assinatura visual de motor:
+### 5. Roteiro Operacional da Sessão: Diagnóstico e Correção da Busca Multi-Fonte
+
+Execute com rigor as etapas sequenciais abaixo no repositório `/Users/cpinfo/Documents/datapoliRS`:
+
+#### Etapa 1: Mapeamento de Ponta a Ponta do Fluxo de Busca
+1. Inspecione o frontend em `frontend/src/app/(dashboard)/projetos-lei/page.tsx` (ou componentes associados em `frontend/src/components/legislativo/`):
+   - Qual endpoint exato é acionado ao digitar na caixa de busca? (Ex: `/api/v1/gabinete/projetos-lei/buscar-externo`).
+   - Quais parâmetros de query são enviados? (`autor`, `nome`, `termo`, `q`, etc.).
+   - Há debounce? Como o frontend lida com loading, erros HTTP (500/502/504) e arrays vazios `[]`?
+2. Inspecione o router backend em `backend/app/routers/legislative.py`:
+   - Como o endpoint `/buscar-externo` recebe os parâmetros?
+   - Como é feita a agregação das fontes? Se usa `asyncio.gather`, o parâmetro `return_exceptions=True` está ativo?
+   - Existe algum bloco `try...except Exception:` engolindo erros e retornando `[]` silenciosamente sem logar o traceback da ALRS?
+
+#### Etapa 2: Diagnóstico Pericial do `AlrsAdapter` (`backend/app/services/legislative_sources.py`)
+1. Inspecione a classe `AlrsAdapter`:
+   - Qual URL base e endpoint de pesquisa da ALRS estão configurados?
+   - Como o termo de busca é injetado na URL? ("nadine" vs "Nadine" vs "Delegada Nadine" vs "Nadine Anflor"). O portal da ALRS exige maiúsculas, codificação de URL específica (ex: ISO-8859-1 vs UTF-8) ou parâmetros adicionais (ex: legislatura, ano, tipo de matéria)?
+   - Como o HTML retornado pela ALRS é processado? O layout Drupal 9 mudou? As classes CSS/seletores usados para extrair ementa, número do projeto e autor ainda existem?
+   - Qual `User-Agent` e cabeçalhos HTTP estão sendo enviados? O portal da ALRS está bloqueando chamadas automatizadas sem `User-Agent` de navegador (HTTP 403 Forbidden)?
+   - O portal da ALRS possui certificado TLS válido ou a requisição falha por SSL?
+
+#### Etapa 3: Reprodução Isolada e Teste Funcional (Script de Spike)
+1. Crie um script temporário ou execute no terminal/Python isolado um teste direto contra a ALRS:
+   ```python
+   # Exemplo conceitual para testar na IDE
+   import asyncio
+   from app.services.legislative_sources import AlrsAdapter
+
+   async def test():
+       adapter = AlrsAdapter()
+       res = await adapter.buscar_por_nome("nadine")
+       print(f"Resultados com 'nadine': {len(res)}")
+       res2 = await adapter.buscar_por_nome("Nadine")
+       print(f"Resultados com 'Nadine': {len(res2)}")
+       res3 = await adapter.buscar_por_nome("Delegada Nadine")
+       print(f"Resultados com 'Delegada Nadine': {len(res3)}")
+
+   asyncio.run(test())
+   ```
+2. Analise o status HTTP real retornado pelo servidor da ALRS e o conteúdo da resposta (HTML ou erro).
+
+#### Etapa 4: Correção Estrutural e Blindagem Ponytail
+1. **Se o layout ou URL da ALRS mudou:** Atualize os seletores e a URL de busca. Verifique se a ALRS oferece endpoint de dados abertos ou JSON nativo no portal antes de insistir em scraping frágil.
+2. **Se o case sensitivity ou normalização de nome for a causa:** Implemente normalização no `AlrsAdapter` (ex: remoção de acentos, capitalização ou busca flexível que suporte tanto "nadine" quanto "Delegada Nadine").
+3. **Se houver bloqueio WAF/User-Agent:** Adicione cabeçalhos HTTP padrão de navegador legítimo (`User-Agent: Mozilla/5.0...`).
+4. **Isolamento de Falhas e Logging Semântico:**
+   - Assegure que se a ALRS falhar ou der timeout, um log `logger.error` detalhado seja emitido.
+   - O endpoint `/buscar-externo` deve informar de maneira transparente no payload quais fontes responderam com sucesso e quais tiveram erro temporário (ex: `fontes_com_erro: ["ALRS"]`), permitindo que o frontend exiba um aviso elegante ao usuário em vez de um falso "nenhuma proposição encontrada".
+
+#### Etapa 5: Testes Automatizados e Homologação
+1. Crie ou atualize os testes unitários em `backend/tests/` (ex: `test_legislative_sources.py` com mocks via `respx` ou `unittest.mock`) para garantir que os adaptadores da ALRS, Câmara e Senado tratem cenários de sucesso, resposta vazia e falha de rede sem quebrar.
+2. Execute a suíte completa de testes:
+   - Backend: `pytest backend/tests/ -v`
+   - Frontend: `npm run test` (Vitest) e `npm run build`
+3. Valide localmente a interface subindo os serviços (`make up`) e testando a pesquisa por "nadine" na tela `/projetos-lei`.
+
+---
+
+### 6. Entregável Obrigatório (Handover na Zona de Pouso)
+Ao concluir sua análise e trabalho, gere um relatório técnico completo no **Padrão Ouro SLC** com a sua assinatura visual de motor:
 `🟣 Claude Code (Operações Especiais)`
 
 Salve o relatório diretamente na Zona de Pouso do cofre no seguinte caminho:
-`/Users/cpinfo/Documents/COFRE_CTDOL_2026/REINO_MENTAL/01_ZONAS_DE_POUSO/OUTPUTs_CLAUDE/2026-09-13_Relatorio_Handover_datapolirs_esteira_cicd_paridade_hml_deploy_oci_e_r.md`
+`/Users/cpinfo/Documents/COFRE_CTDOL_2026/REINO_MENTAL/01_ZONAS_DE_POUSO/OUTPUTs_CLAUDE/2026-09-15_Relatorio_Handover_DATAPOLIRS_Busca_Projetos_Lei_ALRS.md`
 
 O relatório de handover deve conter:
-- Totem Resumo Executivo (`> [!tldr]`)
-- Estado Atual do Repositório (Git, Docker, Stack detectado)
-- Matriz de Conformidade com as ADRs vigentes
-- Diagnóstico de Drift e Débitos Técnicos
-- Recomendações e Próximos Passos Prioritários para a SSoT
+- Totem Resumo Executivo (`> [!tldr]`) com a causa raiz encontrada (RCA)
+- Diff técnico das correções aplicadas no backend e/ou frontend
+- Evidências de testes locais (Pytest e teste funcional da busca por "nadine")
+- Avaliação de conformidade com as ADRs (especialmente ADR 010 e ADR 020)
+- Recomendações para deploy da release em produção via esteira CI/CD (ADR 022)
