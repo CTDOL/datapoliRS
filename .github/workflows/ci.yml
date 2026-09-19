@@ -201,11 +201,41 @@ jobs:
   # quebrava: foi assim que a falta dos certificados do Nginx sobreviveu aos
   # PRs #5, #7 e #9 sem ninguém perceber. main entra porque o PR de release é
   # a última porta antes da produção.
+  # Evita rodar o e2e-parity duas vezes para o MESMO commit: uma vez no push
+  # para hml, outra no PR de hml para main quando não há commit novo entre
+  # os dois (fast-forward). Roda sempre (nunca "skipped") para o `needs` do
+  # e2e-parity abaixo não herdar skip por propagação — só faz a chamada de
+  # API quando o cenário realmente pode ser duplicata (PR para main).
+  check-parity-status:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      already_passed: ${{ steps.check.outputs.already_passed }}
+    steps:
+      - name: Verificar se este SHA já passou no e2e-parity via push para hml
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.base_ref }}" = "main" ]; then
+            SHA="${{ github.event.pull_request.head.sha }}"
+            RESULT=$(gh api "repos/${{ github.repository }}/actions/runs?event=push&branch=hml&status=success" \
+              --jq ".workflow_runs[] | select(.head_sha == \"$SHA\") | .id" | head -1)
+            if [ -n "$RESULT" ]; then
+              echo "already_passed=true" >> "$GITHUB_OUTPUT"
+              echo "SHA $SHA já validado no e2e-parity via push hml (run $RESULT) — pulando repetição no PR para main."
+              exit 0
+            fi
+          fi
+          echo "already_passed=false" >> "$GITHUB_OUTPUT"
+
   e2e-parity:
-    needs: [test, frontend]
+    needs: [test, frontend, check-parity-status]
     if: >-
       (github.event_name == 'push' && github.ref == 'refs/heads/hml') ||
-      (github.event_name == 'pull_request' && (github.base_ref == 'hml' || github.base_ref == 'main'))
+      (github.event_name == 'pull_request' && github.base_ref == 'hml') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main' && needs.check-parity-status.outputs.already_passed != 'true')
     runs-on: ubuntu-latest
 
     env:
