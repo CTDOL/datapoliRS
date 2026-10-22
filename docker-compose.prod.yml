@@ -1,8 +1,8 @@
 # Orquestração de PRODUÇÃO (VPS Oracle OCI, ADR 015) — não confundir com o
 # docker-compose.yml da raiz, que é exclusivamente para dev local Zero-Trust
-# (binds em 127.0.0.1, restart: "no"). Aqui só o Nginx publica porta no host
-# (80/443); postgres, redis, api e frontend só são alcançáveis pela rede
-# interna do Docker — nenhuma porta de app/banco fica exposta na internet.
+# (binds em 127.0.0.1, restart: "no"). Aqui nenhum serviço publica porta no
+# host: a entrada HTTP/HTTPS é o ctdol_gateway_nginx (VPS), que resolve
+# frontend:3000 e api:8000 pela rede datapolirs_datapoli_network_prod.
 #
 # Uso:
 #   cp .env.prod.example .env.prod   # preencher domínios e segredos reais
@@ -87,27 +87,6 @@ services:
     # do standalone), não em runtime — ver ARG API_INTERNAL_URL no Dockerfile.
     depends_on:
       - api
-    networks:
-      - datapoli_network_prod
-
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: datapoli_nginx_prod
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      - APP_DOMAIN=${APP_DOMAIN}
-      - API_DOMAIN=${API_DOMAIN}
-    volumes:
-      - ./nginx/templates:/etc/nginx/templates:ro
-      # Descomentar quando o certbot estiver configurado (fora de escopo por
-      # enquanto: exige domínio real apontado via DNS para emitir o certificado):
-      - ./nginx/certs:/etc/nginx/certs:ro
-    depends_on:
-      - api
-      - frontend
     networks:
       - datapoli_network_prod
 
