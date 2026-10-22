@@ -123,11 +123,45 @@ def test_ativar_pleito_sem_carga_concluida_409(client: TestClient):
     assert resposta.status_code == 409
 
 
-def test_ativar_pleito_com_confirmacao_errada_nao_ativa(client: TestClient):
+@pytest.fixture
+def pleito_com_carga_ok():
+    """Pleito de teste com carga de votação concluída: chega ao gate de confirmação sem depender de dados do TSE."""
+    cdEleicao = "TESTE_ATIVAR_2026"
+    connection = getPostgresConnection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO tb_eleicoes (cd_eleicao, ano_eleicao, nr_turno, tp_abrangencia, ds_eleicao, dt_eleicao)
+                VALUES (%s, 2026, 1, 'E', 'Eleição de Teste Ativação', '2026-10-04')
+                ON CONFLICT (cd_eleicao) DO NOTHING;
+                """,
+                (cdEleicao,),
+            )
+            cursor.execute(
+                """
+                INSERT INTO tb_carga_etl (tipo, ano_eleicao, cd_eleicoes, arquivo_origem, sha256, tamanho_bytes,
+                                          iniciado_em, status, linhas_carregadas)
+                VALUES ('votacao', 2026, %s, 'teste-ativacao.csv', %s, 1, NOW(), 'sucesso', 1);
+                """,
+                ([cdEleicao], "0" * 64),
+            )
+        connection.commit()
+        yield cdEleicao
+    finally:
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM tb_carga_etl WHERE arquivo_origem = 'teste-ativacao.csv';")
+            cursor.execute("DELETE FROM tb_eleicoes WHERE cd_eleicao = %s;", (cdEleicao,))
+        connection.commit()
+        connection.close()
+
+
+def test_ativar_pleito_com_confirmacao_errada_nao_ativa(client: TestClient, pleito_com_carga_ok: str):
     """Confirmação errada é recusada (400) e nunca grava a troca nem a auditoria."""
     admin = bearerHeader(str(uuid.uuid4()), role="admin")
     resposta = client.post("/api/v1/admin/manutencao/ativar-pleito", headers=admin,
-                           json={"cd_eleicao": "6259", "confirmacao": "sim", "aceitar_codigos_sem_cadastro": True})
+                           json={"cd_eleicao": pleito_com_carga_ok, "confirmacao": "sim",
+                                 "aceitar_codigos_sem_cadastro": True})
     assert resposta.status_code == 400
 
 
