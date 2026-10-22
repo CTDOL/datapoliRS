@@ -213,7 +213,8 @@ jobs:
 
     env:
       RELEASE_TAG: ${{ github.sha }}
-      VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+      # VPS_DEPLOY_PATH é variável do environment (não secret). Sem ela, o scp grava em "/".
+      VPS_DEPLOY_PATH: ${{ vars.VPS_DEPLOY_PATH || '/opt/datapolirs' }}
       VPS: ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}
       CARGA_TIPO: ${{ inputs.carga_tipo || 'none' }}
       CARGA_ANO: ${{ inputs.carga_ano || '2022' }}
