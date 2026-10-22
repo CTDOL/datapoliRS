@@ -1,0 +1,322 @@
+name: Deploy Produção
+
+# Fluxo único, de dev direto para produção (exceção deliberada: não há hml na esteira deste sistema).
+#  - Fluxo: dev -> hml -> main (produção). hml é validado no Docker local (make hml-up) antes do PR para main.
+#  - push e pull_request em dev, hml e main: só testes, nunca build nem deploy.
+#  - workflow_dispatch na main: testes -> build das imagens -> deploy na VPS OCI (environment producao).
+#    O disparo é sempre manual (Regra 7.4 do cofre: nada de push ou merge acionando produção).
+#    Na carga inicial, popula o banco (municípios + uma carga).
+
+on:
+  push:
+    branches: [ dev, hml, main ]
+  pull_request:
+    branches: [ dev, hml, main ]
+  workflow_dispatch:
+    inputs:
+      carga_tipo:
+        description: 'Carga a enfileirar depois do deploy (none = só redeploy)'
+        required: true
+        default: 'none'
+        type: choice
+        options: [ none, votacao, comparecimento ]
+      carga_ano:
+        description: 'Ano do pleito da carga (ex: 2022)'
+        required: false
+        default: '2022'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: imresamu/postgis:16-3.4
+        env:
+          POSTGRES_USER: datapoli_user
+          POSTGRES_PASSWORD: datapoli_pass
+          POSTGRES_DB: datapoli_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U datapoli_user -d datapoli_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://datapoli_user:datapoli_pass@localhost:5432/datapoli_db
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ci-only-secret-not-for-production
+      ALLOWED_ORIGINS: http://localhost:3000
+      ADMIN_EMAIL: operador@campanha.com.br
+      ADMIN_PASSWORD: admin123
+      ADMIN_TENANT_ID: 11111111-2222-3333-4444-555555555555
+      ENVIRONMENT: test
+
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v7
+
+      - name: Configurar Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Instalar Dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Banco vazio até o head: valida a cadeia completa de migrations do zero (doutrina de migrations).
+      - name: Aplicar Migrations (Alembic, do zero)
+        run: alembic upgrade head
+
+      - name: Executar Testes com Pytest
+        run: pytest -v --asyncio-mode=auto
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v7
+
+      - name: Configurar Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar Dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Gerar Tipos de Rotas (Next.js)
+        run: npx next typegen
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Testes Unitários (Vitest)
+        run: npm run test
+
+  build:
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - image: ghcr.io/ctdol/datapolirs-api
+            context: ./backend
+            dockerfile: backend/Dockerfile
+            target: ""
+            buildArgs: ""
+          - image: ghcr.io/ctdol/datapolirs-frontend
+            context: ./frontend
+            dockerfile: frontend/Dockerfile
+            target: production
+            # Assado no bundle (NEXT_PUBLIC_* só existe em build-time). Produção: sem selo de ambiente.
+            buildArgs: NEXT_PUBLIC_PORTAL_URL=https://api-datapoli.ctdol.com.br
+          - image: ghcr.io/ctdol/datapolirs-etl
+            context: .
+            dockerfile: etl/Dockerfile
+            target: ""
+            buildArgs: ""
+
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v7
+
+      # A VPS OCI é Ampere A1 (ARM64). O runner é x86_64: sem QEMU o build arm64 não roda.
+      - name: Configurar QEMU (emulação ARM64)
+        uses: docker/setup-qemu-action@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e Push (linux/arm64, tag = SHA do commit)
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ matrix.image }}:${{ github.sha }}
+          build-args: ${{ matrix.buildArgs }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  deploy:
+    needs: [build]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Required reviewer (environment producao): o job aguarda aprovação humana antes de tocar a VPS.
+    environment: producao
+
+    permissions:
+      contents: read
+      packages: read
+
+    env:
+      RELEASE_TAG: ${{ github.sha }}
+      VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH }}
+      VPS: ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}
+      CARGA_TIPO: ${{ inputs.carga_tipo || 'none' }}
+      CARGA_ANO: ${{ inputs.carga_ano || '2022' }}
+      PUBLIC_API_URL: https://api-datapoli.ctdol.com.br/health
+      PUBLIC_APP_URL: https://datapoli.ctdol.com.br/
+
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v7
+
+      - name: Validar entradas do deploy
+        run: |
+          if [[ ! "$CARGA_TIPO" =~ ^(none|votacao|comparecimento)$ ]]; then
+            echo "Carga inválida: '$CARGA_TIPO'." >&2
+            exit 1
+          fi
+          if [ "$CARGA_TIPO" != "none" ] && [[ ! "$CARGA_ANO" =~ ^(19|20)[0-9]{2}$ ]]; then
+            echo "Ano inválido: '$CARGA_ANO'. Esperado AAAA (ex: 2022)." >&2
+            exit 1
+          fi
+
+      - name: Configurar chave SSH e known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/vps_deploy_key
+          chmod 600 ~/.ssh/vps_deploy_key
+          ssh-keyscan -H "${{ secrets.VPS_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      # Só o compose de produção vai para a VPS. O .env.prod (segredos reais) fica na VPS e nunca sai dela.
+      - name: Sincronizar docker-compose.prod.yml
+        run: |
+          scp -i ~/.ssh/vps_deploy_key docker-compose.prod.yml "$VPS:$VPS_DEPLOY_PATH/docker-compose.prod.yml"
+
+      - name: Login no GHCR na VPS (token efêmero via stdin)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | ssh -i ~/.ssh/vps_deploy_key "$VPS" \
+            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+
+      - name: Pull + up (imagens do SHA deste commit)
+        run: |
+          ssh -i ~/.ssh/vps_deploy_key "$VPS" bash -s -- "$VPS_DEPLOY_PATH" "$RELEASE_TAG" <<'REMOTO'
+          set -e
+          cd "$1"
+          export RELEASE_TAG="$2"
+          docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+          docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+          REMOTO
+
+      - name: Health check dos serviços na VPS
+        run: |
+          ssh -i ~/.ssh/vps_deploy_key "$VPS" bash -s -- "$VPS_DEPLOY_PATH" "$RELEASE_TAG" <<'REMOTO'
+          set -e
+          cd "$1"
+          export RELEASE_TAG="$2"
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+          total=$($COMPOSE config --services | wc -l)
+          for i in $(seq 1 30); do
+            running=$($COMPOSE ps --status running --services | wc -l)
+            if [ "$running" -eq "$total" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Nem todos os serviços subiram ($running/$total esperados):"
+          $COMPOSE logs --tail=100
+          exit 1
+          REMOTO
+
+      # Carga inicial (só com carga_tipo != none): municípios primeiro, depois a carga na fila do worker.
+      # Ambos são idempotentes no que toca o banco; a carga é enfileirada, o worker a executa em seguida.
+      - name: Popular banco (carga inicial)
+        if: env.CARGA_TIPO != 'none'
+        run: |
+          ssh -i ~/.ssh/vps_deploy_key "$VPS" bash -s -- "$VPS_DEPLOY_PATH" "$RELEASE_TAG" "$CARGA_TIPO" "$CARGA_ANO" <<'REMOTO'
+          set -e
+          cd "$1"
+          export RELEASE_TAG="$2"
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+          $COMPOSE run --rm --no-deps etl-worker python -m etl.import_municipios_geojson
+          $COMPOSE run --rm --no-deps etl-worker python -m etl.enfileirar_carga "$3" "$4"
+          REMOTO
+
+      - name: Health check público (através do gateway e da Cloudflare)
+        run: |
+          for url in "$PUBLIC_API_URL" "$PUBLIC_APP_URL"; do
+            ok=false
+            for i in $(seq 1 20); do
+              if curl -sf "$url" > /dev/null; then
+                echo "OK: $url"
+                ok=true
+                break
+              fi
+              sleep 6
+            done
+            if [ "$ok" != true ]; then
+              echo "Falha no health check público: $url" >&2
+              exit 1
+            fi
+          done
+
+      - name: Logout do GHCR na VPS (sempre)
+        if: always()
+        run: |
+          ssh -i ~/.ssh/vps_deploy_key "$VPS" "docker logout ghcr.io" || true
+
+      - name: Remover chave SSH do runner (sempre)
+        if: always()
+        run: rm -f ~/.ssh/vps_deploy_key

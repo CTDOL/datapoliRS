@@ -13,6 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY etl ./etl
 
+# Geometrias dos municípios usadas pelo seed (etl.import_municipios_geojson lê este caminho relativo ao /app).
+COPY backend/app/static/rs_municipios.json ./backend/app/static/rs_municipios.json
+
 # ZIPs do TSE ficam num volume nomeado (ver docker-compose.prod.yml), não na imagem.
 VOLUME ["/app/etl/data"]
 
