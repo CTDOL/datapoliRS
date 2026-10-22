@@ -7,6 +7,12 @@ on:
     branches: [ dev, hml, main ]
   release:
     types: [ published ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag semântica para deploy em produção (ex: v0.1.7)'
+        required: true
+        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -420,22 +426,21 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
-  # Gatilho ÚNICO de produção: Release publicada (nunca push direto em main).
+  # Gatilho ÚNICO de deploy de produção: workflow_dispatch com input `tag`,
+  # disparado a partir da main (Regra 7.4; decisão de 2026-10-14). Publicar uma
+  # Release só publica as imagens (docker-publish) e não dispara deploy.
   #
-  # Estado do environment `producao` (verificado em 2026-09-16, release v0.1.6):
-  # os secrets VPS_SSH_HOST/VPS_SSH_USER/VPS_SSH_KEY estão provisionados e o
-  # environment TEM protection rule `required_reviewers` (jonasCTDOL). Publicar
-  # uma Release publica as imagens e deixa este job em `waiting` até a
-  # aprovação humana (Review deployments). Evidência: run 35113572980 parou no
-  # gate e só executou após aprovação. A regra vale porque o repo é público
-  # (plano free); se virar privado, migrar para workflow_dispatch com tag.
+  # O environment `producao` tem protection rule `required_reviewers`
+  # (jonasCTDOL): o job fica em `waiting` até a aprovação humana (Review
+  # deployments). A imagem da tag precisa existir no GHCR, o que ocorre quando
+  # a Release correspondente foi publicada.
   #
   # A Regra 1.1 segue valendo: é vedado ao Claude Code criar esses secrets ou
   # aprovar o environment por conta própria — só mediante comando expresso do
   # operador na sessão.
   deploy:
-    needs: [docker-publish]
-    if: github.event_name == 'release'
+    needs: [test, frontend]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: producao
 
@@ -447,12 +452,19 @@ jobs:
       packages: read
 
     env:
-      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      RELEASE_TAG: ${{ inputs.tag }}
       VPS_DEPLOY_PATH: ${{ vars.VPS_DEPLOY_PATH || '/opt/datapolirs' }}
 
     steps:
       - name: Checkout Código
         uses: actions/checkout@v7
+
+      - name: Validar formato da tag (vX.Y.Z)
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag inválida: '$RELEASE_TAG'. Esperado vX.Y.Z (ex: v0.1.7)." >&2
+            exit 1
+          fi
 
       - name: Configurar chave SSH e known_hosts (sem StrictHostKeyChecking=no)
         run: |
