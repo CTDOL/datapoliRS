@@ -111,6 +111,26 @@ services:
     networks:
       - datapoli_network_non_prod
 
+  etl-worker:
+    build:
+      context: .
+      dockerfile: etl/Dockerfile
+    container_name: datapoli_etl_worker_non_prod
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-datapoli_user}:${POSTGRES_PASSWORD:-datapoli_pass}@postgres:5432/${POSTGRES_DB:-datapoli_db}
+    volumes:
+      - ./etl/data:/app/etl/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - datapoli_network_non_prod
+
 volumes:
   datapolirs_postgres_non_prod_data:
   datapolirs_redis_non_prod_data:

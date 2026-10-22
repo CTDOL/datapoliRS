@@ -90,10 +90,33 @@ services:
     networks:
       - datapoli_network_prod
 
+  etl-worker:
+    image: ghcr.io/ctdol/datapolirs-etl:${RELEASE_TAG}
+    container_name: datapoli_etl_worker_prod
+    restart: unless-stopped
+    command: python -m etl.worker
+    env_file:
+      - .env.prod
+    environment:
+      - PYTHONUNBUFFERED=1
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - datapolirs_etl_data_prod:/app/etl/data
+    mem_limit: 3g
+    cpus: 1.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - datapoli_network_prod
+
 volumes:
   datapolirs_postgres_data_prod:
   datapolirs_redis_data_prod:
   datapolirs_uploads_data_prod:
+  datapolirs_etl_data_prod:
 
 networks:
   datapoli_network_prod:

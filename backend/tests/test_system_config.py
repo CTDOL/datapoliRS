@@ -27,29 +27,33 @@ def test_listar_configuracoes_requer_admin(client: TestClient):
 
 def test_atualizar_configuracao_aplica_e_reverte(client: TestClient):
     """A escrita precisa persistir e refletir na leitura seguinte — sem
-    reiniciar o processo (o cache é invalidado a cada PUT)."""
+    reiniciar o processo (o cache é invalidado a cada PUT).
+
+    Restaura o valor ORIGINAL (lido antes), em finally: o banco de dev é compartilhado,
+    e um valor fixo aqui desfazia o pleito ativo a cada rodada de testes."""
     headers = bearerHeader(str(uuid.uuid4()), role="admin")
 
-    updateResponse = client.put(
-        "/api/v1/admin/configuracoes",
-        headers=headers,
-        json={"valores": {"eleitoral.election_year": "2026"}},
-    )
-    assert updateResponse.status_code == 200
-    updated = next(item for item in updateResponse.json() if item["chave"] == "eleitoral.election_year")
-    assert updated["valor"] == "2026"
+    original = next(item for item in client.get("/api/v1/admin/configuracoes", headers=headers).json()
+                    if item["chave"] == "eleitoral.election_year")["valor"]
+    try:
+        updateResponse = client.put(
+            "/api/v1/admin/configuracoes",
+            headers=headers,
+            json={"valores": {"eleitoral.election_year": "2026"}},
+        )
+        assert updateResponse.status_code == 200
+        updated = next(item for item in updateResponse.json() if item["chave"] == "eleitoral.election_year")
+        assert updated["valor"] == "2026"
 
-    listResponse = client.get("/api/v1/admin/configuracoes", headers=headers)
-    persisted = next(item for item in listResponse.json() if item["chave"] == "eleitoral.election_year")
-    assert persisted["valor"] == "2026"
-
-    # Reverte para não vazar estado entre execuções de teste.
-    revertResponse = client.put(
-        "/api/v1/admin/configuracoes",
-        headers=headers,
-        json={"valores": {"eleitoral.election_year": "2022"}},
-    )
-    assert revertResponse.status_code == 200
+        listResponse = client.get("/api/v1/admin/configuracoes", headers=headers)
+        persisted = next(item for item in listResponse.json() if item["chave"] == "eleitoral.election_year")
+        assert persisted["valor"] == "2026"
+    finally:
+        client.put(
+            "/api/v1/admin/configuracoes",
+            headers=headers,
+            json={"valores": {"eleitoral.election_year": original}},
+        )
 
 
 def test_atualizar_configuracao_valor_invalido_rejeitado(client: TestClient):

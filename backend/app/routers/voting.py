@@ -3,7 +3,8 @@ import httpx
 from fastapi import APIRouter, Depends, Query, Response
 import asyncpg
 from app.core.config import settings
-from app.core.dependencies import getDbConnection
+from app.core.dependencies import getDbConnection, get_current_user
+from app.schemas.user import UserInDB
 from app.services.voting_service import VotingService
 from app.services.system_config_service import SystemConfigService
 from app.repositories.candidate_repository import CandidateRepository
@@ -68,6 +69,20 @@ async def listar_cargos(
 ) -> List[Dict[str, Any]]:
     """Retorna os cargos mapeados no pleito (Deputado Estadual, Federal, Senador, Governador)."""
     return await voting_service.listAvailableCargos(connection)
+
+
+@router.get(
+    "/eleicao-ativa",
+    summary="Pleito ativo da plataforma (ano e código TSE), usado para rotular os resultados"
+)
+async def eleicao_ativa(
+    current_user: UserInDB = Depends(get_current_user),
+    connection: asyncpg.Connection = Depends(getDbConnection)
+) -> Dict[str, Any]:
+    """Qualquer usuário autenticado pode ler o pleito ativo (somente leitura)."""
+    ano = await SystemConfigService.getInt(connection, "eleitoral.election_year", settings.ELECTION_YEAR)
+    cdEleicao = await SystemConfigService.getStr(connection, "eleitoral.tse_codigo_eleicao", settings.TSE_CODIGO_ELEICAO)
+    return {"ano_eleicao": ano, "cd_eleicao": cdEleicao}
 
 
 @router.get(

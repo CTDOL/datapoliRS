@@ -3,10 +3,12 @@ import time
 import zipfile
 import logging
 import argparse
+from datetime import datetime, timezone
 import duckdb
 import psycopg2
 from psycopg2.extras import execute_values
 from etl.db_connection import getPostgresConnection
+from etl.registro_carga import registrarCarga
 
 logging.basicConfig(
     level=logging.INFO,
@@ -54,7 +56,7 @@ def ensureCsvFileExists(ano: int) -> str:
     raise FileNotFoundError(errorMsg)
 
 
-def executeDuckDbEtl(csvPath: str) -> None:
+def executeDuckDbEtl(csvPath: str) -> dict:
     """Executa o pipeline colunar com DuckDB e carrega no PostgreSQL de forma idempotente."""
     startTime = time.time()
     logger.info("Iniciando motor colunar DuckDB para processamento analítico do TSE...")
@@ -243,8 +245,11 @@ def executeDuckDbEtl(csvPath: str) -> None:
             pgConnection.commit()
             logger.info(f"Total de fatos de votação persistidos com sucesso: {totalFatos:,}")
 
+        cdEleicoes = [str(linha[0]) for linha in duckDbConnection.execute(
+            "SELECT DISTINCT CAST(CD_ELEICAO AS VARCHAR) FROM tse_raw").fetchall()]
         pgConnection.close()
         duckDbConnection.close()
+        return {"linhas": totalFatos, "cd_eleicoes": cdEleicoes}
 
         elapsedTime = time.time() - startTime
         logger.info(f"=== PIPELINE DUCKDB FINALIZADO COM SUCESSO EM {elapsedTime:.2f} SEGUNDOS ===")
@@ -268,11 +273,24 @@ def parseArgs() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def carregarVotacao(ano: int) -> dict:
+    """Carrega a votação de um ano e registra a carga. Usado pela CLI e pelo worker de jobs."""
+    csvPath = ensureCsvFileExists(ano)
+    iniciadoEm = datetime.now(timezone.utc)
+    try:
+        resultado = executeDuckDbEtl(csvPath)
+    except Exception as erro:
+        registrarCarga("votacao", ano, csvPath, iniciadoEm, sucesso=False, erro=str(erro))
+        raise
+    registrarCarga("votacao", ano, csvPath, iniciadoEm, sucesso=True,
+                   linhas=resultado["linhas"], cdEleicoes=resultado["cd_eleicoes"])
+    return resultado
+
+
 def main():
     args = parseArgs()
     logger.info(f"=== INICIANDO PIPELINE ANALÍTICO DE DADOS ELEITORAIS COM DUCKDB (ano={args.ano}) ===")
-    csvPath = ensureCsvFileExists(args.ano)
-    executeDuckDbEtl(csvPath)
+    carregarVotacao(args.ano)
 
 
 if __name__ == "__main__":

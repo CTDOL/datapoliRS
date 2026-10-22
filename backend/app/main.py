@@ -17,6 +17,7 @@ from app.core.bootstrap import ensureAdminUser
 from app.schemas.candidate import CandidataDetalhada
 from app.services.tse_service import TSEService
 from app.services.voting_service import VotingService
+from app.routers.voting import get_voting_service
 from app.services.system_config_service import SystemConfigService
 from app.routers.geo import router as geo_router
 from app.routers.voting import router as voting_router
@@ -28,6 +29,7 @@ from app.routers.tasks import router as tasks_router
 from app.routers.auth import router as auth_router
 from app.routers.tenant import router as tenant_router
 from app.routers.admin import router as admin_router
+from app.routers.manutencao import router as manutencao_router
 
 # Configuração de Logging Estruturado
 logging.basicConfig(
@@ -96,6 +98,7 @@ app.include_router(tasks_router)
 app.include_router(auth_router)
 app.include_router(tenant_router)
 app.include_router(admin_router)
+app.include_router(manutencao_router)
 
 tse_service = TSEService(timeout=settings.TSE_TIMEOUT_SECONDS)
 
@@ -147,10 +150,11 @@ async def consultar_deputada_rs(
 )
 async def obter_votos_candidata_legado(
     numero: int,
-    connection: asyncpg.Connection = Depends(getDbConnection)
+    connection: asyncpg.Connection = Depends(getDbConnection),
+    voting_service: VotingService = Depends(get_voting_service)
 ):
     """Endpoint legado agora redirecionado para o PostgreSQL com alta performance."""
-    votacao = await VotingService.getCandidateVotesByNumber(connection, candidateNumber=numero)
+    votacao = await voting_service.getCandidateVotesByNumber(connection, candidateNumber=numero)
     return [{"municipio": item.nm_municipio, "votos": item.votos} for item in votacao.distribuicao_municipios]
 
 

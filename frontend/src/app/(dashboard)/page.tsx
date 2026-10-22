@@ -46,6 +46,14 @@ const VIEW_MODES: { value: MapViewMode; label: string; icon: typeof MapIcon }[] 
 export default function DashboardPage() {
   const [liderancas, setLiderancas] = useState<LiderancaPoint[]>([]);
   const [viewMode, setViewMode] = useState<MapViewMode>('liderancas');
+  const [anoAtivo, setAnoAtivo] = useState<number | null>(null);
+
+  // Ano do pleito ativo da plataforma: rotula o modo Votação para o usuário saber o que está vendo.
+  useEffect(() => {
+    api.get<{ ano_eleicao: number }>('/api/v1/eleicao-ativa')
+      .then((res) => setAnoAtivo(res.data.ano_eleicao))
+      .catch(() => setAnoAtivo(null));
+  }, []);
 
   // Lido em um efeito (não no useState inicial) para não divergir entre a
   // renderização do servidor (sem localStorage) e a hidratação no cliente.
@@ -177,7 +185,7 @@ export default function DashboardPage() {
 
         {/* Seletor de modo de visualização — rola na horizontal quando não cabe */}
         <div className="flex max-w-full overflow-x-auto bg-zinc-900/60 backdrop-blur-md rounded-xl p-1 border border-zinc-700/50">
-          {VIEW_MODES.map(({ value, label, icon: Icon }) => (
+          {VIEW_MODES.map(({ value, label: rotuloBase, icon: Icon }) => (
             <button
               key={value}
               onClick={() => setViewMode(value)}
@@ -188,7 +196,7 @@ export default function DashboardPage() {
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
-              {label}
+              {value === 'votacao' && anoAtivo ? `${rotuloBase} · ${anoAtivo}` : rotuloBase}
             </button>
           ))}
         </div>

@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/services/api';
-import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X } from 'lucide-react';
+import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X, Database } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -47,6 +47,7 @@ export default function DashboardLayout({
     { name: 'Projetos de Lei', href: '/projetos-lei', icon: Landmark },
     { name: 'Emendas', href: '/emendas', icon: FileText },
     { name: 'Configurações', href: '/settings', icon: Settings },
+    { name: 'Manutenção', href: '/manutencao', icon: Database, adminOnly: true },
   ];
 
   return (
@@ -94,7 +95,7 @@ export default function DashboardLayout({
 
         {/* Navigation */}
         <nav className="flex-1 min-h-0 overflow-y-auto px-4 py-6 space-y-2">
-          {navItems.map((item) => {
+          {navItems.filter((item) => !item.adminOnly || user?.role === 'admin').map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
