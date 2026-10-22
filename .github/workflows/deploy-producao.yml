@@ -78,6 +78,8 @@ jobs:
       ADMIN_PASSWORD: admin123
       ADMIN_TENANT_ID: 11111111-2222-3333-4444-555555555555
       ENVIRONMENT: test
+      # Os testes importam o pacote etl, que fica na raiz e não no backend/.
+      PYTHONPATH: ${{ github.workspace }}
 
     steps:
       - name: Checkout Código
