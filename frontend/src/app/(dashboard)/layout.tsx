@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/services/api';
+import { CabecalhoSessao } from '@/components/layout/CabecalhoSessao';
 import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X, Database, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -26,7 +27,7 @@ export default function DashboardLayout({
     api
       .get('/api/v1/auth/me')
       .then((res) => {
-        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role });
+        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role, nm_mandato: res.data.nm_mandato });
       })
       .catch(() => {
         // 401/403 já é tratado pelo interceptor global (redireciona para /login).
@@ -175,6 +176,8 @@ export default function DashboardLayout({
           </div>
           <span className="text-white font-bold tracking-tight text-sm">DATAPOLIRS</span>
         </header>
+
+        <CabecalhoSessao />
 
         <main className="flex-1 min-h-0 relative overflow-hidden">
           {children}

@@ -58,11 +58,19 @@ async def logout(response: Response):
 
 
 @router.get("/me")
-async def read_current_user(current_user: UserInDB = Depends(get_current_user)):
+async def read_current_user(
+    current_user: UserInDB = Depends(get_current_user),
+    connection: asyncpg.Connection = Depends(getDbConnection),
+):
+    # nm_mandato vai para o cabeçalho da tela: o operador precisa ver em qual gabinete está.
+    nomeGabinete = await connection.fetchval(
+        "SELECT nm_mandato FROM tb_tenants WHERE id_tenant = $1", current_user.tenant_id
+    )
     return {
         "email": current_user.email,
         "tenant_id": str(current_user.tenant_id),
         "role": current_user.role,
+        "nm_mandato": nomeGabinete,
     }
 
 

@@ -4,6 +4,8 @@ interface User {
   email: string;
   tenant_id: string;
   role: string;
+  /** Nome do gabinete (tb_tenants.nm_mandato), usado no cabeçalho. */
+  nm_mandato?: string | null;
 }
 
 interface AuthState {
