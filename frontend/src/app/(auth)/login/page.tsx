@@ -36,10 +36,14 @@ export default function LoginPage() {
         email: me.data.email,
         tenant_id: me.data.tenant_id,
         role: me.data.role,
+        nm_mandato: me.data.nm_mandato,
+        must_change_password: me.data.must_change_password,
+        cor_primaria: me.data.cor_primaria,
+        cor_secundaria: me.data.cor_secundaria,
       });
 
-      // Redireciona para o painel principal isolado
-      router.push('/');
+      // Super-admin vai direto para a área da plataforma: a home do gabinete chama APIs que ele não acessa.
+      router.push(me.data.role === 'super_admin' ? '/plataforma' : '/');
     } catch {
       setError('Credenciais inválidas ou acesso negado. Verifique os dados.');
     } finally {

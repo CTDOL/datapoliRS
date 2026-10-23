@@ -57,12 +57,13 @@ export default function DashboardLayout({
   // Área da plataforma (ADR 039): o super-admin não administra gabinete e tem navegação própria.
   const isSuperAdmin = user?.role === 'super_admin';
 
+  const naAreaPlataforma = pathname.startsWith('/plataforma') || pathname.startsWith('/manutencao');
+
   useEffect(() => {
     if (!user) return;
-    const naAreaPlataforma = pathname.startsWith('/plataforma') || pathname.startsWith('/manutencao');
     if (isSuperAdmin && !naAreaPlataforma) router.replace('/plataforma');
     if (!isSuperAdmin && pathname.startsWith('/plataforma')) router.replace('/');
-  }, [user, isSuperAdmin, pathname, router]);
+  }, [user, isSuperAdmin, naAreaPlataforma, pathname, router]);
 
   const navItemsPlataforma = [
     { name: 'Gabinetes', href: '/plataforma', icon: Mandato },
@@ -212,7 +213,8 @@ export default function DashboardLayout({
         <TrocaSenhaObrigatoria />
 
         <main className="flex-1 min-h-0 relative overflow-hidden">
-          {children}
+          {/* Super-admin fora da própria área não monta a tela do gabinete: ela buscaria dados que ele não acessa. */}
+          {isSuperAdmin && !naAreaPlataforma ? null : children}
         </main>
       </div>
     </div>
