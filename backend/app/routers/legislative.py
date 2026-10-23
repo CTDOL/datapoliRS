@@ -48,7 +48,7 @@ async def buscar_proposicoes_externas(
 )
 async def importar_projeto_lei(
     payload: ProjetoLeiImport,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> ProjetoLeiResponse:
     """Revalida ementa/situação direto na fonte oficial antes de gravar — idempotente
@@ -95,7 +95,7 @@ async def obter_projeto_lei(
 )
 async def sincronizar_projeto_lei(
     id_projeto_lei: uuid.UUID,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> ProjetoLeiSyncResponse:
     """Atualiza situação/ementa a partir da fonte (ALRS, Câmara ou Senado) sem apagar
@@ -138,7 +138,7 @@ async def listar_observadores(
 async def adicionar_observador(
     id_projeto_lei: uuid.UUID,
     payload: ObservadorAdd,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> list[ObservadorResponse]:
     return await LegislativeService.addObservador(connection, current_user.tenant_id, id_projeto_lei, payload.id_lideranca)
@@ -152,7 +152,7 @@ async def adicionar_observador(
 async def remover_observador(
     id_projeto_lei: uuid.UUID,
     id_lideranca: uuid.UUID,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> list[ObservadorResponse]:
     return await LegislativeService.removeObservador(connection, current_user.tenant_id, id_projeto_lei, id_lideranca)

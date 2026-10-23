@@ -42,7 +42,7 @@ router = APIRouter(
 )
 async def cadastrar_lideranca(
     payload: LiderancaCreate,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaResponse:
     """Cria uma nova liderança vinculada exclusivamente ao gabinete (tenant_id)."""
@@ -99,7 +99,7 @@ async def obter_lideranca_por_id(
 async def atualizar_lideranca(
     id_lideranca: uuid.UUID,
     payload: LiderancaUpdate,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaResponse:
     """Atualiza as informações da liderança no gabinete."""
@@ -114,7 +114,7 @@ async def atualizar_lideranca(
 async def enviar_foto_lideranca(
     id_lideranca: uuid.UUID,
     arquivo: UploadFile = File(...),
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaResponse:
     """Sanitiza a foto (sem EXIF/GPS), grava com hash no nome e associa a URL pública à liderança."""

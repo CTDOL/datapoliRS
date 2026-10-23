@@ -29,7 +29,7 @@ router = APIRouter(
 )
 async def cadastrar_emenda(
     payload: EmendaCreate,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> EmendaResponse:
     """Cria uma nova emenda vinculada exclusivamente ao gabinete (tenant_id)."""
@@ -100,7 +100,7 @@ async def obter_emenda_por_id(
 async def atualizar_emenda(
     id_emenda: uuid.UUID,
     payload: EmendaUpdate,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> EmendaResponse:
     """Atualiza as informações da emenda no gabinete."""
