@@ -1,13 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Loader2, Edit2, Trash2, Search, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
 import { Lideranca } from './useLiderancas';
-import { api } from '@/services/api';
+import { useMunicipios } from '@/features/geo/useMunicipios';
 import { buildWhatsappLink } from '@/utils/whatsapp';
-
-interface MunicipioItem {
-  cd_ibge_7: string;
-  nm_municipio: string;
-}
 
 const TIPOS_INFLUENCIA = ['Comunitária', 'Religiosa', 'Empresarial', 'Política'];
 
@@ -47,11 +42,7 @@ export function LiderancasTable({
   onPageChange,
 }: LiderancasTableProps) {
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
-  const [municipios, setMunicipios] = useState<MunicipioItem[]>([]);
-
-  useEffect(() => {
-    api.get('/api/v1/geo/municipios/lista').then((res) => setMunicipios(res.data)).catch(() => {});
-  }, []);
+  const { municipios } = useMunicipios();
 
   return (
     <div className="flex-1 bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">

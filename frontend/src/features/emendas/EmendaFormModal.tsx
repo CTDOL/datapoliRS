@@ -4,12 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, FileText, MapPin } from 'lucide-react';
 import { FormDataEmenda, Emenda } from './useEmendas';
-import { api } from '@/services/api';
-
-interface MunicipioItem {
-  cd_ibge_7: string;
-  nm_municipio: string;
-}
+import { useMunicipios } from '@/features/geo/useMunicipios';
 
 interface ModalProps {
   isOpen: boolean;
@@ -35,8 +30,7 @@ const EMPTY_FORM: FormDataEmenda = {
 
 export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initialData }: ModalProps) {
   const [formData, setFormData] = useState<FormDataEmenda>(EMPTY_FORM);
-  const [municipios, setMunicipios] = useState<MunicipioItem[]>([]);
-  const [loadingMun, setLoadingMun] = useState(false);
+  const { municipios, isLoading: loadingMun } = useMunicipios(isOpen);
 
   useEffect(() => {
     setTimeout(() => {
@@ -59,23 +53,6 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
       }
     }, 0);
   }, [initialData, isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      const fetchMuns = async () => {
-        setLoadingMun(true);
-        try {
-          const res = await api.get('/api/v1/geo/municipios/lista');
-          setMunicipios(res.data);
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setLoadingMun(false);
-        }
-      };
-      fetchMuns();
-    }
-  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,3 +1,4 @@
+import glob
 import os
 import uuid
 from typing import Optional
@@ -6,6 +7,7 @@ import asyncpg
 from app.core.dependencies import getDbConnection, get_current_user, require_role
 from app.schemas.user import UserInDB
 from app.services.cabinet_service import CabinetService
+from app.services.image_sanitizer_service import ImageSanitizerService
 from app.schemas.leadership import (
     LiderancaCreate,
     LiderancaUpdate,
@@ -17,6 +19,13 @@ from app.core.rate_limit import RateLimiter
 UPLOADS_DIR = "app/uploads/liderancas"
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FOTO_SIZE_BYTES = 5 * 1024 * 1024  # 5MB
+
+
+def _fotosDaLideranca(idLideranca: uuid.UUID) -> list[str]:
+    """Arquivos de foto da liderança: o nome antigo `{id}.{ext}` e o atual `{id}-{hash}.{ext}`."""
+    return glob.glob(os.path.join(UPLOADS_DIR, f"{idLideranca}.*")) + \
+        glob.glob(os.path.join(UPLOADS_DIR, f"{idLideranca}-*"))
+
 
 router = APIRouter(
     prefix="/api/v1/gabinete/liderancas",
@@ -108,7 +117,7 @@ async def enviar_foto_lideranca(
     current_user: UserInDB = Depends(get_current_user),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaResponse:
-    """Salva a foto em disco (volume dedicado) e associa a URL pública à liderança."""
+    """Sanitiza a foto (sem EXIF/GPS), grava com hash no nome e associa a URL pública à liderança."""
     if arquivo.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -125,14 +134,28 @@ async def enviar_foto_lideranca(
     # Valida que a liderança existe e pertence a este tenant antes de tocar no disco.
     await CabinetService.getLeadershipById(connection, current_user.tenant_id, id_lideranca)
 
-    extensao = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}[arquivo.content_type]
+    # FR-006: o formato vale pelo conteúdo decodificado, não pelo content_type declarado.
+    imagem = ImageSanitizerService.sanitize(conteudo)
+    nomeArquivo = f"{id_lideranca}-{imagem.sha256[:16]}.{imagem.extensao}"
     os.makedirs(UPLOADS_DIR, exist_ok=True)
-    caminhoArquivo = os.path.join(UPLOADS_DIR, f"{id_lideranca}.{extensao}")
+    caminhoArquivo = os.path.join(UPLOADS_DIR, nomeArquivo)
+    anteriores = [f for f in _fotosDaLideranca(id_lideranca) if f != caminhoArquivo]
+    jaExistia = os.path.exists(caminhoArquivo)  # reenvio da mesma foto: mesmo hash, mesmo nome
     with open(caminhoArquivo, "wb") as destino:
-        destino.write(conteudo)
+        destino.write(imagem.conteudo)
 
-    fotoUrl = f"/uploads/liderancas/{id_lideranca}.{extensao}"
-    return await CabinetService.setFotoUrl(connection, current_user.tenant_id, id_lideranca, fotoUrl)
+    fotoUrl = f"/uploads/liderancas/{nomeArquivo}"
+    try:
+        resposta = await CabinetService.setFotoUrl(connection, current_user.tenant_id, id_lideranca, fotoUrl)
+    except Exception:
+        # Sem a URL no banco, o arquivo novo ficaria órfão; a foto anterior continua valendo.
+        if not jaExistia:
+            os.remove(caminhoArquivo)
+        raise
+
+    for caminhoAnterior in anteriores:
+        os.remove(caminhoAnterior)
+    return resposta
 
 
 @router.delete(
@@ -146,8 +169,6 @@ async def remover_lideranca(
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> None:
     """Exclui a liderança do gabinete garantindo isolamento por tenant_id (e a foto em disco, se houver)."""
-    for extensao in ("jpg", "png", "webp"):
-        caminhoArquivo = os.path.join(UPLOADS_DIR, f"{id_lideranca}.{extensao}")
-        if os.path.exists(caminhoArquivo):
-            os.remove(caminhoArquivo)
+    for caminhoArquivo in _fotosDaLideranca(id_lideranca):
+        os.remove(caminhoArquivo)
     await CabinetService.deleteLeadership(connection, current_user.tenant_id, id_lideranca)
