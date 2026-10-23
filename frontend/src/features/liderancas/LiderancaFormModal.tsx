@@ -4,12 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, UserPlus, MapPin, Phone, Camera, Search } from 'lucide-react';
 import { FormDataLideranca, Lideranca } from './useLiderancas';
-import { api } from '@/services/api';
-
-interface MunicipioItem {
-  cd_ibge_7: string;
-  nm_municipio: string;
-}
+import { useMunicipios } from '@/features/geo/useMunicipios';
 
 interface ModalProps {
   isOpen: boolean;
@@ -54,25 +49,7 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
     }, 0);
   }, [initialData, isOpen]);
 
-  const [municipios, setMunicipios] = useState<MunicipioItem[]>([]);
-  const [loadingMun, setLoadingMun] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      const fetchMuns = async () => {
-        setLoadingMun(true);
-        try {
-          const res = await api.get('/api/v1/geo/municipios/lista');
-          setMunicipios(res.data);
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setLoadingMun(false);
-        }
-      };
-      fetchMuns();
-    }
-  }, [isOpen]);
+  const { municipios, isLoading: loadingMun } = useMunicipios(isOpen);
 
   const toggleMunicipio = (cdIbge7: string) => {
     setFormData((prev) => ({

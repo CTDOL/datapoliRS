@@ -10,9 +10,8 @@ const LABELS: Record<string, { text: string; className: string }> = {
 };
 
 // NEXT_PUBLIC_ENV_LABEL é assado na imagem em tempo de build (Next.js standalone
-// inlina NEXT_PUBLIC_* no bundle do cliente) — ver frontend/Dockerfile e o
-// build-arg equivalente no job e2e-parity do ci.yml. Ausente/vazio em produção
-// real, então o selo simplesmente não renderiza (ADR universal governanca/047 v2.0.0).
+// inlina NEXT_PUBLIC_* no bundle do cliente) — ver frontend/Dockerfile. Ausente/vazio
+// em produção real, então o selo simplesmente não renderiza (ADR universal governanca/047 v2.0.0).
 export function EnvironmentBadge() {
   const label = LABELS[process.env.NEXT_PUBLIC_ENV_LABEL ?? ""];
   if (!label) return null;

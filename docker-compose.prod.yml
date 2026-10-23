@@ -6,7 +6,10 @@
 #
 # Uso:
 #   cp .env.prod.example .env.prod   # preencher domínios e segredos reais
-#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#   RELEASE_TAG=<tag> docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+#   RELEASE_TAG=<tag> docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Sem --build: os serviços usam image: do GHCR, nada é construído aqui.
 
 services:
   postgres:

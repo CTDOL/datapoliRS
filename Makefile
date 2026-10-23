@@ -18,11 +18,11 @@ help:
 	@echo "  make clean           - Remove caches do Python e testes"
 
 install:
-	pip install -r backend/requirements.txt
+	pip install -r backend/requirements.txt -r backend/requirements-dev.txt
 
 # --- Ambientes DEV e HML Simultâneos (ADR 044 / ADR 047) ---
 dev-up:
-	docker compose -f docker-compose.yml up -d
+	docker compose -f docker-compose.yml up -d --build
 
 dev-down:
 	docker compose -f docker-compose.yml down
@@ -75,7 +75,7 @@ run:
 	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
-	cd backend && pytest -v --asyncio-mode=auto
+	cd backend && PYTHONPATH=$(CURDIR) pytest -v --asyncio-mode=auto
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
