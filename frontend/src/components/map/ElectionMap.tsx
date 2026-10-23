@@ -8,9 +8,11 @@ import {
   adicionarCamadasBase,
   aplicarEstiloCoropletico,
   ajustarVisibilidadeCoropletica,
+  agruparPorMunicipio,
   iconeLideranca,
   pontosDasLiderancas,
   popupLideranca,
+  popupMunicipio,
 } from './mapLayers';
 import { useMunicipiosGeoJson } from './useMunicipiosGeoJson';
 
@@ -129,19 +131,22 @@ export default function ElectionMap({
     // No modo "apenas votação", os pontos de lideranças ficam ocultos.
     if (viewMode === 'votacao') return;
 
-    const icone = iconeLideranca();
-    pontosDasLiderancas(liderancasEstaveis).forEach(({ l, mun }, i) => {
-      // Pequeno spiderify matemático
-      const lng = Number(mun.longitude) + Math.cos(i) * 0.0002;
-      const lat = Number(mun.latitude) + Math.sin(i) * 0.0002;
-
+    // Um pino por município, com contador quando há mais de uma liderança.
+    // Antes, cada liderança recebia um deslocamento de ~20 m: no zoom do estado
+    // esses pinos ficavam sobrepostos e pareciam um só.
+    agruparPorMunicipio(liderancasEstaveis).forEach(({ mun, liderancas }) => {
       // keyboard:false — sem isso o Leaflet torna o marcador focável (tabindex)
       // e chama .focus() nele ao clicar; como o <main> do dashboard tem
       // overflow-hidden (ADR de layout fixo), o navegador faz scroll-into-view
       // programático ali mesmo sem barra de rolagem visível, empurrando o
       // cabeçalho/seletor de modo para fora da viewport ao abrir o popup.
-      const marker = L.marker([lat, lng], { icon: icone, keyboard: false }).addTo(m);
-      marker.bindPopup(popupLideranca(l, mun));
+      const marker = L.marker([Number(mun.latitude), Number(mun.longitude)], {
+        icon: iconeLideranca(liderancas.length),
+        keyboard: false,
+      }).addTo(m);
+      marker.bindPopup(
+        liderancas.length === 1 ? popupLideranca(liderancas[0], mun) : popupMunicipio(mun, liderancas)
+      );
       markersRef.current.push(marker);
     });
   }, [liderancasEstaveis, viewMode]);

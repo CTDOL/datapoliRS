@@ -87,6 +87,25 @@ export function pontosDasLiderancas(liderancas: LiderancaPoint[]) {
   );
 }
 
+export interface GrupoMunicipio {
+  mun: MunicipioAtuacaoPoint;
+  liderancas: LiderancaPoint[];
+}
+
+/** Um grupo por município: lideranças do mesmo município dividem o mesmo pino, em vez de se sobreporem. */
+export function agruparPorMunicipio(liderancas: LiderancaPoint[]): GrupoMunicipio[] {
+  const grupos = new Map<string, GrupoMunicipio>();
+  for (const { l, mun } of pontosDasLiderancas(liderancas)) {
+    const grupo = grupos.get(mun.cd_ibge_7);
+    if (!grupo) {
+      grupos.set(mun.cd_ibge_7, { mun, liderancas: [l] });
+    } else if (!grupo.liderancas.includes(l)) {
+      grupo.liderancas.push(l);
+    }
+  }
+  return [...grupos.values()];
+}
+
 // Nome, telefone e URL da foto vêm do cadastro do gabinete e entram em HTML
 // cru do popup do Leaflet: sem escape, um nome com <img onerror=...> executaria
 // script no navegador de quem abrisse o popup.
@@ -103,17 +122,45 @@ function escaparHtml(texto: string): string {
 // Não pode receber a propriedade CSS `scale` (via hover:scale-*) aqui — no
 // Tailwind v4, `scale` é composto ENVOLVENDO o transform inline do Leaflet,
 // amplificando também o deslocamento, não só o tamanho.
-export function iconeLideranca(): L.DivIcon {
+export function iconeLideranca(quantidade = 1): L.DivIcon {
+  const contador = quantidade > 1
+    ? `<span class="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-sky-700 text-[10px] font-bold flex items-center justify-center shadow">${quantidade}</span>`
+    : '';
   return L.divIcon({
     className: '',
     html: `
-      <div class="lideranca-marker w-4 h-4 cursor-pointer">
+      <div class="lideranca-marker relative w-4 h-4 cursor-pointer">
         <div class="w-full h-full bg-sky-500 border-2 border-white rounded-full shadow-[0_0_10px_rgba(14,165,233,0.8)] hover:scale-125 transition-transform"></div>
+        ${contador}
       </div>
     `,
     iconSize: [16, 16],
     iconAnchor: [8, 8],
   });
+}
+
+/** Popup de um pino com mais de uma liderança: uma linha por liderança, com o mesmo escape do popup individual. */
+export function popupMunicipio(mun: MunicipioAtuacaoPoint, liderancas: LiderancaPoint[]): string {
+  const itens = liderancas
+    .map(
+      (l) => `
+      <div style="padding:6px 0; border-top:1px solid #e2e8f0; overflow:hidden;">
+        ${l.ds_foto_url
+          ? `<img src="${escaparHtml(l.ds_foto_url)}" alt="${escaparHtml(l.nm_completo)}" style="width:36px; height:36px; border-radius:9999px; object-fit:cover; float:left; margin-right:8px;" />`
+          : ''}
+        <strong style="color:#0284c7; font-size:13px;">${escaparHtml(l.nm_completo)}</strong><br/>
+        <span style="font-size:12px;">Influência: <b>${escaparHtml(l.tp_influencia || '')}</b></span>
+        ${l.nr_telefone ? `<br/><span style="font-size:12px; color:#334155;">📞 ${escaparHtml(l.nr_telefone)}</span>` : ''}
+      </div>`
+    )
+    .join('');
+
+  return `
+    <div style="color:#0f172a; padding:4px; font-family:sans-serif; min-width:200px;">
+      <div style="font-size:12px; color:#64748b;">${escaparHtml(mun.nm_municipio || '')} · ${liderancas.length} lideranças</div>
+      ${itens}
+    </div>
+  `;
 }
 
 export function popupLideranca(l: LiderancaPoint, mun: MunicipioAtuacaoPoint): string {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { popupLideranca, pontosDasLiderancas } from './mapLayers';
+import { agruparPorMunicipio, popupLideranca, popupMunicipio, pontosDasLiderancas } from './mapLayers';
 import type { LiderancaPoint } from './ElectionMap';
 
 const PORTO_ALEGRE = { cd_ibge_7: '4314902', nm_municipio: 'Porto Alegre', latitude: -30.03, longitude: -51.23 };
@@ -36,5 +36,44 @@ describe('pontosDasLiderancas', () => {
 
     expect(pontos).toHaveLength(1);
     expect(pontos[0].mun.cd_ibge_7).toBe('4314902');
+  });
+});
+
+const NOVO_HAMBURGO = { cd_ibge_7: '4313409', nm_municipio: 'Novo Hamburgo', latitude: -29.68, longitude: -51.13 };
+
+describe('agruparPorMunicipio', () => {
+  it('junta no mesmo pino as lideranças do mesmo município (caso Novo Hamburgo)', () => {
+    const jonas = lideranca({ id_lideranca: '1', nm_completo: 'Jonas', municipios: [NOVO_HAMBURGO] });
+    const stive = lideranca({ id_lideranca: '2', nm_completo: 'STIVE', municipios: [NOVO_HAMBURGO] });
+
+    const grupos = agruparPorMunicipio([jonas, stive]);
+
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0].mun.cd_ibge_7).toBe('4313409');
+    expect(grupos[0].liderancas.map((l) => l.nm_completo)).toEqual(['Jonas', 'STIVE']);
+  });
+
+  it('põe uma liderança que atua em dois municípios em dois pinos diferentes', () => {
+    const stive = lideranca({ id_lideranca: '2', nm_completo: 'STIVE', municipios: [NOVO_HAMBURGO, PORTO_ALEGRE] });
+
+    const grupos = agruparPorMunicipio([stive]);
+
+    expect(grupos).toHaveLength(2);
+    expect(grupos.every((g) => g.liderancas.length === 1)).toBe(true);
+  });
+});
+
+describe('popupMunicipio', () => {
+  it('lista todas as lideranças e escapa o nome de cada uma', () => {
+    const html = popupMunicipio(NOVO_HAMBURGO, [
+      lideranca({ nm_completo: 'Jonas', ds_foto_url: '/uploads/liderancas/foto.png' }),
+      lideranca({ nm_completo: '<img src=x onerror=alert(1)>' }),
+    ]);
+
+    expect(html).toContain('Novo Hamburgo · 2 lideranças');
+    expect(html).toContain('<img src="');
+    expect(html).toContain('Jonas');
+    expect(html).not.toContain('<img src=x');
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
   });
 });
