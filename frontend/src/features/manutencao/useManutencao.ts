@@ -41,7 +41,7 @@ export interface JobEtl {
   erro: string | null;
 }
 
-export const MUNICIPIOS_RS = 496;
+export const MUNICIPIOS_RS = 497;
 
 export interface ConfiguracaoItem {
   chave: string;

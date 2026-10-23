@@ -16,6 +16,8 @@ from app.core.dependencies import getDbConnection
 from app.core.bootstrap import ensureAdminUser
 from app.schemas.candidate import CandidataDetalhada
 from app.services.tse_service import TSEService
+from app.services.apis_service import ApisService
+from app.routers.produtividade import router as produtividade_router
 from app.services.voting_service import VotingService
 from app.routers.voting import get_voting_service
 from app.services.system_config_service import SystemConfigService
@@ -122,8 +124,8 @@ app.include_router(plataforma_router)
 app.include_router(tema_router)
 app.include_router(admin_router)
 app.include_router(manutencao_router)
+app.include_router(produtividade_router)
 
-tse_service = TSEService(timeout=settings.TSE_TIMEOUT_SECONDS)
 
 
 @app.get("/", tags=["Frontend"])
@@ -158,7 +160,10 @@ async def consultar_deputada_rs(
     ano = ano if ano is not None else await SystemConfigService.getInt(connection, "eleitoral.election_year", settings.ELECTION_YEAR)
     codigo_eleicao = codigo_eleicao or await SystemConfigService.getStr(connection, "eleitoral.tse_codigo_eleicao", settings.TSE_CODIGO_ELEICAO)
     cd_cargo = cd_cargo if cd_cargo is not None else await SystemConfigService.getInt(connection, "eleitoral.default_cargo_code", settings.DEFAULT_CARGO_CODE)
-    resultado = await tse_service.pesquisar_deputada_rs(nome, ano, codigo_eleicao, cd_cargo)
+    if not await ApisService.ativa(connection, "tse"):
+        raise HTTPException(status_code=503, detail="A consulta ao TSE está desligada pelo administrador da plataforma.")
+    servico = TSEService(timeout=settings.TSE_TIMEOUT_SECONDS, base_url=await ApisService.endereco(connection, "tse"))
+    resultado = await servico.pesquisar_deputada_rs(nome, ano, codigo_eleicao, cd_cargo)
     if not resultado:
         raise HTTPException(
             status_code=404,

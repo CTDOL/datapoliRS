@@ -12,11 +12,20 @@ import pytest
 from fastapi import HTTPException
 
 from app.services import legislative_service as svc
+from app.services.apis_service import ApisService
 from app.services.legislative_sources import FonteIndisponivelError
 
 
 TENANT = uuid.uuid4()
 PL_ID = uuid.uuid4()
+
+
+@pytest.fixture(autouse=True)
+def _enderecos_padrao(monkeypatch):
+    """Sem banco nestes testes: as fontes usam o endereço padrão e nenhuma está desligada."""
+    async def sem_configuracao(connection):
+        return {}, set()
+    monkeypatch.setattr(ApisService, "fontesLegislativas", sem_configuracao)
 
 
 def _registro(situacao="Para Parecer", ementa="Dispõe sobre fisioterapeutas nas maternidades", sync=None):
@@ -62,7 +71,7 @@ def repo(monkeypatch):
 
 
 def _usar_adaptador(monkeypatch, adaptador):
-    monkeypatch.setattr(svc, "obter_adaptador", lambda fonte: adaptador)
+    monkeypatch.setattr(svc, "obter_adaptador", lambda fonte, base_url=None: adaptador)
     return adaptador
 
 

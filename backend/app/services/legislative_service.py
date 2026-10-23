@@ -7,6 +7,7 @@ import math
 from app.repositories.legislative_repository import LegislativeRepository
 from app.repositories.cabinet_repository import CabinetRepository
 from app.services.legislative_sources import buscar_em_todas_fontes, obter_adaptador, FonteIndisponivelError
+from app.services.apis_service import ApisService
 from app.schemas.legislative import (
     BuscaExternaResponse,
     ProjetoLeiImport,
@@ -30,7 +31,8 @@ class LegislativeService:
     ) -> BuscaExternaResponse:
         """Agrega ALRS + Câmara + Senado, marca quais já foram importados por este
         gabinete e repassa quais fontes falharam nesta consulta."""
-        resultados, fontes_com_erro = await buscar_em_todas_fontes(nome)
+        enderecos, desligadas = await ApisService.fontesLegislativas(connection)
+        resultados, fontes_com_erro = await buscar_em_todas_fontes(nome, enderecos, desligadas)
 
         importados = await LegislativeRepository.listChavesImportadas(connection, tenantId)
         chaves_importadas = {(r["fonte"], r["identificador_externo"]): r["id_projeto_lei"] for r in importados}
@@ -51,7 +53,8 @@ class LegislativeService:
     ) -> ProjetoLeiResponse:
         """Revalida o dado direto na fonte oficial antes de persistir — o cliente só
         informa QUAL proposição, nunca o conteúdo (ementa/situação) dela."""
-        adaptador = obter_adaptador(payload.fonte)
+        enderecos, _ = await ApisService.fontesLegislativas(connection)
+        adaptador = obter_adaptador(payload.fonte, enderecos.get(payload.fonte.upper()))
         detalhe = await adaptador.buscar_detalhe(
             payload.identificador_externo,
             tipo=payload.tipo,
@@ -91,7 +94,8 @@ class LegislativeService:
                 detail=f"Projeto de lei '{projetoLeiId}' não encontrado para este Gabinete."
             )
 
-        adaptador = obter_adaptador(atual["fonte"])
+        enderecos, _ = await ApisService.fontesLegislativas(connection)
+        adaptador = obter_adaptador(atual["fonte"], enderecos.get(atual["fonte"].upper()))
         try:
             detalhe = await adaptador.buscar_detalhe(
                 atual["identificador_externo"],
