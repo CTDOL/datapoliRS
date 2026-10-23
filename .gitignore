@@ -23,3 +23,7 @@ claude-skills.tar.gz
 # Certificados TLS do proxy reverso — chave privada nunca entra no Git.
 # Em CI sao gerados self-signed efemeros; na VPS sao provisionados no host.
 nginx/certs/
+
+# Base GeoIP (MaxMind): dado de terceiro, nunca versionado (ADR 040)
+backend/geoip/
+*.mmdb
