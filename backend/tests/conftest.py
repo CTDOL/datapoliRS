@@ -1,7 +1,20 @@
 import asyncio
+import os
 import asyncpg
 import pytest
 from app.core.config import settings
+
+
+def pytest_sessionstart(session):
+    """Os testes criam gabinetes, usuários e dados de referência. Fora da CI (que usa um
+    banco efêmero), recusa rodar no datapoli_db, que é o banco da demonstração.
+    Use `make test`, que aponta para datapoli_test."""
+    apontaParaDemo = settings.DATABASE_URL.endswith("/datapoli_db")
+    if apontaParaDemo and os.environ.get("CI") != "true":
+        pytest.exit(
+            "Recusado: os testes apontam para datapoli_db (banco da demonstração). Use `make test`.",
+            returncode=3,
+        )
 
 
 @pytest.fixture(scope="session", autouse=True)
