@@ -121,9 +121,11 @@ export function EmendasTable({
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => onEdit && onEdit(e)} className="text-zinc-400 hover:text-purple-400 p-2 transition-colors">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
+                      {onEdit && (
+                        <button onClick={() => onEdit(e)} className="text-zinc-400 hover:text-purple-400 p-2 transition-colors">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
                       {canDelete && (
                         confirmandoId === e.id_emenda ? (
                           <div className="flex items-center gap-1">

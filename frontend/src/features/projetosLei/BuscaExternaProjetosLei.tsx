@@ -20,7 +20,8 @@ interface BuscaExternaProps {
   fontesComErro: string[];
   isBuscando: boolean;
   importandoChave: string | null;
-  onImportar: (proposicao: ProposicaoExterna) => void;
+  /** Ausente para quem só consulta: o botão de importar não aparece. */
+  onImportar?: (proposicao: ProposicaoExterna) => void;
 }
 
 export function BuscaExternaProjetosLei({
@@ -95,6 +96,7 @@ export function BuscaExternaProjetosLei({
                     </a>
                   )}
                 </div>
+                {onImportar && (
                 <button
                   onClick={() => onImportar(r)}
                   disabled={r.ja_importado || importando}
@@ -113,6 +115,7 @@ export function BuscaExternaProjetosLei({
                   )}
                   {r.ja_importado ? 'Importado' : 'Importar'}
                 </button>
+                )}
               </div>
             );
           })}

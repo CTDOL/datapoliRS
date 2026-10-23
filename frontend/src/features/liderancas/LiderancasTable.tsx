@@ -139,9 +139,11 @@ export function LiderancasTable({
                   <td className="px-6 py-4"><span className={`flex items-center gap-2 ${l.is_ativo ? 'text-teal-400' : 'text-zinc-500'}`}><span className={`w-2 h-2 rounded-full ${l.is_ativo ? 'bg-teal-400' : 'bg-zinc-500'}`} />{l.is_ativo ? 'Ativo' : 'Inativo'}</span></td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => onEdit && onEdit(l)} className="text-zinc-400 hover:text-purple-400 p-2 transition-colors">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
+                      {onEdit && (
+                        <button onClick={() => onEdit(l)} className="text-zinc-400 hover:text-purple-400 p-2 transition-colors">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
                       {canDelete && (
                         confirmandoId === l.id_lideranca ? (
                           <div className="flex items-center gap-1">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, UserPlus, Trash2, Plus, Loader2, CheckCircle2, Circle, Clock } from 'lucide-react';
+import { usePermissoes } from '@/stores/usePermissoes';
 import { api } from '@/services/api';
 import { ProjetoLei, descreverConferencia } from './useProjetosLei';
 import { useProjetoLeiDetalhe } from './useProjetoLeiDetalhe';
@@ -30,6 +31,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
     observadores, tarefas, isSubmitting,
     addObservador, removeObservador, createTarefa, updateTarefaStatus, deleteTarefa,
   } = useProjetoLeiDetalhe(idProjetoLei);
+  const { podeEscrever, podeExcluir } = usePermissoes();
 
   const [liderancas, setLiderancas] = useState<LiderancaOption[]>([]);
   const [observadorSelecionado, setObservadorSelecionado] = useState('');
@@ -115,12 +117,15 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                   {observadores.map((o) => (
                     <span key={o.id_lideranca} className="flex items-center gap-1.5 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 rounded-full pl-3 pr-1.5 py-1 text-xs">
                       {o.nm_completo}
-                      <button onClick={() => removeObservador(o.id_lideranca)} className="hover:text-white p-0.5">
-                        <X className="w-3 h-3" />
-                      </button>
+                      {podeEscrever && (
+                        <button onClick={() => removeObservador(o.id_lideranca)} className="hover:text-white p-0.5">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>
+                {podeEscrever && (
                 <div className="flex gap-2">
                   <select
                     value={observadorSelecionado}
@@ -140,6 +145,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                     <UserPlus className="w-4 h-4" /> Vincular
                   </button>
                 </div>
+                )}
               </div>
 
               {/* Tarefas */}
@@ -151,7 +157,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                     const Icon = STATUS_ICON[t.tp_status] || Circle;
                     return (
                       <div key={t.id_tarefa} className="flex items-center justify-between gap-3 bg-zinc-950/60 border border-zinc-800 rounded-xl px-3.5 py-2.5">
-                        <button onClick={() => updateTarefaStatus(t.id_tarefa, cicloStatus(t.tp_status))} className="flex items-center gap-2 text-left min-w-0 flex-1">
+                        <button onClick={() => updateTarefaStatus(t.id_tarefa, cicloStatus(t.tp_status))} disabled={!podeEscrever} className="flex items-center gap-2 text-left min-w-0 flex-1 disabled:cursor-default">
                           <Icon className={`w-4 h-4 shrink-0 ${t.tp_status === 'Concluída' ? 'text-teal-400' : t.tp_status === 'Em Andamento' ? 'text-amber-400' : 'text-zinc-500'}`} />
                           <div className="min-w-0">
                             <p className={`text-sm truncate ${t.tp_status === 'Concluída' ? 'text-zinc-500 line-through' : 'text-white'}`}>{t.titulo}</p>
@@ -161,13 +167,16 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                             </p>
                           </div>
                         </button>
-                        <button onClick={() => deleteTarefa(t.id_tarefa)} className="text-zinc-500 hover:text-red-400 p-1 shrink-0">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {podeExcluir && (
+                          <button onClick={() => deleteTarefa(t.id_tarefa)} className="text-zinc-500 hover:text-red-400 p-1 shrink-0">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     );
                   })}
                 </div>
+                {podeEscrever && (
                 <form onSubmit={handleCreateTarefa} className="flex flex-wrap gap-2">
                   <input
                     type="text"
@@ -200,6 +209,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                   </button>
                 </form>
+                )}
               </div>
             </div>
           </motion.div>
