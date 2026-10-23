@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 import asyncpg
 from app.core.config import settings
 from app.services.auth_service import AuthService
 from app.core.dependencies import AUTH_COOKIE_NAME, get_current_user, getDbConnection
 from app.core.rate_limit import RateLimiter
+from app.services import observabilidade_service
 from app.schemas.user import UserInDB, PasswordChangeRequest
 from datetime import timedelta
 
@@ -21,19 +22,24 @@ ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60
 
 @router.post("/login", dependencies=[Depends(RateLimiter(times=5, seconds=60, configKey="login"))])
 async def login(
+    request: Request,
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ):
+    ip = request.client.host if request.client else None
     row = await connection.fetchrow(
         "SELECT email, hashed_password, is_active, tenant_id FROM tb_users WHERE email = $1",
         form_data.username,
     )
-    if row is None or not row["is_active"]:
+    if row is None or not row["is_active"] or not AuthService.verify_password(form_data.password, row["hashed_password"]):
+        # Registra a falha sem dizer se o e-mail existe: o log guarda o e-mail tentado (ADR 040).
+        await observabilidade_service.registrar(connection, "login_falha", form_data.username, None,
+                                                "/api/v1/auth/login", ip, 401)
         raise credentials_exception
 
-    if not AuthService.verify_password(form_data.password, row["hashed_password"]):
-        raise credentials_exception
+    await observabilidade_service.registrar(connection, "login_ok", row["email"], str(row["tenant_id"]),
+                                            "/api/v1/auth/login", ip, 200)
 
     access_token = AuthService.create_access_token(
         data={"sub": row["email"], "tenant_id": str(row["tenant_id"])},

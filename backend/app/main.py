@@ -67,6 +67,7 @@ app = FastAPI(
 )
 
 from app.core.exceptions import register_exception_handlers
+from app.core import database as database_core
 
 # Configuração de CORS
 app.add_middleware(
@@ -79,6 +80,24 @@ app.add_middleware(
 
 # Registra Global Exception Handlers (RFC 7807)
 register_exception_handlers(app)
+
+
+@app.middleware("http")
+async def registrar_acesso_negado(request, call_next):
+    """Registra cada 403 com caminho, IP e, quando o token é válido, o e-mail (ADR 040)."""
+    resposta = await call_next(request)
+    if resposta.status_code == 403 and database_core.databasePool is not None:
+        from app.core.dependencies import AUTH_COOKIE_NAME
+        from app.services import observabilidade_service
+        identificado = observabilidade_service.identificar_pelo_token(request.cookies.get(AUTH_COOKIE_NAME))
+        ip = request.client.host if request.client else None
+        try:
+            async with database_core.databasePool.acquire() as conexao:
+                await observabilidade_service.registrar(conexao, "acesso_negado_403", identificado["email"],
+                                                        identificado["tenant_id"], request.url.path, ip, 403)
+        except Exception:  # noqa: BLE001 - o log nunca derruba a resposta
+            logger.warning("Falha ao registrar acesso negado", exc_info=True)
+    return resposta
 
 # Monta o diretório de arquivos estáticos (Frontend)
 os.makedirs("app/static", exist_ok=True)
