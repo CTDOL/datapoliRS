@@ -1,6 +1,6 @@
 """Observabilidade do sistema (ADR 040): trilha de acesso, saúde, alertas simples e expurgo de 6 meses."""
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import asyncpg
 from jose import JWTError, jwt
@@ -13,6 +13,7 @@ JANELA_ALERTA_MINUTOS = 60
 LIMITE_FALHAS_LOGIN = 5
 JANELA_NEGADOS_MINUTOS = 10
 LIMITE_NEGADOS = 20
+LIMITE_EMAILS_POR_IP = 3  # várias contas tentadas a partir do mesmo IP: sinal de ataque de senha
 
 
 async def registrar(connection: asyncpg.Connection, evento: str, email: Optional[str] = None,
@@ -105,3 +106,91 @@ async def expurgar(connection: asyncpg.Connection) -> int:
         "DELETE FROM tb_log_acesso WHERE created_at < now() - interval '6 months'"
     )
     return int(status.split()[-1])
+
+
+async def ips_suspeitos(connection: asyncpg.Connection) -> List[Dict[str, Any]]:
+    """IPs que, na última hora, tentaram senhas demais, várias contas ou geraram muitos acessos negados."""
+    linhas = await connection.fetch(
+        """
+        SELECT ip,
+               COUNT(*) FILTER (WHERE evento = 'login_falha') AS falhas_login,
+               COUNT(DISTINCT email) FILTER (WHERE evento = 'login_falha') AS emails_distintos,
+               COUNT(*) FILTER (WHERE evento = 'acesso_negado_403') AS negados_403,
+               MAX(created_at) AS ultimo_evento
+          FROM tb_log_acesso
+         WHERE ip IS NOT NULL AND created_at > now() - make_interval(mins => $1)
+         GROUP BY ip
+        HAVING COUNT(*) FILTER (WHERE evento = 'login_falha') >= $2
+            OR COUNT(DISTINCT email) FILTER (WHERE evento = 'login_falha') >= $3
+            OR COUNT(*) FILTER (WHERE evento = 'acesso_negado_403') >= $4
+         ORDER BY MAX(created_at) DESC
+        """,
+        JANELA_ALERTA_MINUTOS, LIMITE_FALHAS_LOGIN, LIMITE_EMAILS_POR_IP, LIMITE_NEGADOS,
+    )
+    resultado = []
+    for l in linhas:
+        motivos = []
+        if l["falhas_login"] >= LIMITE_FALHAS_LOGIN:
+            motivos.append(f"{l['falhas_login']} senhas erradas")
+        if l["emails_distintos"] >= LIMITE_EMAILS_POR_IP:
+            motivos.append(f"{l['emails_distintos']} contas tentadas")
+        if l["negados_403"] >= LIMITE_NEGADOS:
+            motivos.append(f"{l['negados_403']} acessos negados")
+        resultado.append({
+            "ip": l["ip"],
+            "falhas_login": l["falhas_login"],
+            "emails_distintos": l["emails_distintos"],
+            "negados_403": l["negados_403"],
+            "ultimo_evento": l["ultimo_evento"].isoformat(),
+            "motivos": motivos,
+            "localizacao": localizar(l["ip"]),
+            "coordenadas": coordenadas(l["ip"]),
+        })
+    return resultado
+
+
+_leitor_geoip = None
+
+
+def _leitor() -> Any:
+    """Abre a base GeoLite2 uma vez. Sem caminho configurado, a localização fica desligada."""
+    global _leitor_geoip
+    if not settings.GEOIP_DB_PATH:
+        return None
+    if _leitor_geoip is None:
+        import geoip2.database  # import tardio: a API sobe mesmo sem a biblioteca ou a base
+        _leitor_geoip = geoip2.database.Reader(settings.GEOIP_DB_PATH)
+    return _leitor_geoip
+
+
+def _consultar(ip: Optional[str]) -> Any:
+    """Resposta bruta da base para o IP. None para IP vazio, privado, desconhecido ou sem base."""
+    if not ip:
+        return None
+    try:
+        leitor = _leitor()
+    except Exception:  # noqa: BLE001 - base ausente ou corrompida não derruba o painel
+        return None
+    if leitor is None:
+        return None
+    try:
+        return leitor.city(ip)
+    except Exception:  # noqa: BLE001 - IP privado (ex.: 172.22.0.1) não existe na base
+        return None
+
+
+def localizar(ip: Optional[str]) -> Optional[str]:
+    """Cidade e país do IP pela base local. Devolve None para IP privado, desconhecido ou sem base."""
+    resposta = _consultar(ip)
+    if resposta is None:
+        return None
+    partes = [resposta.city.name, resposta.country.name]
+    return ", ".join(p for p in partes if p) or None
+
+
+def coordenadas(ip: Optional[str]) -> Optional[Tuple[float, float]]:
+    """Latitude e longitude aproximadas do IP. None quando a base não tem o ponto."""
+    resposta = _consultar(ip)
+    if resposta is None or resposta.location.latitude is None or resposta.location.longitude is None:
+        return None
+    return resposta.location.latitude, resposta.location.longitude

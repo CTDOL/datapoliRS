@@ -86,3 +86,11 @@ async def expurgar_logs(
     connection: asyncpg.Connection = Depends(getDbConnection),
 ):
     return {"removidos": await observabilidade_service.expurgar(connection)}
+
+
+@router.get("/ips-suspeitos", summary="IPs com tentativas suspeitas na última hora (ADR 040)")
+async def ips_suspeitos(
+    current_user: UserInDB = Depends(require_role(["super_admin"])),
+    connection: asyncpg.Connection = Depends(getDbConnection),
+):
+    return await observabilidade_service.ips_suspeitos(connection)

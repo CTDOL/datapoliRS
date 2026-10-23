@@ -103,3 +103,59 @@ def test_expurgo_remove_registros_com_mais_de_6_meses(client):
     assert removidos >= 1
     restantes = client.get(LOGS, headers=headers, params={"limite": 500}).json()
     assert not any(r["caminho"] == "/teste-expurgo" for r in restantes)
+
+
+def test_ip_com_varias_contas_tentadas_aparece_como_suspeito(client):
+    """O TestClient usa o IP 'testclient'. Cinco contas diferentes erradas a partir dele são suspeitas."""
+    for _ in range(3):
+        _login(client, f"suspeito-{uuid.uuid4().hex[:10]}@teste.datapolirs.com.br", "errada-1234")
+
+    headers = bearerHeader(str(uuid.uuid4()), role="super_admin")
+    suspeitos = client.get("/api/v1/plataforma/ips-suspeitos", headers=headers).json()
+
+    alvo = next(s for s in suspeitos if s["ip"] == "testclient")
+    assert alvo["emails_distintos"] >= 3
+    assert any("contas tentadas" in m for m in alvo["motivos"])
+    assert alvo["localizacao"] is None
+
+
+def test_ips_suspeitos_e_restrito_ao_super_admin(client):
+    headers = bearerHeader(str(uuid.uuid4()), role="admin")
+    assert client.get("/api/v1/plataforma/ips-suspeitos", headers=headers).status_code == 403
+
+
+BASE_TESTE_GEOIP = "/usr/local/Cellar/libmaxminddb/1.14.0/share/examples/GeoIP2-City-Test.mmdb"
+
+
+def test_localizacao_sem_base_configurada_e_vazia(monkeypatch):
+    from app.services import observabilidade_service as obs
+    monkeypatch.setattr(settings, "GEOIP_DB_PATH", "")
+    monkeypatch.setattr(obs, "_leitor_geoip", None)
+
+    assert obs.localizar("81.2.69.142") is None
+
+
+def test_ip_privado_nao_tem_localizacao(monkeypatch):
+    import os
+    from app.services import observabilidade_service as obs
+    if not os.path.exists(BASE_TESTE_GEOIP):
+        pytest.skip("base de teste da MaxMind não instalada nesta máquina")
+    monkeypatch.setattr(settings, "GEOIP_DB_PATH", BASE_TESTE_GEOIP)
+    monkeypatch.setattr(obs, "_leitor_geoip", None)
+
+    assert obs.localizar("172.22.0.1") is None
+    assert obs.localizar("testclient") is None
+
+
+def test_ip_publico_e_localizado_pela_base(monkeypatch):
+    import os
+    from app.services import observabilidade_service as obs
+    if not os.path.exists(BASE_TESTE_GEOIP):
+        pytest.skip("base de teste da MaxMind não instalada nesta máquina")
+    monkeypatch.setattr(settings, "GEOIP_DB_PATH", BASE_TESTE_GEOIP)
+    monkeypatch.setattr(obs, "_leitor_geoip", None)
+
+    assert obs.localizar("81.2.69.142") == "London, United Kingdom"
+    latitude, longitude = obs.coordenadas("81.2.69.142")
+    assert 51 < latitude < 52 and -1 < longitude < 0
+    assert obs.coordenadas("172.22.0.1") is None
