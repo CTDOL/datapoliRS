@@ -20,7 +20,7 @@ router = APIRouter(
     summary="Lista as configurações globais da instância (ciclo eleitoral, rate limiting, cache)"
 )
 async def listar_configuracoes(
-    current_user: UserInDB = Depends(require_role(["admin"])),
+    current_user: UserInDB = Depends(require_role(["super_admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> List[ConfiguracaoItem]:
     """Configurações globais da instância — afetam todos os gabinetes, não só o
@@ -35,7 +35,7 @@ async def listar_configuracoes(
 )
 async def atualizar_configuracoes(
     payload: ConfiguracoesUpdateRequest,
-    current_user: UserInDB = Depends(require_role(["admin"])),
+    current_user: UserInDB = Depends(require_role(["super_admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> List[ConfiguracaoItem]:
     """Aplica imediatamente (sem reiniciar o processo) — o cache de configuração

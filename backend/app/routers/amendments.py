@@ -2,7 +2,7 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 import asyncpg
-from app.core.dependencies import getDbConnection, get_current_user, require_role
+from app.core.dependencies import getDbConnection, get_current_user, require_role, bloquear_super_admin
 from app.schemas.user import UserInDB
 from app.services.amendment_service import AmendmentService
 from app.schemas.budget_amendment import (
@@ -17,7 +17,7 @@ from app.core.rate_limit import RateLimiter
 router = APIRouter(
     prefix="/api/v1/gabinete/emendas",
     tags=["Gabinete Digital & Emendas Orçamentárias"],
-    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="amendments"))]
+    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="amendments")), Depends(bloquear_super_admin)]
 )
 
 

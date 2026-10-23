@@ -39,7 +39,12 @@ def get_token_from_request(request: Request) -> str:
     )
 
 
+# Com senha pendente (usuário novo ou senha redefinida pelo super-admin), só estas rotas respondem.
+ROTAS_COM_SENHA_PENDENTE = {"/api/v1/auth/trocar-senha", "/api/v1/auth/me", "/api/v1/auth/logout"}
+
+
 async def get_current_user(
+    request: Request,
     token: str = Depends(get_token_from_request),
     db: asyncpg.Connection = Depends(getDbConnection)
 ) -> UserInDB:
@@ -67,7 +72,7 @@ async def get_current_user(
         raise credentials_exception
 
     query = """
-        SELECT id, email, is_active, tenant_id, role
+        SELECT id, email, is_active, tenant_id, role, must_change_password
         FROM tb_users
         WHERE email = $1 AND tenant_id = $2
     """
@@ -90,6 +95,12 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    if user.must_change_password and request.url.path not in ROTAS_COM_SENHA_PENDENTE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Troca de senha obrigatória antes de continuar.",
+        )
+
     return user
 
 
@@ -104,3 +115,13 @@ def require_role(allowed_roles: list[str]):
             )
         return current_user
     return _check_role
+
+
+async def bloquear_super_admin(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
+    """Dados de gabinete não são acessados pela conta da plataforma (ADR 039)."""
+    if current_user.role == "super_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="A conta da plataforma não acessa dados de gabinete.",
+        )
+    return current_user

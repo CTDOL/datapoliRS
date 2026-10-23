@@ -12,7 +12,7 @@ def client():
 
 
 def test_listar_configuracoes_requer_admin(client: TestClient):
-    adminHeaders = bearerHeader(str(uuid.uuid4()), role="admin")
+    adminHeaders = bearerHeader(str(uuid.uuid4()), role="super_admin")
     operadorHeaders = bearerHeader(str(uuid.uuid4()), role="operador")
 
     adminResponse = client.get("/api/v1/admin/configuracoes", headers=adminHeaders)
@@ -31,7 +31,7 @@ def test_atualizar_configuracao_aplica_e_reverte(client: TestClient):
 
     Restaura o valor ORIGINAL (lido antes), em finally: o banco de dev é compartilhado,
     e um valor fixo aqui desfazia o pleito ativo a cada rodada de testes."""
-    headers = bearerHeader(str(uuid.uuid4()), role="admin")
+    headers = bearerHeader(str(uuid.uuid4()), role="super_admin")
 
     original = next(item for item in client.get("/api/v1/admin/configuracoes", headers=headers).json()
                     if item["chave"] == "eleitoral.election_year")["valor"]
@@ -57,7 +57,7 @@ def test_atualizar_configuracao_aplica_e_reverte(client: TestClient):
 
 
 def test_atualizar_configuracao_valor_invalido_rejeitado(client: TestClient):
-    headers = bearerHeader(str(uuid.uuid4()), role="admin")
+    headers = bearerHeader(str(uuid.uuid4()), role="super_admin")
 
     response = client.put(
         "/api/v1/admin/configuracoes",
@@ -68,7 +68,7 @@ def test_atualizar_configuracao_valor_invalido_rejeitado(client: TestClient):
 
 
 def test_atualizar_configuracao_chave_desconhecida_rejeitada(client: TestClient):
-    headers = bearerHeader(str(uuid.uuid4()), role="admin")
+    headers = bearerHeader(str(uuid.uuid4()), role="super_admin")
 
     response = client.put(
         "/api/v1/admin/configuracoes",

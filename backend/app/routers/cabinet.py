@@ -4,7 +4,7 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
 import asyncpg
-from app.core.dependencies import getDbConnection, get_current_user, require_role
+from app.core.dependencies import getDbConnection, get_current_user, require_role, bloquear_super_admin
 from app.schemas.user import UserInDB
 from app.services.cabinet_service import CabinetService
 from app.services.image_sanitizer_service import ImageSanitizerService
@@ -30,7 +30,7 @@ def _fotosDaLideranca(idLideranca: uuid.UUID) -> list[str]:
 router = APIRouter(
     prefix="/api/v1/gabinete/liderancas",
     tags=["Gabinete Digital & Lideranças"],
-    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="cabinet"))]
+    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="cabinet")), Depends(bloquear_super_admin)]
 )
 
 

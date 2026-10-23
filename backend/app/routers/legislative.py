@@ -2,7 +2,7 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 import asyncpg
-from app.core.dependencies import getDbConnection, get_current_user, require_role
+from app.core.dependencies import getDbConnection, get_current_user, require_role, bloquear_super_admin
 from app.schemas.user import UserInDB
 from app.services.legislative_service import LegislativeService
 from app.schemas.legislative import (
@@ -19,7 +19,7 @@ from app.core.rate_limit import RateLimiter
 router = APIRouter(
     prefix="/api/v1/gabinete/projetos-lei",
     tags=["Gabinete Digital & Projetos de Lei"],
-    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="legislative"))]
+    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="legislative")), Depends(bloquear_super_admin)]
 )
 
 

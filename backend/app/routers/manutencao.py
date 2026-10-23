@@ -24,7 +24,7 @@ router = APIRouter(
     summary="Saúde dos dados por pleito carregado (votação e comparecimento)"
 )
 async def saude_por_pleito(
-    current_user: UserInDB = Depends(require_role(["admin"])),
+    current_user: UserInDB = Depends(require_role(["super_admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> List[SaudePleito]:
     """Dados globais da instância. Requer papel admin."""
@@ -39,7 +39,7 @@ async def saude_por_pleito(
 )
 async def listar_cargas(
     limite: int = Query(50, ge=1, le=500),
-    current_user: UserInDB = Depends(require_role(["admin"])),
+    current_user: UserInDB = Depends(require_role(["super_admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> List[CargaEtl]:
     """Requer papel admin."""
@@ -54,7 +54,7 @@ async def listar_cargas(
 )
 async def listar_jobs(
     limite: int = Query(20, ge=1, le=200),
-    current_user: UserInDB = Depends(require_role(["admin"])),
+    current_user: UserInDB = Depends(require_role(["super_admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> List[JobEtl]:
     registros = await ManutencaoRepository.listarJobs(connection, limite)
@@ -69,7 +69,7 @@ async def listar_jobs(
 )
 async def enfileirar_carga(
     payload: JobEtlCreate,
-    current_user: UserInDB = Depends(require_role(["admin"])),
+    current_user: UserInDB = Depends(require_role(["super_admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> JobEtl:
     """Exige a confirmação exata 'CARREGAR <TIPO> <ANO>' (ex.: CARREGAR VOTACAO 2026).
@@ -97,7 +97,7 @@ async def enfileirar_carga(
 )
 async def ativar_pleito(
     payload: AtivarPleitoRequest,
-    current_user: UserInDB = Depends(require_role(["admin"])),
+    current_user: UserInDB = Depends(require_role(["super_admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> PleitoAtivo:
     """Gates, nesta ordem:

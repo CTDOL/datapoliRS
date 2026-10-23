@@ -63,14 +63,18 @@ async def read_current_user(
     connection: asyncpg.Connection = Depends(getDbConnection),
 ):
     # nm_mandato vai para o cabeçalho da tela: o operador precisa ver em qual gabinete está.
-    nomeGabinete = await connection.fetchval(
-        "SELECT nm_mandato FROM tb_tenants WHERE id_tenant = $1", current_user.tenant_id
+    gabinete = await connection.fetchrow(
+        "SELECT nm_mandato, cor_primaria, cor_secundaria FROM tb_tenants WHERE id_tenant = $1",
+        current_user.tenant_id,
     )
     return {
         "email": current_user.email,
         "tenant_id": str(current_user.tenant_id),
         "role": current_user.role,
-        "nm_mandato": nomeGabinete,
+        "must_change_password": current_user.must_change_password,
+        "nm_mandato": gabinete["nm_mandato"] if gabinete else None,
+        "cor_primaria": gabinete["cor_primaria"] if gabinete else None,
+        "cor_secundaria": gabinete["cor_secundaria"] if gabinete else None,
     }
 
 
@@ -91,7 +95,7 @@ async def trocar_senha(
 
     newHashedPassword = AuthService.get_password_hash(payload.nova_senha)
     await connection.execute(
-        "UPDATE tb_users SET hashed_password = $1 WHERE id = $2",
+        "UPDATE tb_users SET hashed_password = $1, must_change_password = FALSE WHERE id = $2",
         newHashedPassword, current_user.id
     )
     return {"message": "Senha alterada com sucesso"}

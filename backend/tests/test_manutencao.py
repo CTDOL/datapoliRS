@@ -14,7 +14,7 @@ def client():
 
 
 def test_saude_e_cargas_requerem_admin(client: TestClient):
-    adminHeaders = bearerHeader(str(uuid.uuid4()), role="admin")
+    adminHeaders = bearerHeader(str(uuid.uuid4()), role="super_admin")
     operadorHeaders = bearerHeader(str(uuid.uuid4()), role="operador")
 
     saude = client.get("/api/v1/admin/manutencao/saude", headers=adminHeaders)
@@ -30,7 +30,7 @@ def test_saude_e_cargas_requerem_admin(client: TestClient):
 
 
 def test_saude_traz_campos_de_qualidade_por_pleito(client: TestClient):
-    headers = bearerHeader(str(uuid.uuid4()), role="admin")
+    headers = bearerHeader(str(uuid.uuid4()), role="super_admin")
     registros = client.get("/api/v1/admin/manutencao/saude", headers=headers).json()
     for registro in registros:
         for campo in ("cd_eleicao", "ano_eleicao", "linhas_votacao", "municipios_votacao",

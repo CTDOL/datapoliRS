@@ -2,7 +2,7 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 import asyncpg
-from app.core.dependencies import getDbConnection, get_current_user, require_role
+from app.core.dependencies import getDbConnection, get_current_user, require_role, bloquear_super_admin
 from app.schemas.user import UserInDB
 from app.services.task_service import TaskService
 from app.schemas.task import TarefaCreate, TarefaUpdate, TarefaResponse
@@ -11,7 +11,7 @@ from app.core.rate_limit import RateLimiter
 router = APIRouter(
     prefix="/api/v1/gabinete/tarefas",
     tags=["Gabinete Digital & Tarefas"],
-    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="tasks"))]
+    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="tasks")), Depends(bloquear_super_admin)]
 )
 
 
