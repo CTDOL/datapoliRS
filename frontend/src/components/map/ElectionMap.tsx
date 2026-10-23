@@ -82,7 +82,15 @@ export default function ElectionMap({
     const mapInstance = L.map(mapContainer.current, { zoomControl: true, keyboard: false }).setView([-30.0346, -51.2177], 7);
     map.current = mapInstance;
 
+    // Quando a barra lateral recolhe ou expande, o container muda de largura sem
+    // recarregar a página: o Leaflet precisa recalcular o tamanho para não deixar área cinza.
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => mapInstance.invalidateSize())
+      : null;
+    observer?.observe(mapContainer.current);
+
     return () => {
+      observer?.disconnect();
       mapInstance.remove();
       map.current = null;
       markersRef.current = [];
