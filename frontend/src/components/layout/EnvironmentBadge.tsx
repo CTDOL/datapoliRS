@@ -16,12 +16,15 @@ export function EnvironmentBadge() {
   const label = LABELS[process.env.NEXT_PUBLIC_ENV_LABEL ?? ""];
   if (!label) return null;
 
+  // NEXT_PUBLIC_DB_LABEL vem do compose (nome do banco que a API usa). Sem ele, só o ambiente aparece.
+  const banco = process.env.NEXT_PUBLIC_DB_LABEL;
+
   return (
     <div
       role="status"
       className={`w-full py-1 text-center text-xs font-semibold tracking-wide shadow-md ${label.className}`}
     >
-      {label.text}
+      {banco ? `${label.text} · banco: ${banco}` : label.text}
     </div>
   );
 }

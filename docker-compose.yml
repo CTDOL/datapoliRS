@@ -106,6 +106,7 @@ services:
       - API_INTERNAL_URL=http://api:8000
       - WATCHPACK_POLLING=true
       - NEXT_PUBLIC_ENV_LABEL=DESENVOLVIMENTO
+      - NEXT_PUBLIC_DB_LABEL=datapoli_db
     depends_on:
       - api
     networks:
