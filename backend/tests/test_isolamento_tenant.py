@@ -12,6 +12,7 @@ import asyncio
 import uuid
 import asyncpg
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.config import settings
@@ -55,7 +56,7 @@ def client():
     # A suíte faz ~80 requisições em 3 s; o rate limiter (30/s, contador no Redis
     # compartilhado entre execuções) devolveria 429 no lugar do 404 que se quer provar.
     # Ele não é o objeto destes testes, então fica desligado só neste módulo.
-    async def semLimite(self, request):
+    async def semLimite(self, request: Request):
         return None
 
     with pytest.MonkeyPatch.context() as patch:
