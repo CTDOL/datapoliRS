@@ -1,7 +1,7 @@
 name: Deploy Produção
 
-# Fluxo único, de dev direto para produção (exceção deliberada: não há hml na esteira deste sistema).
-#  - Fluxo: dev -> hml -> main (produção). hml é validado no Docker local (make hml-up) antes do PR para main.
+# Fluxo: dev -> hml -> main (produção), cada passo por Pull Request.
+#  - hml é validado no Docker local (make hml-up) antes do PR para main.
 #  - push e pull_request em dev, hml e main: só testes, nunca build nem deploy.
 #  - workflow_dispatch na main: testes -> build das imagens -> deploy na VPS OCI (environment producao).
 #    O disparo é sempre manual (Regra 7.4 do cofre: nada de push ou merge acionando produção).
@@ -90,12 +90,12 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: backend/requirements*.txt
 
       - name: Instalar Dependências
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r requirements-dev.txt
 
       # Banco vazio até o head: valida a cadeia completa de migrations do zero (doutrina de migrations).
       - name: Aplicar Migrations (Alembic, do zero)

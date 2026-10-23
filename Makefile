@@ -18,11 +18,11 @@ help:
 	@echo "  make clean           - Remove caches do Python e testes"
 
 install:
-	pip install -r backend/requirements.txt
+	pip install -r backend/requirements.txt -r backend/requirements-dev.txt
 
 # --- Ambientes DEV e HML Simultâneos (ADR 044 / ADR 047) ---
 dev-up:
-	docker compose -f docker-compose.yml up -d
+	docker compose -f docker-compose.yml up -d --build
 
 dev-down:
 	docker compose -f docker-compose.yml down

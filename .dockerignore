@@ -1,0 +1,18 @@
+# Contexto de build da raiz (usado por etl/Dockerfile). Mantém fora do daemon
+# o que não entra em nenhuma imagem: segredos, ambiente virtual, caches e o
+# frontend, que tem contexto próprio em frontend/.
+.git
+.github
+.venv
+.env
+.env.*
+.claude
+.agents
+.vscode
+docs
+infra
+nginx
+frontend
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
