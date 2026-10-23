@@ -9,6 +9,7 @@ Cada permissão negada é um teste negativo. Só valem depois da prova de mutaç
 import uuid
 
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.rate_limit import RateLimiter
@@ -22,7 +23,7 @@ PORTO_ALEGRE = "4314902"
 @pytest.fixture(scope="module")
 def client():
     # O limitador de requisições não é o objeto destes testes.
-    async def semLimite(self, request):
+    async def semLimite(self, request: Request):
         return None
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(RateLimiter, "__call__", semLimite)

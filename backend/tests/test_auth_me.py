@@ -1,5 +1,6 @@
 import uuid
 
+from fastapi import Request
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.rate_limit import RateLimiter
@@ -8,7 +9,7 @@ from tests.test_sprint2_endpoints import bearerHeader
 
 def test_me_devolve_o_nome_do_gabinete_do_usuario(monkeypatch):
     # O limitador só atrapalha aqui: o teste faz uma chamada.
-    async def semLimite(self, request):
+    async def semLimite(self, request: Request):
         return None
     monkeypatch.setattr(RateLimiter, "__call__", semLimite)
 

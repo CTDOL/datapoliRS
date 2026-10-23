@@ -2,6 +2,7 @@
 import uuid
 
 import pytest
+from fastapi import Request
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -14,7 +15,7 @@ PRODUTIVIDADE = "/api/v1/gabinete/produtividade"
 
 @pytest.fixture(scope="module")
 def client():
-    async def semLimite(self, request):
+    async def semLimite(self, request: Request):
         return None
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(RateLimiter, "__call__", semLimite)
