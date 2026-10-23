@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/services/api';
 import { CabecalhoSessao } from '@/components/layout/CabecalhoSessao';
 import { TrocaSenhaObrigatoria } from '@/components/layout/TrocaSenhaObrigatoria';
-import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X, Database, ChevronLeft, ChevronRight, Cpu, Landmark as Mandato } from 'lucide-react';
+import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X, Database, ChevronLeft, ChevronRight, Cpu, Landmark as Mandato, Activity } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -68,6 +68,7 @@ export default function DashboardLayout({
     { name: 'Gabinetes', href: '/plataforma', icon: Mandato },
     { name: 'Dados eleitorais', href: '/manutencao', icon: Database },
     { name: 'APIs & sistema', href: '/plataforma/configuracoes', icon: Cpu },
+    { name: 'Observabilidade', href: '/plataforma/observabilidade', icon: Activity },
   ];
 
   const navItems = isSuperAdmin ? navItemsPlataforma : [
