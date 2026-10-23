@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/services/api';
 import { CabecalhoSessao } from '@/components/layout/CabecalhoSessao';
-import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X, Database, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TrocaSenhaObrigatoria } from '@/components/layout/TrocaSenhaObrigatoria';
+import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X, Database, ChevronLeft, ChevronRight, Cpu, Landmark as Mandato } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -27,12 +28,21 @@ export default function DashboardLayout({
     api
       .get('/api/v1/auth/me')
       .then((res) => {
-        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role, nm_mandato: res.data.nm_mandato });
+        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role, nm_mandato: res.data.nm_mandato, must_change_password: res.data.must_change_password, cor_primaria: res.data.cor_primaria, cor_secundaria: res.data.cor_secundaria });
       })
       .catch(() => {
         // 401/403 já é tratado pelo interceptor global (redireciona para /login).
       });
   }, [user, login]);
+
+  // Cor do gabinete (ADR 038): vira a variável --cor-primaria usada no destaque da navegação e da marca.
+  useEffect(() => {
+    const raiz = document.documentElement;
+    raiz.style.setProperty('--cor-primaria', user?.cor_primaria ?? '#9333ea');
+    return () => {
+      raiz.style.removeProperty('--cor-primaria');
+    };
+  }, [user?.cor_primaria]);
 
   const handleLogout = async () => {
     // Cookie é HttpOnly: só o backend consegue removê-lo (Set-Cookie de expiração).
@@ -44,13 +54,28 @@ export default function DashboardLayout({
     }
   };
 
-  const navItems = [
+  // Área da plataforma (ADR 039): o super-admin não administra gabinete e tem navegação própria.
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  useEffect(() => {
+    if (!user) return;
+    const naAreaPlataforma = pathname.startsWith('/plataforma') || pathname.startsWith('/manutencao');
+    if (isSuperAdmin && !naAreaPlataforma) router.replace('/plataforma');
+    if (!isSuperAdmin && pathname.startsWith('/plataforma')) router.replace('/');
+  }, [user, isSuperAdmin, pathname, router]);
+
+  const navItemsPlataforma = [
+    { name: 'Gabinetes', href: '/plataforma', icon: Mandato },
+    { name: 'Dados eleitorais', href: '/manutencao', icon: Database },
+    { name: 'APIs & sistema', href: '/plataforma/configuracoes', icon: Cpu },
+  ];
+
+  const navItems = isSuperAdmin ? navItemsPlataforma : [
     { name: 'Mapa Tático', href: '/', icon: Map },
     { name: 'Lideranças', href: '/liderancas', icon: Users },
     { name: 'Projetos de Lei', href: '/projetos-lei', icon: Landmark },
     { name: 'Emendas', href: '/emendas', icon: FileText },
     { name: 'Configurações', href: '/settings', icon: Settings },
-    { name: 'Manutenção', href: '/manutencao', icon: Database, adminOnly: true },
   ];
 
   return (
@@ -98,7 +123,7 @@ export default function DashboardLayout({
 
         {/* Navigation */}
         <nav className={`flex-1 min-h-0 overflow-y-auto px-4 ${isCollapsed ? 'lg:px-2' : ''} py-6 space-y-2`}>
-          {navItems.filter((item) => !item.adminOnly || user?.role === 'admin').map((item) => {
+          {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
@@ -106,9 +131,14 @@ export default function DashboardLayout({
                 href={item.href}
                 title={isCollapsed ? item.name : undefined}
                 onClick={() => setIsSidebarOpen(false)}
+                style={isActive ? {
+                  color: 'var(--cor-primaria)',
+                  backgroundColor: 'color-mix(in srgb, var(--cor-primaria) 12%, transparent)',
+                  borderColor: 'color-mix(in srgb, var(--cor-primaria) 30%, transparent)',
+                } : undefined}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isCollapsed ? 'lg:justify-center' : ''} ${
                   isActive 
-                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
+                    ? 'border shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
                     : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50 border border-transparent'
                 }`}
               >
@@ -178,6 +208,7 @@ export default function DashboardLayout({
         </header>
 
         <CabecalhoSessao />
+        <TrocaSenhaObrigatoria />
 
         <main className="flex-1 min-h-0 relative overflow-hidden">
           {children}

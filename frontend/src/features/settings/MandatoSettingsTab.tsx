@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Landmark, Save } from 'lucide-react';
 import { FormOptions, TenantProfile, TenantProfileUpdate } from './useSettings';
+import { IdentidadeVisualSettings } from './IdentidadeVisualSettings';
 
 interface Props {
   profile: TenantProfile | null;
@@ -51,6 +52,7 @@ export function MandatoSettingsTab({ profile, options, isLoading, isSubmitting, 
   };
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="max-w-2xl space-y-5">
       <div className="flex items-center gap-3 mb-2">
         <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
@@ -139,5 +141,7 @@ export function MandatoSettingsTab({ profile, options, isLoading, isSubmitting, 
         </button>
       )}
     </form>
+    <IdentidadeVisualSettings isAdmin={isAdmin} />
+    </>
   );
 }
