@@ -28,7 +28,17 @@ jobs:
   sincroniza:
     runs-on: [ self-hosted, macOS, hml-local ]
     timeout-minutes: 25
+    env:
+      # O runner roda como serviço (launchd), sem keychain desbloqueado. Um config sem credsStore
+      # evita o helper osxkeychain. As imagens usadas são públicas e não exigem login.
+      DOCKER_CONFIG: /Users/cpinfo/.docker-hml-runner
     steps:
+      - name: Config do Docker sem keychain
+        run: |
+          set -euo pipefail
+          mkdir -p "$DOCKER_CONFIG"
+          echo '{}' > "$DOCKER_CONFIG/config.json"
+
       - name: Checkout dev
         uses: actions/checkout@v4
         with:
