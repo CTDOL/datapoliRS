@@ -17,7 +17,7 @@ from app.schemas.leadership import (
 )
 from app.core.rate_limit import RateLimiter
 
-UPLOADS_DIR = "app/uploads/liderancas"
+UPLOADS_DIR = os.environ.get("UPLOADS_DIR", "app/uploads/liderancas")
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FOTO_SIZE_BYTES = 5 * 1024 * 1024  # 5MB
 
