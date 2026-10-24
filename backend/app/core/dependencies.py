@@ -18,6 +18,7 @@ async def getDbConnection() -> AsyncGenerator[asyncpg.Connection, None]:
 from jose import JWTError
 from app.services.auth_service import AuthService
 from app.schemas.user import UserInDB, TokenData
+from app.repositories.user_repository import UserRepository
 
 AUTH_COOKIE_NAME = "token"
 
@@ -71,13 +72,7 @@ async def get_current_user(
     except (JWTError, ValueError):
         raise credentials_exception
 
-    query = """
-        SELECT id, email, is_active, tenant_id, role, must_change_password
-        FROM tb_users
-        WHERE email = $1 AND tenant_id = $2
-    """
-
-    row = await db.fetchrow(query, token_data.email, token_data.tenant_id)
+    row = await UserRepository.getForAuthentication(db, token_data.email, token_data.tenant_id)
 
     if row is None:
         raise HTTPException(
@@ -86,7 +81,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user = UserInDB(**dict(row))
+    user = UserInDB(**row)
 
     if not user.is_active:
         raise HTTPException(
