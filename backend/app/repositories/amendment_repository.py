@@ -48,7 +48,7 @@ class AmendmentRepository:
             return dict(record)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao criar emenda para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database insert error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def listAmendments(
@@ -125,7 +125,7 @@ class AmendmentRepository:
             return [dict(record) for record in records], total
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao listar emendas para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def getAmendmentById(
@@ -160,7 +160,7 @@ class AmendmentRepository:
             return dict(record) if record else None
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao recuperar emenda {amendmentId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def updateAmendment(
@@ -198,7 +198,7 @@ class AmendmentRepository:
             return dict(record) if record else None
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao atualizar emenda {amendmentId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database update error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def deleteAmendment(
@@ -213,7 +213,7 @@ class AmendmentRepository:
             return result == "DELETE 1"
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao deletar emenda {amendmentId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database delete error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def getKpis(
@@ -256,4 +256,4 @@ class AmendmentRepository:
             }
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao calcular KPIs de emendas (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422

@@ -73,7 +73,7 @@ class UserRepository:
             raise EmailAlreadyExistsError(email) from dbError
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao criar usuário '{email}' no tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database insert error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def updateInTenant(
@@ -116,7 +116,7 @@ class UserRepository:
             return dict(record) if record else None
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao atualizar usuário {userId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database update error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def getAuthByEmail(connection: asyncpg.Connection, email: str) -> Optional[Dict[str, Any]]:

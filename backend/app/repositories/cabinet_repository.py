@@ -107,7 +107,7 @@ class CabinetRepository:
             return created
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao criar liderança para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database insert error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def listLeaderships(
@@ -178,7 +178,7 @@ class CabinetRepository:
             return [_parseMunicipiosJson(record) for record in records], total
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao listar lideranças para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def pertenceAoGabinete(
@@ -212,7 +212,7 @@ class CabinetRepository:
             return _parseMunicipiosJson(record) if record else None
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao recuperar liderança {leadershipId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def updateLeadership(
@@ -258,7 +258,7 @@ class CabinetRepository:
             return await CabinetRepository.getLeadershipById(connection, tenantId, leadershipId)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao atualizar liderança {leadershipId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database update error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def deleteLeadership(
@@ -290,7 +290,7 @@ class CabinetRepository:
             return result == "DELETE 1"
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao deletar liderança {leadershipId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database delete error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def setFotoUrl(

@@ -114,7 +114,7 @@ class TaskRepository:
             return dict(record)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao criar tarefa para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database insert error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def listTarefas(
@@ -154,7 +154,7 @@ class TaskRepository:
             return await TaskRepository._anexarResponsaveis(connection, tenantId, registros)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao listar tarefas para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def getTarefaById(
@@ -179,7 +179,7 @@ class TaskRepository:
             return registros[0]
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao buscar tarefa {tarefaId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def updateTarefa(
@@ -234,7 +234,7 @@ class TaskRepository:
             return await TaskRepository.getTarefaById(connection, tenantId, tarefaId)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao atualizar tarefa {tarefaId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database update error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def deleteTarefa(
@@ -248,4 +248,4 @@ class TaskRepository:
             return result == "DELETE 1"
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao deletar tarefa {tarefaId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database delete error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
