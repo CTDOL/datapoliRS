@@ -2,44 +2,61 @@ import L from 'leaflet';
 import { buildWhatsappLink } from '@/utils/whatsapp';
 import type { LiderancaPoint, MapViewMode, MunicipioAtuacaoPoint } from './ElectionMap';
 
-export type MapTheme = 'dark' | 'light';
+export type MapTheme = 'dark' | 'light' | 'topo' | 'satelite' | 'osm';
 
-// Tiles raster: Esri Canvas (gratuito, sem API key). O CARTO passou a
-// exigir API key nos endpoints basemaps.cartocdn.com/{dark,light}_all —
-// substituído para não depender de credencial paga em ambiente local.
-// Esri separa o canvas base dos rótulos (nomes de cidade) em dois
-// serviços de tile distintos — "Base" sozinho renderiza um mapa em
-// branco/cinza sem nenhum nome; "Reference" é a camada transparente de
-// labels que precisa ser empilhada por cima.
+/** Opções exibidas no seletor de mapa base, na ordem do controle. */
+export const OPCOES_MAPA_BASE: { tema: MapTheme; rotulo: string }[] = [
+  { tema: 'dark', rotulo: 'Dark' },
+  { tema: 'light', rotulo: 'Light' },
+  { tema: 'topo', rotulo: 'Topográfico' },
+  { tema: 'satelite', rotulo: 'Satélite' },
+  { tema: 'osm', rotulo: 'OpenStreetMap' },
+];
+
+// Basemaps de fundo claro: a borda dos municípios precisa de traço escuro.
+const BASES_CLARAS: ReadonlySet<MapTheme> = new Set(['light', 'topo', 'osm']);
+
+// Tiles raster sem API key. Esri separa o canvas base dos rótulos em
+// serviços distintos: "Base" sozinho renderiza sem nomes; "Reference" é a
+// camada transparente de labels empilhada por cima. Topo e OSM já trazem
+// os nomes no próprio tile, então não precisam de camada extra de labels.
+// Satélite não tem nomes: usa a camada de limites e lugares do Esri.
 const TILE_URLS: Record<MapTheme, string> = {
   dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
   light: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+  topo: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+  satelite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  osm: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
 };
-const LABEL_URLS: Record<MapTheme, string> = {
+const LABEL_URLS: Partial<Record<MapTheme, string>> = {
   dark: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
   light: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+  satelite: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
 };
 
 const SEM_VOTOS_COR = 'rgba(148, 163, 184, 0.06)';
 
-/** Canvas base + camada de rótulos do tema. Devolve as duas para a troca de tema removê-las. */
+/** Canvas base + camada de rótulos do tema (quando o tema tem uma). Devolve as camadas para a troca de tema removê-las. */
 export function adicionarCamadasBase(mapa: L.Map, tema: MapTheme): L.TileLayer[] {
   const base = L.tileLayer(TILE_URLS[tema], {
     maxZoom: 16,
     attribution: '&copy; Esri, &copy; OpenStreetMap',
   }).addTo(mapa);
-  const rotulos = L.tileLayer(LABEL_URLS[tema], {
-    maxZoom: 16,
-    pane: 'shadowPane', // acima dos tiles base, abaixo dos vetores (overlayPane)
-  }).addTo(mapa);
-  return [base, rotulos];
+  const camadas = [base];
+  const urlRotulos = LABEL_URLS[tema];
+  if (urlRotulos) {
+    camadas.push(L.tileLayer(urlRotulos, {
+      maxZoom: 16,
+      pane: 'shadowPane', // acima dos tiles base, abaixo dos vetores (overlayPane)
+    }).addTo(mapa));
+  }
+  return camadas;
 }
 
-// Borda branca translúcida (0.2 alpha) some contra o basemap claro do tema
-// Light — precisa de um traço escuro ali para as divisas dos municípios
-// ficarem visíveis; no tema Dark o branco translúcido já contrasta bem.
+// Borda branca translúcida (0.2 alpha) some contra basemap claro: precisa de
+// um traço escuro para as divisas dos municípios ficarem visíveis.
 function corDaBorda(tema: MapTheme): string {
-  return tema === 'light' ? 'rgba(15, 23, 42, 0.35)' : 'rgba(255, 255, 255, 0.2)';
+  return BASES_CLARAS.has(tema) ? 'rgba(15, 23, 42, 0.35)' : 'rgba(255, 255, 255, 0.2)';
 }
 
 function corCoropletica(votos: number, maxVotos: number): string {
@@ -67,6 +84,25 @@ export function aplicarEstiloCoropletico(camada: L.GeoJSON, votos: Record<string
       opacity: 1,
       fillOpacity: 0.8,
     };
+  });
+  vincularTooltipMunicipio(camada, votos);
+}
+
+type MunicipioLayer = L.Layer & { feature?: { properties?: { id?: string; name?: string } } };
+
+/** Tooltip com o nome do município e os votos do candidato, acompanhando o cursor. */
+function vincularTooltipMunicipio(camada: L.GeoJSON, votos: Record<string, number>) {
+  camada.eachLayer((camadaMunicipio) => {
+    const municipio = camadaMunicipio as MunicipioLayer;
+    const ibgeId = municipio.feature?.properties?.id;
+    const nome = escaparHtml(municipio.feature?.properties?.name ?? 'Município');
+    const v = (ibgeId && votos[ibgeId]) || 0;
+    const linhaVotos = v > 0
+      ? `${v.toLocaleString('pt-BR')} ${v === 1 ? 'voto' : 'votos'}`
+      : 'Sem votos registrados';
+    municipio
+      .unbindTooltip()
+      .bindTooltip(`<strong>${nome}</strong><br/>${linhaVotos}`, { sticky: true });
   });
 }
 
@@ -151,6 +187,7 @@ export function popupMunicipio(mun: MunicipioAtuacaoPoint, liderancas: Lideranca
         <strong style="color:#0284c7; font-size:13px;">${escaparHtml(l.nm_completo)}</strong><br/>
         <span style="font-size:12px;">Influência: <b>${escaparHtml(l.tp_influencia || '')}</b></span>
         ${l.nr_telefone ? `<br/><span style="font-size:12px; color:#334155;">📞 ${escaparHtml(l.nr_telefone)}</span>` : ''}
+        ${linhaTarefas(l)}
       </div>`
     )
     .join('');
@@ -161,6 +198,20 @@ export function popupMunicipio(mun: MunicipioAtuacaoPoint, liderancas: Lideranca
       ${itens}
     </div>
   `;
+}
+
+/**
+ * Contagem de tarefas abertas com link para o quadro filtrado pela liderança.
+ * Só aparece quando a API devolve a contagem (admin e operador). Mostra apenas número e link: sem título nem descrição.
+ */
+function linhaTarefas(l: LiderancaPoint): string {
+  if (l.tarefas_abertas == null) return '';
+  const quantidade = l.tarefas_abertas;
+  const texto = `${quantidade} ${quantidade === 1 ? 'tarefa aberta' : 'tarefas abertas'}`;
+  return `
+    <div style="margin-top:6px; font-size:12px; color:#334155;">
+      📋 ${texto} · <a href="/tarefas?lideranca=${escaparHtml(l.id_lideranca)}" style="color:#0284c7; font-weight:600;">Ver tarefas</a>
+    </div>`;
 }
 
 export function popupLideranca(l: LiderancaPoint, mun: MunicipioAtuacaoPoint): string {
@@ -189,6 +240,7 @@ export function popupLideranca(l: LiderancaPoint, mun: MunicipioAtuacaoPoint): s
       <span style="font-size:12px;">Influência: <b>${escaparHtml(l.tp_influencia || '')}</b></span><br/>
       <span style="color:#64748b; font-size:11px;">${escaparHtml(mun.nm_municipio || '')}</span>
       ${telefoneHtml}
+      ${linhaTarefas(l)}
     </div>
   `;
 }

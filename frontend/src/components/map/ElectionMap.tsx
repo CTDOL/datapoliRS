@@ -5,6 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   MapTheme,
+  OPCOES_MAPA_BASE,
   adicionarCamadasBase,
   aplicarEstiloCoropletico,
   ajustarVisibilidadeCoropletica,
@@ -30,6 +31,8 @@ export interface LiderancaPoint {
   tp_influencia: string;
   nr_telefone?: string;
   ds_foto_url?: string | null;
+  /** Tarefas abertas da liderança. Null quando o papel do usuário não vê a contagem. */
+  tarefas_abertas?: number | null;
   /** Uma liderança pode atuar em vários municípios — um marcador é plotado por município. */
   municipios: MunicipioAtuacaoPoint[];
 }
@@ -170,27 +173,22 @@ export default function ElectionMap({
       <div ref={mapContainer} className="w-full h-full" />
 
       {/* Controle de Mapa Base */}
-      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-[1000] flex bg-zinc-900/80 backdrop-blur-md rounded-xl p-1 border border-zinc-700/50 shadow-xl">
-        <button
-          onClick={() => setMapTheme('dark')}
-          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-            mapTheme === 'dark'
-              ? 'bg-[color:var(--cor-primaria)] text-on-accent shadow-md shadow-[0_4px_14px_0_var(--cor-destaque-25)]'
-              : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-          }`}
-        >
-          Dark
-        </button>
-        <button
-          onClick={() => setMapTheme('light')}
-          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-            mapTheme === 'light'
-              ? 'bg-zinc-100 text-zinc-900 shadow-md'
-              : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
-          }`}
-        >
-          Light
-        </button>
+      <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-[1000] flex flex-wrap justify-end max-w-[calc(100%-1rem)] gap-1 bg-zinc-900/80 backdrop-blur-md rounded-xl p-1 border border-zinc-700/50 shadow-xl">
+        {OPCOES_MAPA_BASE.map((opcao) => (
+          <button
+            key={opcao.tema}
+            onClick={() => setMapTheme(opcao.tema)}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              mapTheme === opcao.tema
+                ? opcao.tema === 'light'
+                  ? 'bg-zinc-100 text-zinc-900 shadow-md'
+                  : 'bg-[color:var(--cor-primaria)] text-on-accent shadow-md shadow-[0_4px_14px_0_var(--cor-destaque-25)]'
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+            }`}
+          >
+            {opcao.rotulo}
+          </button>
+        ))}
       </div>
     </div>
   );
