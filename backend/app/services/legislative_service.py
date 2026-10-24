@@ -7,7 +7,7 @@ import math
 from app.repositories.legislative_repository import LegislativeRepository
 from app.repositories.cabinet_repository import CabinetRepository
 from app.services.legislative_sources import buscar_em_todas_fontes, obter_adaptador, FonteIndisponivelError
-from app.services.apis_service import ApisService
+from app.services.apis_service import ApisService, FONTES_LEGISLATIVAS
 from app.schemas.legislative import (
     BuscaExternaResponse,
     ProjetoLeiImport,
@@ -28,10 +28,14 @@ class LegislativeService:
         connection: asyncpg.Connection,
         tenantId: uuid.UUID,
         nome: str,
+        fontesConsultadas: Optional[set[str]] = None,
     ) -> BuscaExternaResponse:
         """Agrega ALRS + Câmara + Senado, marca quais já foram importados por este
-        gabinete e repassa quais fontes falharam nesta consulta."""
+        gabinete e repassa quais fontes falharam nesta consulta. `fontesConsultadas`
+        (ex.: {"ALRS", "CAMARA"}) deixa de fora as demais; None consulta todas as ligadas."""
         enderecos, desligadas = await ApisService.fontesLegislativas(connection)
+        if fontesConsultadas is not None:
+            desligadas = set(desligadas) | (set(FONTES_LEGISLATIVAS) - fontesConsultadas)
         resultados, fontes_com_erro = await buscar_em_todas_fontes(nome, enderecos, desligadas)
 
         importados = await LegislativeRepository.listChavesImportadas(connection, tenantId)

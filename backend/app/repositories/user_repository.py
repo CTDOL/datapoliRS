@@ -1,3 +1,4 @@
+import json
 import uuid
 import logging
 from typing import Any, Dict, List, Optional
@@ -121,6 +122,21 @@ class UserRepository:
         await connection.execute(
             "UPDATE tb_users SET hashed_password = $1, must_change_password = FALSE WHERE id = $2",
             hashedPassword, userId,
+        )
+
+    @staticmethod
+    async def getPreferencias(connection: asyncpg.Connection, userId: uuid.UUID) -> Dict[str, Any]:
+        valor = await connection.fetchval("SELECT preferencias FROM tb_users WHERE id = $1", userId)
+        if valor is None:
+            return {}
+        return json.loads(valor) if isinstance(valor, str) else dict(valor)
+
+    @staticmethod
+    async def mesclarPreferencias(connection: asyncpg.Connection, userId: uuid.UUID, preferencias: Dict[str, Any]) -> None:
+        """Mescla no nível de chave de topo: as chaves enviadas substituem as gravadas, e as demais ficam como estão."""
+        await connection.execute(
+            "UPDATE tb_users SET preferencias = preferencias || $2::jsonb WHERE id = $1",
+            userId, json.dumps(preferencias),
         )
 
     @staticmethod

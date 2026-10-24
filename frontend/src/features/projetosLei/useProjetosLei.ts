@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { api } from '@/services/api';
+import { getFontesLegislativas } from '@/utils/tacticalPreferences';
 
 export interface ProposicaoExterna {
   fonte: string;
@@ -158,8 +159,17 @@ export function useProjetosLei() {
       const sequencia = ++buscaSequenciaRef.current;
       setIsBuscando(true);
       try {
+        // Só consulta as fontes que o usuário marcou nas preferências (Preferências Táticas).
+        const fontesAtivas = Object.entries(getFontesLegislativas())
+          .filter(([, ativa]) => ativa)
+          .map(([fonte]) => fonte);
+        if (fontesAtivas.length === 0) {
+          setResultadosExternos([]);
+          setFontesComErro([]);
+          return;
+        }
         const response = await api.get<BuscaExternaResponse>('/api/v1/gabinete/projetos-lei/buscar-externo', {
-          params: { nome: nomeBusca.trim() },
+          params: { nome: nomeBusca.trim(), fontes: fontesAtivas.join(',') },
         });
         if (sequencia !== buscaSequenciaRef.current) return;
         setResultadosExternos(response.data.resultados);

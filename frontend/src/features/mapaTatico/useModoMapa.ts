@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/services/api';
 import type { MapViewMode } from '@/components/map/ElectionMap';
-import { getMapaPadrao } from '@/utils/tacticalPreferences';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 /** Modo de visualização do Mapa Tático e o ano do pleito ativo que rotula o modo Votação. */
 export function useModoMapa() {
-  const [viewMode, setViewMode] = useState<MapViewMode>('liderancas');
+  // O modo padrão vem da preferência do usuário, carregada no login. Um clique no
+  // seletor de modo vence a preferência até a próxima carga da tela.
+  const mapaPadrao = useAuthStore((estado) => estado.user?.preferencias?.mapa_padrao);
+  const [modoEscolhido, setModoEscolhido] = useState<MapViewMode | null>(null);
   const [anoAtivo, setAnoAtivo] = useState<number | null>(null);
+  const viewMode: MapViewMode = modoEscolhido ?? mapaPadrao ?? 'liderancas';
 
   useEffect(() => {
     api
@@ -15,18 +19,9 @@ export function useModoMapa() {
       .catch(() => setAnoAtivo(null));
   }, []);
 
-  // Lido em um efeito (não no useState inicial) para não divergir entre a
-  // renderização do servidor (sem localStorage) e a hidratação no cliente.
-  // Sem setTimeout: um clique do usuário no seletor de modo, entre o mount e
-  // o timeout, era sobrescrito por este efeito restaurando o valor salvo.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratação única de preferência client-only (localStorage), sem equivalente no SSR
-    setViewMode(getMapaPadrao());
-  }, []);
-
   return {
     viewMode,
-    setViewMode,
+    setViewMode: setModoEscolhido,
     anoAtivo,
     mostrarBuscaCandidato: viewMode === 'votacao' || viewMode === 'cruzada',
     mostrarFiltrosLideranca: viewMode === 'liderancas' || viewMode === 'cruzada',

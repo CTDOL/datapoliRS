@@ -30,14 +30,21 @@ router = APIRouter(
 )
 async def buscar_proposicoes_externas(
     nome: str = Query(..., min_length=3, description="Nome (ou parte) do parlamentar a buscar"),
+    fontes: Optional[str] = Query(
+        None,
+        pattern=r"^(alrs|camara|senado)(,(alrs|camara|senado))*$",
+        description="Fontes a consultar, separadas por vírgula (alrs, camara, senado). Omitido = todas.",
+    ),
     current_user: UserInDB = Depends(get_current_user),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> BuscaExternaResponse:
     """Agrega resultados de ALRS (scraping), Câmara e Senado (APIs oficiais) em uma
     única lista, marcando quais já foram importados por este gabinete. Fontes que
     não responderam (timeout/5xx) vêm em `fontes_com_erro` em vez de sumirem em
-    silêncio — o cliente deve avisar o usuário que a lista pode estar incompleta."""
-    return await LegislativeService.buscarExterno(connection, current_user.tenant_id, nome)
+    silêncio — o cliente deve avisar o usuário que a lista pode estar incompleta.
+    `fontes` restringe a consulta às fontes escolhidas pelo usuário (preferência pessoal)."""
+    fontes_consultadas = None if fontes is None else {f.upper() for f in fontes.split(",")}
+    return await LegislativeService.buscarExterno(connection, current_user.tenant_id, nome, fontes_consultadas)
 
 
 @router.post(

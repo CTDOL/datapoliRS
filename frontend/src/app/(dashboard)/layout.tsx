@@ -28,7 +28,7 @@ export default function DashboardLayout({
     api
       .get('/api/v1/auth/me')
       .then((res) => {
-        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role, nm_mandato: res.data.nm_mandato, must_change_password: res.data.must_change_password, cor_primaria: res.data.cor_primaria, cor_secundaria: res.data.cor_secundaria, tp_tema: res.data.tp_tema, });
+        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role, nm_mandato: res.data.nm_mandato, must_change_password: res.data.must_change_password, cor_primaria: res.data.cor_primaria, cor_secundaria: res.data.cor_secundaria, tp_tema: res.data.tp_tema, preferencias: res.data.preferencias });
       })
       .catch(() => {
         // 401/403 já é tratado pelo interceptor global (redireciona para /login).

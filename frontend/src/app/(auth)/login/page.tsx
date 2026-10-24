@@ -41,6 +41,7 @@ export default function LoginPage() {
         cor_primaria: me.data.cor_primaria,
         cor_secundaria: me.data.cor_secundaria,
         tp_tema: me.data.tp_tema,
+        preferencias: me.data.preferencias,
       });
 
       // Super-admin vai direto para a área da plataforma: a home do gabinete chama APIs que ele não acessa.

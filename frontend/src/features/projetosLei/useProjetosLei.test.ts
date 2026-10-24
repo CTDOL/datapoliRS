@@ -48,7 +48,7 @@ describe('useProjetosLei — busca nas fontes oficiais', () => {
     act(() => result.current.setNomeBusca('nadine'));
 
     await waitFor(() =>
-      expect(mockedGet).toHaveBeenCalledWith(BUSCAR_EXTERNO, { params: { nome: 'nadine' } })
+      expect(mockedGet).toHaveBeenCalledWith(BUSCAR_EXTERNO, { params: { nome: 'nadine', fontes: 'alrs,camara,senado' } })
     );
     await waitFor(() => expect(result.current.resultadosExternos).toEqual([proposicaoAlrs]));
     expect(result.current.fontesComErro).toEqual(['CAMARA']);
@@ -80,7 +80,7 @@ describe('useProjetosLei — busca nas fontes oficiais', () => {
     const { result } = renderHook(() => useProjetosLei());
 
     act(() => result.current.setNomeBusca('nad'));
-    await waitFor(() => expect(mockedGet).toHaveBeenCalledWith(BUSCAR_EXTERNO, { params: { nome: 'nad' } }));
+    await waitFor(() => expect(mockedGet).toHaveBeenCalledWith(BUSCAR_EXTERNO, { params: { nome: 'nad', fontes: 'alrs,camara,senado' } }));
 
     act(() => result.current.setNomeBusca('nadine'));
     await waitFor(() => expect(result.current.resultadosExternos).toEqual([proposicaoAlrs]));

@@ -5,7 +5,7 @@ from app.core.config import settings
 from app.services.auth_service import AuthService
 from app.core.dependencies import AUTH_COOKIE_NAME, get_current_user, getDbConnection
 from app.core.rate_limit import RateLimiter
-from app.services import observabilidade_service
+from app.services import observabilidade_service, preferencias_service
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserInDB, PasswordChangeRequest
 from datetime import timedelta
@@ -80,6 +80,7 @@ async def read_current_user(
         "cor_primaria": gabinete["cor_primaria"] if gabinete else None,
         "cor_secundaria": gabinete["cor_secundaria"] if gabinete else None,
         "tp_tema": gabinete["tp_tema"] if gabinete else "escuro",
+        "preferencias": (await preferencias_service.obter(connection, current_user.id)).model_dump(),
     }
 
 

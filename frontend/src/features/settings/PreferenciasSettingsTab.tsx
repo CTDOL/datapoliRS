@@ -29,6 +29,7 @@ export function PreferenciasSettingsTab() {
   const [mapaPadrao, setMapaPadraoState] = useState<MapViewMode>('liderancas');
   const [fontes, setFontesState] = useState<FontesLegislativas>({ alrs: true, camara: true, senado: true });
   const [saved, setSaved] = useState(false);
+  const [erroSalvar, setErroSalvar] = useState(false);
   const [anoEleicaoRecente, setAnoEleicaoRecente] = useState<number | null>(null);
 
   useEffect(() => {
@@ -57,21 +58,30 @@ export function PreferenciasSettingsTab() {
   }));
 
   const flashSaved = () => {
+    setErroSalvar(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   };
 
   const handleMapaPadraoChange = (value: MapViewMode) => {
     setMapaPadraoState(value);
-    setMapaPadrao(value);
-    flashSaved();
+    setMapaPadrao(value)
+      .then(flashSaved)
+      .catch(() => {
+        setMapaPadraoState(getMapaPadrao());
+        setErroSalvar(true);
+      });
   };
 
   const handleFonteToggle = (key: keyof FontesLegislativas) => {
     const updated = { ...fontes, [key]: !fontes[key] };
     setFontesState(updated);
-    setFontesLegislativas(updated);
-    flashSaved();
+    setFontesLegislativas(updated)
+      .then(flashSaved)
+      .catch(() => {
+        setFontesState(getFontesLegislativas());
+        setErroSalvar(true);
+      });
   };
 
   return (
@@ -130,6 +140,7 @@ export function PreferenciasSettingsTab() {
       </div>
 
       {saved && <p className="text-sm text-emerald-400">Preferência salva.</p>}
+      {erroSalvar && <p role="alert" className="text-sm text-red-400">Não foi possível salvar a preferência. Tente de novo.</p>}
     </div>
   );
 }
