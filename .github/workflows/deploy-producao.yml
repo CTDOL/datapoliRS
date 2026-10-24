@@ -1,19 +1,26 @@
 name: Deploy Produção
 
-# Fluxo: dev -> hml -> main (produção), cada passo por Pull Request.
-#  - hml é validado no Docker local (make hml-up) antes do PR para main.
-#  - push e pull_request em dev, hml e main: só testes, nunca build nem deploy.
-#  - workflow_dispatch na main: testes -> build das imagens -> deploy na VPS OCI (environment producao).
-#    O disparo é sempre manual (Regra 7.4 do cofre: nada de push ou merge acionando produção).
+# Esteira em dois fluxos (ADR 043).
+#  - Fluxo 1, dev -> hml: push direto para hml, sem testes e sem deploy. hml é o espelho local (make hml-up).
+#    Este workflow não roda nada para hml.
+#  - Fluxo 2, hml -> main -> produção: PR para main roda testes e o E2E de fumaça (check e2e).
+#    workflow_dispatch na main, com a versão SemVer (vX.Y.Z) de uma Release existente: validar-versao ->
+#    testes -> build das imagens -> deploy na VPS OCI (environment producao). Nenhum evento de Release dispara deploy.
+#    O disparo é sempre manual (Regra 7.4 do cofre: nada de push, merge ou Release acionando produção).
 #    Na carga inicial, popula o banco (municípios + uma carga).
+#  - push em dev e main: só testes, nunca build nem deploy.
 
 on:
   push:
-    branches: [ dev, hml, main ]
+    branches: [ dev, main ]
   pull_request:
-    branches: [ dev, hml, main ]
+    branches: [ main ]
   workflow_dispatch:
     inputs:
+      versao:
+        description: 'Versão SemVer da Release, no formato vX.Y.Z (ex: v0.2.0)'
+        required: true
+        type: string
       carga_tipo:
         description: 'Carga a enfileirar depois do deploy (none = só redeploy)'
         required: true
@@ -143,10 +150,10 @@ jobs:
         run: npm run build
 
   # E2E de fumaça contra uma API real (login, Mapa Tático, Lideranças, Emendas, Projetos de Lei).
-  # Só roda em PR para hml e main: é o gate da promoção dev -> hml -> main. O PR para dev não paga esse custo.
+  # Só roda em PR para main: é o gate da promoção hml -> main. Push para hml não passa por aqui (Fluxo 1, sem testes).
   e2e:
     needs: [test-backend, test-frontend]
-    if: github.event_name == 'pull_request' && (github.base_ref == 'hml' || github.base_ref == 'main')
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -212,7 +219,7 @@ jobs:
         working-directory: backend
         run: |
           nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             curl -sf http://127.0.0.1:8000/health > /dev/null && exit 0
             sleep 2
           done
@@ -239,8 +246,42 @@ jobs:
         working-directory: frontend
         run: npx playwright test
 
+  validar-versao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSAO: ${{ inputs.versao }}
+
+    steps:
+      - name: Checkout com tags
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Validar formato, Release e commit
+        run: |
+          if [[ ! "$VERSAO" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Versão inválida: '$VERSAO'. Esperado vX.Y.Z." >&2
+            exit 1
+          fi
+          if ! gh release view "$VERSAO" --json isDraft --jq '.isDraft == false' | grep -q true; then
+            echo "A Release '$VERSAO' não existe ou ainda é rascunho." >&2
+            exit 1
+          fi
+          if [ "$(git rev-parse "$VERSAO^{commit}")" != "${{ github.sha }}" ]; then
+            echo "A tag '$VERSAO' não aponta para o commit construído (${{ github.sha }})." >&2
+            exit 1
+          fi
+
   build:
-    needs: [test-backend, test-frontend]
+    needs: [test-backend, test-frontend, validar-versao]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -287,7 +328,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build e Push (linux/arm64, tag = SHA do commit)
+      - name: Build e Push (linux/arm64, tags = SHA do commit e versão)
         uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
@@ -295,7 +336,9 @@ jobs:
           target: ${{ matrix.target }}
           platforms: linux/arm64
           push: true
-          tags: ${{ matrix.image }}:${{ github.sha }}
+          tags: |
+            ${{ matrix.image }}:${{ github.sha }}
+            ${{ matrix.image }}:${{ inputs.versao }}
           build-args: ${{ matrix.buildArgs }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
@@ -313,7 +356,7 @@ jobs:
       packages: read
 
     env:
-      RELEASE_TAG: ${{ github.sha }}
+      RELEASE_TAG: ${{ inputs.versao }}
       # VPS_DEPLOY_PATH é variável do environment (não secret). Sem ela, o scp grava em "/".
       VPS_DEPLOY_PATH: ${{ vars.VPS_DEPLOY_PATH || '/opt/datapolirs' }}
       VPS: ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}
@@ -407,7 +450,7 @@ jobs:
         run: |
           for url in "$PUBLIC_API_URL" "$PUBLIC_APP_URL"; do
             ok=false
-            for i in $(seq 1 20); do
+            for _ in $(seq 1 20); do
               if curl -sf "$url" > /dev/null; then
                 echo "OK: $url"
                 ok=true

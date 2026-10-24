@@ -8,6 +8,7 @@ class AppSettings(BaseSettings):
     
     # Informações da API
     API_TITLE: str = "datapoliRS - Inteligência Eleitoral & Gabinete Digital"
+    # Versão do contrato da API. Não é a versão da release (ver ADR 043).
     API_VERSION: str = "2.0.0"
     API_DESCRIPTION: str = "Microsserviço analítico de dados eleitorais e gestão de gabinete com PostGIS e Redis."
     
