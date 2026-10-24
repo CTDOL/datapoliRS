@@ -13,7 +13,21 @@ logger = logging.getLogger("TaskService")
 
 
 class TaskService:
-    """Gestão de tarefas vinculadas a Projeto de Lei e/ou Emenda, isolada por tenant."""
+    """Gestão de tarefas (de Projeto de Lei, de Emenda ou soltas), isolada por tenant."""
+
+    @staticmethod
+    async def _validarLiderancas(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+        idsResponsaveis: Optional[list[uuid.UUID]],
+        idLegado: Optional[uuid.UUID],
+    ) -> None:
+        """Cada liderança informada precisa existir no gabinete do usuário."""
+        ids = idsResponsaveis if idsResponsaveis is not None else ([idLegado] if idLegado else [])
+        for idLideranca in ids:
+            lideranca = await CabinetRepository.getLeadershipById(connection, tenantId, idLideranca)
+            if not lideranca:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Liderança responsável não encontrada neste gabinete.")
 
     @staticmethod
     async def createTarefa(
@@ -29,10 +43,7 @@ class TaskService:
             emenda = await AmendmentRepository.getAmendmentById(connection, tenantId, payload.id_emenda)
             if not emenda:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Emenda não encontrada neste gabinete.")
-        if payload.id_lideranca_responsavel:
-            lideranca = await CabinetRepository.getLeadershipById(connection, tenantId, payload.id_lideranca_responsavel)
-            if not lideranca:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Liderança responsável não encontrada neste gabinete.")
+        await TaskService._validarLiderancas(connection, tenantId, payload.ids_responsaveis, payload.id_lideranca_responsavel)
 
         criada = await TaskRepository.createTarefa(connection, tenantId, payload)
         return await TaskService.getTarefaById(connection, tenantId, criada["id_tarefa"])
@@ -66,10 +77,7 @@ class TaskService:
         payload: TarefaUpdate,
     ) -> TarefaResponse:
         await TaskService.getTarefaById(connection, tenantId, tarefaId)
-        if payload.id_lideranca_responsavel:
-            lideranca = await CabinetRepository.getLeadershipById(connection, tenantId, payload.id_lideranca_responsavel)
-            if not lideranca:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Liderança responsável não encontrada neste gabinete.")
+        await TaskService._validarLiderancas(connection, tenantId, payload.ids_responsaveis, payload.id_lideranca_responsavel)
         atualizada = await TaskRepository.updateTarefa(connection, tenantId, tarefaId, payload)
         if not atualizada:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Não foi possível atualizar a tarefa informada.")

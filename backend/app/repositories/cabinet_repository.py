@@ -22,6 +22,14 @@ _SELECT_COLUMNS = """
     l.is_ativo,
     l.ds_foto_url,
     l.created_at,
+    (
+        SELECT COUNT(DISTINCT v.id_tarefa)
+        FROM tb_gabinete_tarefa_liderancas v
+        JOIN tb_gabinete_tarefas t ON t.id_tarefa = v.id_tarefa
+        WHERE v.tenant_id = l.tenant_id
+          AND v.id_lideranca = l.id_lideranca
+          AND t.tp_status NOT IN ('Concluída', 'Cancelada')
+    ) AS tarefas_abertas,
     COALESCE(
         json_agg(
             json_build_object(

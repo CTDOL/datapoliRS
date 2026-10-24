@@ -20,6 +20,16 @@ UPLOADS_DIR = "app/uploads/liderancas"
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FOTO_SIZE_BYTES = 5 * 1024 * 1024  # 5MB
 
+# Papéis que podem ver a contagem de tarefas por liderança (ADR 045-tarefas / ADR 036).
+PAPEIS_VEEM_CONTAGEM_TAREFAS = {"admin", "operador"}  # Matriz RBAC, ADR 036
+
+
+def _ocultar_contagem_tarefas(lideranca, usuario: UserInDB):
+    """Zera a contagem de tarefas para papéis fora de PAPEIS_VEEM_CONTAGEM_TAREFAS."""
+    if usuario.role not in PAPEIS_VEEM_CONTAGEM_TAREFAS:
+        lideranca.tarefas_abertas = None
+    return lideranca
+
 
 def _fotosDaLideranca(idLideranca: uuid.UUID) -> list[str]:
     """Arquivos de foto da liderança: o nome antigo `{id}.{ext}` e o atual `{id}-{hash}.{ext}`."""
@@ -65,7 +75,7 @@ async def listar_liderancas(
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaPageResponse:
     """Recupera a lista paginada de lideranças cadastradas no gabinete isolado."""
-    return await CabinetService.listLeaderships(
+    resposta = await CabinetService.listLeaderships(
         connection=connection,
         tenantId=current_user.tenant_id,
         ibgeCode=cd_ibge_7,
@@ -75,6 +85,9 @@ async def listar_liderancas(
         page=page,
         pageSize=page_size
     )
+    for lideranca in resposta.items:
+        _ocultar_contagem_tarefas(lideranca, current_user)
+    return resposta
 
 
 @router.get(
@@ -88,7 +101,8 @@ async def obter_lideranca_por_id(
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaResponse:
     """Retorna os dados cadastrais da liderança se pertencer ao gabinete autenticado."""
-    return await CabinetService.getLeadershipById(connection, current_user.tenant_id, id_lideranca)
+    lideranca = await CabinetService.getLeadershipById(connection, current_user.tenant_id, id_lideranca)
+    return _ocultar_contagem_tarefas(lideranca, current_user)
 
 
 @router.put(
