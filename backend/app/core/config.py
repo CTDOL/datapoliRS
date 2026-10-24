@@ -59,6 +59,13 @@ class AppSettings(BaseSettings):
     # CORS - lista separada por vírgula das origens do frontend
     ALLOWED_ORIGINS: str = "http://localhost:3000"
 
+    # E-mail (SMTP). Host vazio = envio desligado; em dev aponta para o Mailpit local (captura, nada sai).
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 1025
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "DATAPOLIRS <nao-responda@datapoli.local>"
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]

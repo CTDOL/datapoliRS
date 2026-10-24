@@ -35,6 +35,7 @@ export default function SettingsPage() {
     updateMember,
     changePassword,
     exportGabineteData,
+    testEmail,
   } = useSettings(isAdmin);
 
   return (
@@ -95,6 +96,7 @@ export default function SettingsPage() {
             isSubmitting={isSubmitting}
             onChangePassword={changePassword}
             onExportData={exportGabineteData}
+            onTestEmail={testEmail}
           />
         )}
       </div>

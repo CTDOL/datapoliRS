@@ -180,6 +180,16 @@ export function useSettings(isAdmin: boolean) {
     }
   }, []);
 
+  const testEmail = useCallback(async (destinatario: string): Promise<{ ok: true; message: string } | { ok: false; message: string }> => {
+    try {
+      const response = await api.post('/api/v1/gabinete/email/teste', { destinatario });
+      return { ok: true, message: `E-mail de teste enviado para ${response.data.enviado_para}.` };
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      return { ok: false, message: detail || 'Não foi possível enviar o e-mail de teste.' };
+    }
+  }, []);
+
   return {
     profile,
     options,
@@ -192,5 +202,6 @@ export function useSettings(isAdmin: boolean) {
     updateMember,
     changePassword,
     exportGabineteData,
+    testEmail,
   };
 }

@@ -35,6 +35,7 @@ from app.routers.tema import router as tema_router
 from app.routers.admin import router as admin_router
 from app.routers.manutencao import router as manutencao_router
 from app.routers.preferencias import router as preferencias_router
+from app.routers.email import router as email_router
 
 # Configuração de Logging Estruturado
 logging.basicConfig(
@@ -127,6 +128,7 @@ app.include_router(admin_router)
 app.include_router(manutencao_router)
 app.include_router(preferencias_router)
 app.include_router(produtividade_router)
+app.include_router(email_router)
 
 
 

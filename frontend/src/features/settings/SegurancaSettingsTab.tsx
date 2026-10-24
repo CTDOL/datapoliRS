@@ -1,22 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, KeyRound, Loader2, Lock, ShieldAlert } from 'lucide-react';
+import { Download, KeyRound, Loader2, Lock, Mail, ShieldAlert } from 'lucide-react';
 
 interface Props {
   isAdmin: boolean;
   isSubmitting: boolean;
   onChangePassword: (senhaAtual: string, novaSenha: string) => Promise<{ ok: true } | { ok: false; message: string }>;
   onExportData: () => Promise<boolean>;
+  onTestEmail: (destinatario: string) => Promise<{ ok: true; message: string } | { ok: false; message: string }>;
 }
 
-export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, onExportData }: Props) {
+const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, onExportData, onTestEmail }: Props) {
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
   const [passwordFeedback, setPasswordFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState(false);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [emailDestino, setEmailDestino] = useState('');
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +50,14 @@ export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, 
     const success = await onExportData();
     if (!success) setExportError(true);
     setIsExporting(false);
+  };
+
+  const handleTestEmail = async () => {
+    setIsTestingEmail(true);
+    setEmailFeedback(null);
+    const result = await onTestEmail(emailDestino.trim());
+    setEmailFeedback(result.ok ? { type: 'success', message: result.message } : { type: 'error', message: result.message });
+    setIsTestingEmail(false);
   };
 
   return (
@@ -138,6 +152,46 @@ export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, 
         )}
         {exportError && <p className="text-sm text-red-400 mt-2">Não foi possível gerar a exportação.</p>}
       </div>
+
+      {isAdmin && (
+        <div className="pt-6 border-t border-zinc-800/60">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+              <Mail className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">Teste de Envio de E-mail</h2>
+              <p className="text-sm text-zinc-400">Envia uma mensagem de teste para o endereço informado.</p>
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1.5">Destinatário</label>
+            <input
+              type="email"
+              value={emailDestino}
+              onChange={(e) => setEmailDestino(e.target.value)}
+              placeholder="nome@exemplo.com.br"
+              maxLength={255}
+              className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
+            />
+          </div>
+
+          <button
+            onClick={handleTestEmail}
+            disabled={isTestingEmail || !EMAIL_REGEX.test(emailDestino.trim())}
+            className="px-5 py-2.5 rounded-xl border border-zinc-700 text-zinc-200 hover:bg-zinc-800 transition-colors flex items-center gap-2 disabled:opacity-70"
+          >
+            {isTestingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+            Enviar E-mail de Teste
+          </button>
+          {emailFeedback && (
+            <p className={`text-sm mt-2 ${emailFeedback.type === 'success' ? 'text-emerald-400' : 'text-red-400'}`}>
+              {emailFeedback.message}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

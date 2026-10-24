@@ -42,6 +42,21 @@ services:
           - redis
           - datapoli_redis_non_prod
 
+  # Caixa de e-mail de desenvolvimento: captura tudo que a API envia. Nada sai para a internet.
+  # Interface web em http://127.0.0.1:8025 · SMTP em 127.0.0.1:1025.
+  mailpit:
+    image: axllent/mailpit@sha256:0790692be935ea4420d085694f7985b1f692ca6a8771ab0e0bd8ba75ac180498
+    container_name: datapoli_mailpit_dev
+    restart: "no"
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    networks:
+      datapoli_network_non_prod:
+        aliases:
+          - mailpit
+          - datapoli_mailpit_dev
+
   geoipupdate:
     image: maxmindinc/geoipupdate@sha256:51e70dd6f16cd3e4d845ac02d09940b10772a75b9d741427d235a78570923c1d
     container_name: datapoli_geoipupdate_non_prod
