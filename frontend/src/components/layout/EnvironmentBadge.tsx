@@ -2,14 +2,22 @@
 
 import { useEffect, useState } from "react";
 
-const LABELS: Record<string, { text: string; className: string }> = {
+const LABELS: Record<string, { text: string; className: string; comStatus: boolean }> = {
   DESENVOLVIMENTO: {
     text: "AMBIENTE DE DESENVOLVIMENTO — Sala Vermelha (dados não-produtivos)",
     className: "bg-red-600 text-on-accent",
+    comStatus: true,
   },
   HOMOLOGACAO: {
     text: "AMBIENTE DE HOMOLOGAÇÃO — Sandbox de Paridade (dados de teste)",
     className: "bg-yellow-500 text-black font-bold",
+    comStatus: true,
+  },
+  // Regra 7.4.1 (DATAPOLIRS): release de protótipo sem dados reais. Produção não busca status de containers.
+  PROTOTIPO: {
+    text: "PROTÓTIPO — SEM GARANTIAS · sem dados reais de usuários (Regra 7.4.1)",
+    className: "bg-orange-500 text-black font-bold",
+    comStatus: false,
   },
 };
 
@@ -21,13 +29,13 @@ type AmbienteStatus = { geradoEm: string; containers: { nome: string; status: st
 
 // NEXT_PUBLIC_ENV_LABEL é assado na imagem em tempo de build (Next.js standalone
 // inlina NEXT_PUBLIC_* no bundle do cliente) — ver frontend/Dockerfile. Ausente/vazio
-// em produção real, então o selo simplesmente não renderiza (ADR universal governanca/047 v2.0.0).
+// em produção o valor é PROTOTIPO enquanto a Regra 7.4.1 vigorar (ADR universal governanca/047 v2.0.0).
 export function EnvironmentBadge() {
   const label = LABELS[process.env.NEXT_PUBLIC_ENV_LABEL ?? ""];
   const [containers, setContainers] = useState<string[] | null>(null);
 
   useEffect(() => {
-    if (!label) return;
+    if (!label?.comStatus) return;
     let cancelado = false;
 
     const carregar = async () => {

@@ -317,8 +317,10 @@ jobs:
             context: ./frontend
             dockerfile: frontend/Dockerfile
             target: production
-            # Assado no bundle (NEXT_PUBLIC_* só existe em build-time). Produção: sem selo de ambiente.
-            buildArgs: NEXT_PUBLIC_PORTAL_URL=https://api-datapoli.ctdol.com.br
+            # Assado no bundle (NEXT_PUBLIC_* só existe em build-time). Produção: selo PROTOTIPO enquanto a Regra 7.4.1 vigorar.
+            buildArgs: |
+              NEXT_PUBLIC_PORTAL_URL=https://api-datapoli.ctdol.com.br
+              NEXT_PUBLIC_ENV_LABEL=PROTOTIPO
           - image: ghcr.io/ctdol/datapolirs-etl
             context: .
             dockerfile: etl/Dockerfile
