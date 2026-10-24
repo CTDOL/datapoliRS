@@ -16,6 +16,9 @@ services:
       - "127.0.0.1:8081:8000"
     volumes:
       - ./backend/app:/app/app
+      # Fotos de lideranças: o banco é compartilhado com o dev, então os arquivos também precisam ser.
+      # Sobrescreva com UPLOADS_HML_DIR se a pasta do dev estiver em outro caminho.
+      - ${UPLOADS_HML_DIR:-/Users/cpinfo/Documents/datapoliRS/backend/app/uploads}:/app/app/uploads
       - ./etl:/app/etl
       - ./backend/tests:/app/tests
       - ./backend/alembic:/app/alembic
