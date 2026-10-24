@@ -36,7 +36,7 @@ def test_enfileirar_exige_admin(client: TestClient):
 
 
 def test_confirmacao_errada_nao_enfileira(client: TestClient):
-    admin = bearerHeader(str(uuid.uuid4()), role="admin")
+    admin = bearerHeader(str(uuid.uuid4()), role="super_admin")
     resposta = client.post(
         "/api/v1/admin/manutencao/jobs",
         headers=admin,
@@ -47,7 +47,7 @@ def test_confirmacao_errada_nao_enfileira(client: TestClient):
 
 
 def test_tipo_e_ano_invalidos_sao_rejeitados(client: TestClient):
-    admin = bearerHeader(str(uuid.uuid4()), role="admin")
+    admin = bearerHeader(str(uuid.uuid4()), role="super_admin")
     assert client.post("/api/v1/admin/manutencao/jobs", headers=admin,
                        json={"tipo": "outro", "ano": 2026, "confirmacao": "x"}).status_code == 422
     assert client.post("/api/v1/admin/manutencao/jobs", headers=admin,
@@ -55,7 +55,7 @@ def test_tipo_e_ano_invalidos_sao_rejeitados(client: TestClient):
 
 
 def test_so_um_job_ativo_por_vez(client: TestClient):
-    admin = bearerHeader(str(uuid.uuid4()), role="admin")
+    admin = bearerHeader(str(uuid.uuid4()), role="super_admin")
     corpo = {"tipo": "comparecimento", "ano": 2026, "confirmacao": "CARREGAR COMPARECIMENTO 2026"}
     criado = []
     try:
@@ -109,7 +109,7 @@ def test_worker_marca_falha_com_erro(monkeypatch):
 
 
 def test_ativar_pleito_inexistente_404(client: TestClient):
-    admin = bearerHeader(str(uuid.uuid4()), role="admin")
+    admin = bearerHeader(str(uuid.uuid4()), role="super_admin")
     resposta = client.post("/api/v1/admin/manutencao/ativar-pleito", headers=admin,
                            json={"cd_eleicao": "000000", "confirmacao": "ATIVAR 2026"})
     assert resposta.status_code == 404
@@ -117,7 +117,7 @@ def test_ativar_pleito_inexistente_404(client: TestClient):
 
 def test_ativar_pleito_sem_carga_concluida_409(client: TestClient):
     """TESTE2022 não tem carga registrada: não pode virar o pleito ativo."""
-    admin = bearerHeader(str(uuid.uuid4()), role="admin")
+    admin = bearerHeader(str(uuid.uuid4()), role="super_admin")
     resposta = client.post("/api/v1/admin/manutencao/ativar-pleito", headers=admin,
                            json={"cd_eleicao": "TESTE2022", "confirmacao": "ATIVAR 2022"})
     assert resposta.status_code == 409
@@ -158,7 +158,7 @@ def pleito_com_carga_ok():
 
 def test_ativar_pleito_com_confirmacao_errada_nao_ativa(client: TestClient, pleito_com_carga_ok: str):
     """Confirmação errada é recusada (400) e nunca grava a troca nem a auditoria."""
-    admin = bearerHeader(str(uuid.uuid4()), role="admin")
+    admin = bearerHeader(str(uuid.uuid4()), role="super_admin")
     resposta = client.post("/api/v1/admin/manutencao/ativar-pleito", headers=admin,
                            json={"cd_eleicao": pleito_com_carga_ok, "confirmacao": "sim",
                                  "aceitar_codigos_sem_cadastro": True})

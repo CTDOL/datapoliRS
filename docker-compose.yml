@@ -13,7 +13,7 @@ services:
     volumes:
       - datapolirs_postgres_non_prod_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datapoli_user} -d ${POSTGRES_DB:-datapoli_db}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-datapoli_user} -d ${POSTGRES_DB:-datapoli_db}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
     volumes:
       - datapolirs_redis_non_prod_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,6 +41,33 @@ services:
         aliases:
           - redis
           - datapoli_redis_non_prod
+
+  # Caixa de e-mail de desenvolvimento: captura tudo que a API envia. Nada sai para a internet.
+  # Interface web em http://127.0.0.1:8025 · SMTP em 127.0.0.1:1025.
+  mailpit:
+    image: axllent/mailpit@sha256:0790692be935ea4420d085694f7985b1f692ca6a8771ab0e0bd8ba75ac180498
+    container_name: datapoli_mailpit_dev
+    restart: "no"
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    networks:
+      datapoli_network_non_prod:
+        aliases:
+          - mailpit
+          - datapoli_mailpit_dev
+
+  geoipupdate:
+    image: maxmindinc/geoipupdate@sha256:51e70dd6f16cd3e4d845ac02d09940b10772a75b9d741427d235a78570923c1d
+    container_name: datapoli_geoipupdate_non_prod
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      - GEOIPUPDATE_EDITION_IDS=GeoLite2-City
+      - GEOIPUPDATE_FREQUENCY=24
+    volumes:
+      - datapolirs_geoip_data:/usr/share/GeoIP
 
   api:
     build:
@@ -57,11 +84,13 @@ services:
       - ./backend/tests:/app/tests
       - ./backend/alembic:/app/alembic
       - ./backend/alembic.ini:/app/alembic.ini
+      - datapolirs_geoip_data:/app/geoip:ro
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=8000
+      - GEOIP_DB_PATH=/app/geoip/GeoLite2-City.mmdb
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER:-datapoli_user}
@@ -73,13 +102,15 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=development
       - DATABASE_ENV=NON_PRODUCTION
+      # Mesma confiança no proxy da produção (ver docker-compose.prod.yml).
+      - FORWARDED_ALLOW_IPS=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -106,6 +137,7 @@ services:
       - API_INTERNAL_URL=http://api:8000
       - WATCHPACK_POLLING=true
       - NEXT_PUBLIC_ENV_LABEL=DESENVOLVIMENTO
+      - NEXT_PUBLIC_DB_LABEL=datapoli_db
     depends_on:
       - api
     networks:
@@ -132,6 +164,7 @@ services:
       - datapoli_network_non_prod
 
 volumes:
+  datapolirs_geoip_data:
   datapolirs_postgres_non_prod_data:
   datapolirs_redis_non_prod_data:
   datapolirs_frontend_node_data:

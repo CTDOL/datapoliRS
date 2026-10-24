@@ -2,7 +2,7 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 import asyncpg
-from app.core.dependencies import getDbConnection, get_current_user, require_role
+from app.core.dependencies import getDbConnection, get_current_user, require_role, bloquear_super_admin
 from app.schemas.user import UserInDB
 from app.services.legislative_service import LegislativeService
 from app.schemas.legislative import (
@@ -19,7 +19,7 @@ from app.core.rate_limit import RateLimiter
 router = APIRouter(
     prefix="/api/v1/gabinete/projetos-lei",
     tags=["Gabinete Digital & Projetos de Lei"],
-    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="legislative"))]
+    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="legislative")), Depends(bloquear_super_admin)]
 )
 
 
@@ -30,14 +30,21 @@ router = APIRouter(
 )
 async def buscar_proposicoes_externas(
     nome: str = Query(..., min_length=3, description="Nome (ou parte) do parlamentar a buscar"),
+    fontes: Optional[str] = Query(
+        None,
+        pattern=r"^(alrs|camara|senado)(,(alrs|camara|senado))*$",
+        description="Fontes a consultar, separadas por vírgula (alrs, camara, senado). Omitido = todas.",
+    ),
     current_user: UserInDB = Depends(get_current_user),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> BuscaExternaResponse:
     """Agrega resultados de ALRS (scraping), Câmara e Senado (APIs oficiais) em uma
     única lista, marcando quais já foram importados por este gabinete. Fontes que
     não responderam (timeout/5xx) vêm em `fontes_com_erro` em vez de sumirem em
-    silêncio — o cliente deve avisar o usuário que a lista pode estar incompleta."""
-    return await LegislativeService.buscarExterno(connection, current_user.tenant_id, nome)
+    silêncio — o cliente deve avisar o usuário que a lista pode estar incompleta.
+    `fontes` restringe a consulta às fontes escolhidas pelo usuário (preferência pessoal)."""
+    fontes_consultadas = None if fontes is None else {f.upper() for f in fontes.split(",")}
+    return await LegislativeService.buscarExterno(connection, current_user.tenant_id, nome, fontes_consultadas)
 
 
 @router.post(
@@ -48,7 +55,7 @@ async def buscar_proposicoes_externas(
 )
 async def importar_projeto_lei(
     payload: ProjetoLeiImport,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> ProjetoLeiResponse:
     """Revalida ementa/situação direto na fonte oficial antes de gravar — idempotente
@@ -95,7 +102,7 @@ async def obter_projeto_lei(
 )
 async def sincronizar_projeto_lei(
     id_projeto_lei: uuid.UUID,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> ProjetoLeiSyncResponse:
     """Atualiza situação/ementa a partir da fonte (ALRS, Câmara ou Senado) sem apagar
@@ -138,7 +145,7 @@ async def listar_observadores(
 async def adicionar_observador(
     id_projeto_lei: uuid.UUID,
     payload: ObservadorAdd,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> list[ObservadorResponse]:
     return await LegislativeService.addObservador(connection, current_user.tenant_id, id_projeto_lei, payload.id_lideranca)
@@ -152,7 +159,7 @@ async def adicionar_observador(
 async def remover_observador(
     id_projeto_lei: uuid.UUID,
     id_lideranca: uuid.UUID,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> list[ObservadorResponse]:
     return await LegislativeService.removeObservador(connection, current_user.tenant_id, id_projeto_lei, id_lideranca)

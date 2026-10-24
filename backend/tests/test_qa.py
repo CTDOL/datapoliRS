@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 import pytest
 from datetime import timedelta
 from fastapi import HTTPException
@@ -36,7 +37,7 @@ async def test_get_current_user_tenant_isolation():
     token = AuthService.create_access_token({"sub": "hacker@evil.com", "tenant_id": tenant_id})
     
     with pytest.raises(HTTPException) as exc:
-        await get_current_user(token=token, db=MockDB())
+        await get_current_user(request=SimpleNamespace(url=SimpleNamespace(path="/api/v1/gabinete/liderancas")), token=token, db=MockDB())
         
     assert exc.value.status_code == 401
     assert exc.value.detail == "User not found or tenant mismatch"

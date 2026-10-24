@@ -19,9 +19,10 @@ const nextConfig: NextConfig = {
     const apiInternalUrl = process.env.API_INTERNAL_URL || "http://127.0.0.1:8000";
     return [
       { source: "/api/:path*", destination: `${apiInternalUrl}/api/:path*` },
-      // Fotos de lideranças (backend/app/main.py monta StaticFiles em "/uploads")
+      // Fotos de lideranças (rota autenticada em backend/app/routers/fotos.py)
       // são referenciadas como caminho raiz-relativo (ds_foto_url) — sem este
       // rewrite, só o /api/* teria proxy same-origin e as imagens quebrariam.
+      // Same-origin também faz o cookie de sessão seguir junto com o <img>.
       { source: "/uploads/:path*", destination: `${apiInternalUrl}/uploads/:path*` },
     ];
   },

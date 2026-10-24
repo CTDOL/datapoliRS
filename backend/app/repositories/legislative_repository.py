@@ -50,7 +50,7 @@ class LegislativeRepository:
             return dict(record)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao importar projeto de lei para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database insert error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def listProjetosLei(
@@ -96,7 +96,7 @@ class LegislativeRepository:
             return [dict(record) for record in records], total
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao listar projetos de lei para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def sincronizarProjetoLei(
@@ -125,7 +125,7 @@ class LegislativeRepository:
             return dict(record) if record else None
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao sincronizar projeto de lei {projetoLeiId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database update error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def listChavesImportadas(
@@ -140,7 +140,7 @@ class LegislativeRepository:
             return [dict(record) for record in records]
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao listar chaves importadas para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def getProjetoLeiById(
@@ -160,7 +160,7 @@ class LegislativeRepository:
             return dict(record) if record else None
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao buscar projeto de lei {projetoLeiId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def deleteProjetoLei(
@@ -174,7 +174,7 @@ class LegislativeRepository:
             return result == "DELETE 1"
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao deletar projeto de lei {projetoLeiId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database delete error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def addObservador(
@@ -191,7 +191,7 @@ class LegislativeRepository:
             await connection.execute(query, projetoLeiId, liderancaId)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao adicionar observador {liderancaId} ao PL {projetoLeiId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database insert error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def removeObservador(
@@ -208,7 +208,7 @@ class LegislativeRepository:
             return result == "DELETE 1"
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao remover observador {liderancaId} do PL {projetoLeiId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database delete error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def listObservadores(
@@ -227,4 +227,4 @@ class LegislativeRepository:
             return [dict(record) for record in records]
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao listar observadores do PL {projetoLeiId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422

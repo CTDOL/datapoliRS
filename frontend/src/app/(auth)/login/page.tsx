@@ -36,10 +36,16 @@ export default function LoginPage() {
         email: me.data.email,
         tenant_id: me.data.tenant_id,
         role: me.data.role,
+        nm_mandato: me.data.nm_mandato,
+        must_change_password: me.data.must_change_password,
+        cor_primaria: me.data.cor_primaria,
+        cor_secundaria: me.data.cor_secundaria,
+        tp_tema: me.data.tp_tema,
+        preferencias: me.data.preferencias,
       });
 
-      // Redireciona para o painel principal isolado
-      router.push('/');
+      // Super-admin vai direto para a área da plataforma: a home do gabinete chama APIs que ele não acessa.
+      router.push(me.data.role === 'super_admin' ? '/plataforma' : '/');
     } catch {
       setError('Credenciais inválidas ou acesso negado. Verifique os dados.');
     } finally {
@@ -50,7 +56,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Blurs (Glassmorphism environment) */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-purple-600/20 blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[color:var(--cor-destaque-20)] blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none" />
 
       {/* Entry Animation em CSS puro — visível mesmo se a hidratação
@@ -62,8 +68,8 @@ export default function LoginPage() {
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center border border-purple-500/20 mb-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
-              <Shield className="w-8 h-8 text-purple-400" />
+            <div className="w-16 h-16 bg-[color:var(--cor-destaque-10)] rounded-2xl flex items-center justify-center border border-[color:var(--cor-destaque-20)] mb-4 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+              <Shield className="w-8 h-8 text-[color:var(--cor-texto-destaque)]" />
             </div>
             <h1 className="text-3xl font-bold text-white tracking-tight">DATAPOLIRS</h1>
             <p className="text-zinc-400 text-sm mt-2 font-medium tracking-wide uppercase">Inteligência Estratégica</p>
@@ -87,7 +93,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
+                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] focus:border-[color:var(--cor-destaque-50)] transition-all duration-300"
                 placeholder="operador@campanha.com.br"
               />
             </div>
@@ -99,7 +105,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300"
+                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] focus:border-[color:var(--cor-destaque-50)] transition-all duration-300"
                 placeholder="••••••••"
               />
             </div>
@@ -107,7 +113,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium py-3.5 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-purple-500/25 flex justify-center items-center mt-6 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium py-3.5 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[0_4px_14px_0_var(--cor-destaque-25)] flex justify-center items-center mt-6 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

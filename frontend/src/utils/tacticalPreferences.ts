@@ -1,7 +1,12 @@
 import type { MapViewMode } from '@/components/map/ElectionMap';
+import { api } from '@/services/api';
+import { useAuthStore, type PreferenciasUsuario } from '@/stores/useAuthStore';
 
-const MAPA_PADRAO_KEY = 'datapolirs:mapa-padrao';
-const FONTES_LEGISLATIVAS_KEY = 'datapolirs:fontes-legislativas';
+/**
+ * Preferências pessoais do Mapa Tático e das buscas. São gravadas no servidor
+ * (PUT /api/v1/usuario/preferencias), então valem em qualquer navegador e
+ * sobrevivem a um novo login. As leituras vêm do store, preenchido no login.
+ */
 
 export interface FontesLegislativas {
   alrs: boolean;
@@ -9,30 +14,39 @@ export interface FontesLegislativas {
   senado: boolean;
 }
 
-const FONTES_PADRAO: FontesLegislativas = { alrs: true, camara: true, senado: true };
+const PREFERENCIAS_PADRAO: PreferenciasUsuario = {
+  mapa_padrao: 'liderancas',
+  fontes_legislativas: { alrs: true, camara: true, senado: true },
+};
 
-export function getMapaPadrao(): MapViewMode {
-  if (typeof window === 'undefined') return 'liderancas';
-  const stored = localStorage.getItem(MAPA_PADRAO_KEY);
-  if (stored === 'liderancas' || stored === 'votacao' || stored === 'cruzada') return stored;
-  return 'liderancas';
+function preferenciasAtuais(): PreferenciasUsuario {
+  return { ...PREFERENCIAS_PADRAO, ...useAuthStore.getState().user?.preferencias };
 }
 
-export function setMapaPadrao(mode: MapViewMode): void {
-  localStorage.setItem(MAPA_PADRAO_KEY, mode);
-}
-
-export function getFontesLegislativas(): FontesLegislativas {
-  if (typeof window === 'undefined') return FONTES_PADRAO;
+/** Atualiza o store primeiro (a tela reage na hora) e grava no servidor. Se a gravação falhar, volta ao valor anterior. */
+async function gravar(parcial: Partial<PreferenciasUsuario>): Promise<void> {
+  const anterior = preferenciasAtuais();
+  useAuthStore.getState().atualizarPreferencias(parcial);
   try {
-    const stored = localStorage.getItem(FONTES_LEGISLATIVAS_KEY);
-    if (!stored) return FONTES_PADRAO;
-    return { ...FONTES_PADRAO, ...JSON.parse(stored) };
-  } catch {
-    return FONTES_PADRAO;
+    await api.put('/api/v1/usuario/preferencias', parcial);
+  } catch (erro) {
+    useAuthStore.getState().atualizarPreferencias(anterior);
+    throw erro;
   }
 }
 
-export function setFontesLegislativas(fontes: FontesLegislativas): void {
-  localStorage.setItem(FONTES_LEGISLATIVAS_KEY, JSON.stringify(fontes));
+export function getMapaPadrao(): MapViewMode {
+  return preferenciasAtuais().mapa_padrao;
+}
+
+export function setMapaPadrao(mode: MapViewMode): Promise<void> {
+  return gravar({ mapa_padrao: mode });
+}
+
+export function getFontesLegislativas(): FontesLegislativas {
+  return preferenciasAtuais().fontes_legislativas;
+}
+
+export function setFontesLegislativas(fontes: FontesLegislativas): Promise<void> {
+  return gravar({ fontes_legislativas: fontes });
 }

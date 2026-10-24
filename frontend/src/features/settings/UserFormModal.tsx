@@ -54,8 +54,8 @@ export function UserFormModal({ isOpen, onClose, onSubmit, isSubmitting }: Props
           >
             <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
-                  <UserPlus className="w-5 h-5 text-purple-400" />
+                <div className="w-10 h-10 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+                  <UserPlus className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
                 </div>
                 <h2 className="text-xl font-bold text-white">Convidar Membro</h2>
               </div>
@@ -72,7 +72,7 @@ export function UserFormModal({ isOpen, onClose, onSubmit, isSubmitting }: Props
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   placeholder="membro@campanha.com.br"
                 />
               </div>
@@ -84,7 +84,7 @@ export function UserFormModal({ isOpen, onClose, onSubmit, isSubmitting }: Props
                   minLength={8}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   placeholder="Mínimo 8 caracteres"
                 />
               </div>
@@ -93,7 +93,7 @@ export function UserFormModal({ isOpen, onClose, onSubmit, isSubmitting }: Props
                 <select
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value as TeamRole })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                 >
                   <option value="admin">👑 Admin</option>
                   <option value="operador">🏛️ Operador</option>
@@ -105,7 +105,7 @@ export function UserFormModal({ isOpen, onClose, onSubmit, isSubmitting }: Props
 
               <div className="pt-2 flex gap-3">
                 <button type="button" onClick={handleClose} className="flex-1 px-4 py-3 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors">Cancelar</button>
-                <button type="submit" disabled={isSubmitting} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-xl font-medium shadow-lg flex justify-center disabled:opacity-70">
+                <button type="submit" disabled={isSubmitting} className="flex-1 bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-4 py-3 rounded-xl font-medium shadow-lg flex justify-center disabled:opacity-70">
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Convidar'}
                 </button>
               </div>

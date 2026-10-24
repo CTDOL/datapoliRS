@@ -22,6 +22,14 @@ _SELECT_COLUMNS = """
     l.is_ativo,
     l.ds_foto_url,
     l.created_at,
+    (
+        SELECT COUNT(DISTINCT v.id_tarefa)
+        FROM tb_gabinete_tarefa_liderancas v
+        JOIN tb_gabinete_tarefas t ON t.id_tarefa = v.id_tarefa
+        WHERE v.tenant_id = l.tenant_id
+          AND v.id_lideranca = l.id_lideranca
+          AND t.tp_status NOT IN ('Concluída', 'Cancelada')
+    ) AS tarefas_abertas,
     COALESCE(
         json_agg(
             json_build_object(
@@ -99,7 +107,7 @@ class CabinetRepository:
             return created
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao criar liderança para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database insert error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def listLeaderships(
@@ -170,7 +178,19 @@ class CabinetRepository:
             return [_parseMunicipiosJson(record) for record in records], total
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao listar lideranças para tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
+
+    @staticmethod
+    async def pertenceAoGabinete(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+        leadershipId: uuid.UUID
+    ) -> bool:
+        """Conferência leve de posse, para servir a foto sem montar a liderança inteira."""
+        return bool(await connection.fetchval(
+            "SELECT 1 FROM tb_gabinete_liderancas WHERE tenant_id = $1 AND id_lideranca = $2;",
+            tenantId, leadershipId,
+        ))
 
     @staticmethod
     async def getLeadershipById(
@@ -192,7 +212,7 @@ class CabinetRepository:
             return _parseMunicipiosJson(record) if record else None
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao recuperar liderança {leadershipId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def updateLeadership(
@@ -238,7 +258,7 @@ class CabinetRepository:
             return await CabinetRepository.getLeadershipById(connection, tenantId, leadershipId)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao atualizar liderança {leadershipId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database update error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def deleteLeadership(
@@ -247,13 +267,30 @@ class CabinetRepository:
         leadershipId: uuid.UUID
     ) -> bool:
         """Exclui uma liderança política com garantia de multi-tenancy (municípios em cascata via FK)."""
+        # ADR 046, fase Expand: a coluna legada de tarefas acompanha a tabela de vínculo.
+        # Onde a liderança era a responsável principal, passa a ser o próximo responsável
+        # (na ordem de exibição, por nome) ou nenhum.
+        reapontarTarefas = """
+            UPDATE tb_gabinete_tarefas t
+            SET id_lideranca_responsavel = (
+                SELECT v.id_lideranca
+                FROM tb_gabinete_tarefa_liderancas v
+                JOIN tb_gabinete_liderancas l ON l.id_lideranca = v.id_lideranca
+                WHERE v.tenant_id = $1 AND v.id_tarefa = t.id_tarefa AND v.id_lideranca <> $2
+                ORDER BY l.nm_completo
+                LIMIT 1
+            )
+            WHERE t.tenant_id = $1 AND t.id_lideranca_responsavel = $2;
+        """
         query = "DELETE FROM tb_gabinete_liderancas WHERE tenant_id = $1 AND id_lideranca = $2;"
         try:
-            result = await connection.execute(query, tenantId, leadershipId)
+            async with connection.transaction():
+                await connection.execute(reapontarTarefas, tenantId, leadershipId)
+                result = await connection.execute(query, tenantId, leadershipId)
             return result == "DELETE 1"
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao deletar liderança {leadershipId} (tenant {tenantId}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database delete error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def setFotoUrl(

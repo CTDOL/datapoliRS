@@ -18,11 +18,11 @@ help:
 	@echo "  make clean           - Remove caches do Python e testes"
 
 install:
-	pip install -r backend/requirements.txt
+	pip install -r backend/requirements.txt -r backend/requirements-dev.txt
 
 # --- Ambientes DEV e HML Simultâneos (ADR 044 / ADR 047) ---
 dev-up:
-	docker compose -f docker-compose.yml up -d
+	docker compose -f docker-compose.yml up -d --build
 
 dev-down:
 	docker compose -f docker-compose.yml down
@@ -74,8 +74,17 @@ migration:
 run:
 	cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-test:
-	cd backend && pytest -v --asyncio-mode=auto
+# Testes usam banco proprio (datapoli_test), nunca o datapoli_db do dev/apresentacao.
+TEST_DATABASE_URL ?= postgresql://datapoli_user:datapoli_pass@localhost:5432/datapoli_test
+
+# Recria o banco de teste a cada execução: nada de uma rodada vaza para a próxima.
+test-db:
+	docker exec datapoli_postgres_non_prod dropdb -U datapoli_user --if-exists datapoli_test
+	docker exec datapoli_postgres_non_prod createdb -U datapoli_user datapoli_test
+
+test: test-db
+	cd backend && DATABASE_URL=$(TEST_DATABASE_URL) alembic upgrade head
+	cd backend && DATABASE_URL=$(TEST_DATABASE_URL) PYTHONPATH=$(CURDIR) pytest -v --asyncio-mode=auto
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +

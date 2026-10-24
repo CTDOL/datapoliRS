@@ -20,8 +20,7 @@ FROM deps AS builder
 WORKDIR /app
 # Selo visual de ambiente (ADR universal governanca/047): NEXT_PUBLIC_* é
 # inlinado no bundle do cliente durante "next build" — precisa existir ANTES
-# do build, não em runtime. Vazio por padrão (produção real não mostra selo);
-# o job e2e-parity do ci.yml passa --build-arg NEXT_PUBLIC_ENV_LABEL=HOMOLOGACAO.
+# do build, não em runtime. Vazio por padrão (produção real não mostra selo).
 ARG NEXT_PUBLIC_ENV_LABEL=""
 ENV NEXT_PUBLIC_ENV_LABEL=${NEXT_PUBLIC_ENV_LABEL}
 # URL absoluta do portal público (link externo no Command Center) — mesma

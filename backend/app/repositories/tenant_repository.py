@@ -29,7 +29,7 @@ class TenantRepository:
             return dict(record) if record else None
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao buscar perfil do tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def updateProfile(
@@ -66,7 +66,7 @@ class TenantRepository:
             return await TenantRepository.getProfile(connection, tenantId)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao atualizar perfil do tenant {tenantId}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database update error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def getFormOptions(connection: asyncpg.Connection) -> Dict[str, List[Dict[str, Any]]]:

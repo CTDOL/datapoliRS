@@ -58,4 +58,4 @@ class GeoRepository:
 
         except asyncpg.PostgresError as postgresError:
             logger.error(f"Erro ao executar agregação espacial ST_AsGeoJSON: {postgresError}", exc_info=True)
-            raise RuntimeError(f"Database spatial query failure: {postgresError}") from postgresError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422

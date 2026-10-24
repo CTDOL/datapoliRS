@@ -3,6 +3,8 @@ from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
 
+from app.schemas.team import EMAIL_PATTERN
+
 
 class MunicipioAtuacao(BaseModel):
     """Um município de atuação de uma liderança, já com o centróide geográfico
@@ -16,7 +18,7 @@ class MunicipioAtuacao(BaseModel):
 class LiderancaBase(BaseModel):
     nm_completo: str = Field(..., min_length=3, max_length=255, description="Nome completo da liderança/apoiador")
     nr_telefone: Optional[str] = Field(None, max_length=30, description="Telefone / WhatsApp de contato")
-    ds_email: Optional[str] = Field(None, max_length=255, description="E-mail de contato")
+    ds_email: Optional[str] = Field(None, max_length=255, pattern=EMAIL_PATTERN, description="E-mail de contato")
     tp_influencia: Optional[str] = Field(None, max_length=50, description="Categoria de influência (ex: Comunitária, Religiosa, Sindical)")
     ds_observacoes: Optional[str] = Field(None, description="Anotações e histórico de demandas políticas")
     is_ativo: bool = Field(default=True, description="Status de atividade da liderança")
@@ -29,7 +31,7 @@ class LiderancaCreate(LiderancaBase):
 class LiderancaUpdate(BaseModel):
     nm_completo: Optional[str] = Field(None, min_length=3, max_length=255)
     nr_telefone: Optional[str] = None
-    ds_email: Optional[str] = None
+    ds_email: Optional[str] = Field(None, max_length=255, pattern=EMAIL_PATTERN)
     tp_influencia: Optional[str] = None
     ds_observacoes: Optional[str] = None
     is_ativo: Optional[bool] = None
@@ -42,6 +44,8 @@ class LiderancaResponse(LiderancaBase):
     ds_foto_url: Optional[str] = None
     municipios: List[MunicipioAtuacao] = Field(default_factory=list)
     created_at: datetime
+    # Contagem de tarefas abertas. Só preenchida para admin e operador; nos demais papéis fica None.
+    tarefas_abertas: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

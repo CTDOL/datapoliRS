@@ -2,7 +2,7 @@ import { Loader2, Search, ExternalLink, Check, Plus, AlertTriangle } from 'lucid
 import { ProposicaoExterna } from './useProjetosLei';
 
 const FONTE_LABEL: Record<string, string> = {
-  ALRS: 'Assembleia RS',
+  ALRS: 'Assembleia Legislativa do RS (ALRS)',
   CAMARA: 'Câmara dos Deputados',
   SENADO: 'Senado Federal',
 };
@@ -10,8 +10,18 @@ const FONTE_LABEL: Record<string, string> = {
 const FONTE_STYLES: Record<string, string> = {
   ALRS: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
   CAMARA: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  SENADO: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  SENADO: 'bg-[color:var(--cor-destaque-10)] text-[color:var(--cor-texto-destaque)] border-[color:var(--cor-destaque-20)]',
 };
+
+/** Explica a falha de uma fonte sem sugerir que o problema passa sozinho: a fonte pode estar fora do ar de vez. */
+export function mensagemFontesComErro(fontesComErro: string[], temResultados: boolean): string {
+  const nomes = fontesComErro.map((f) => FONTE_LABEL[f] || f).join(' e ');
+  const verbo = fontesComErro.length > 1 ? 'não responderam' : 'não respondeu';
+  if (temResultados) {
+    return `${nomes} ${verbo}. A lista abaixo mostra só as fontes que responderam e pode estar incompleta.`;
+  }
+  return `${nomes} ${verbo}, então a busca não consultou essa fonte. Nenhum resultado não quer dizer que não existam projetos nela.`;
+}
 
 interface BuscaExternaProps {
   nomeBusca: string;
@@ -20,7 +30,8 @@ interface BuscaExternaProps {
   fontesComErro: string[];
   isBuscando: boolean;
   importandoChave: string | null;
-  onImportar: (proposicao: ProposicaoExterna) => void;
+  /** Ausente para quem só consulta: o botão de importar não aparece. */
+  onImportar?: (proposicao: ProposicaoExterna) => void;
 }
 
 export function BuscaExternaProjetosLei({
@@ -32,7 +43,6 @@ export function BuscaExternaProjetosLei({
   importandoChave,
   onImportar,
 }: BuscaExternaProps) {
-  const nomesFontesComErro = fontesComErro.map((f) => FONTE_LABEL[f] || f).join(', ');
   return (
     <div className="bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-2xl p-5 shadow-xl">
       <h2 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">Buscar nas fontes oficiais</h2>
@@ -43,7 +53,7 @@ export function BuscaExternaProjetosLei({
           value={nomeBusca}
           onChange={(e) => onNomeBuscaChange(e.target.value)}
           placeholder="Nome do parlamentar (ex: Delegada Nadine)"
-          className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
         />
       </div>
 
@@ -60,9 +70,7 @@ export function BuscaExternaProjetosLei({
           className="flex items-start gap-2 mt-4 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm"
         >
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-          <span>
-            Sem resposta de: <strong>{nomesFontesComErro}</strong>. {resultados.length > 0 ? 'A lista abaixo pode estar incompleta' : 'Não foi possível consultar'} — tente novamente em instantes.
-          </span>
+          <span>{mensagemFontesComErro(fontesComErro, resultados.length > 0)}</span>
         </div>
       )}
 
@@ -71,7 +79,13 @@ export function BuscaExternaProjetosLei({
       )}
 
       {resultados.length > 0 && (
-        <div className="mt-4 space-y-2 max-h-96 overflow-y-auto pr-1">
+        <p className="mt-4 text-xs text-zinc-400" aria-live="polite">
+          {resultados.length} resultado(s) para <strong className="text-zinc-200">&laquo;{nomeBusca.trim()}&raquo;</strong>
+        </p>
+      )}
+
+      {resultados.length > 0 && (
+        <div className="mt-2 space-y-2 max-h-96 overflow-y-auto pr-1">
           {resultados.map((r) => {
             const chave = `${r.fonte}:${r.identificador_externo}`;
             const importando = importandoChave === chave;
@@ -88,20 +102,30 @@ export function BuscaExternaProjetosLei({
                     <span className="text-sm font-medium text-white">{r.tipo} {r.numero}/{r.ano}</span>
                     {r.situacao && <span className="text-xs text-zinc-400">· {r.situacao}</span>}
                   </div>
-                  {r.ementa && <p className="text-xs text-zinc-400 truncate" title={r.ementa}>{r.ementa}</p>}
+                  {r.ementa && <p className="text-xs text-zinc-300 leading-relaxed mt-1">{r.ementa}</p>}
+                  <dl className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-zinc-500 mt-1.5">
+                    {r.autor && <div><dt className="inline">Autor: </dt><dd className="inline text-zinc-300">{r.autor}</dd></div>}
+                    {r.data_apresentacao && (
+                      <div>
+                        <dt className="inline">Apresentado em: </dt>
+                        <dd className="inline text-zinc-300">{new Date(`${r.data_apresentacao}T00:00:00`).toLocaleDateString('pt-BR')}</dd>
+                      </div>
+                    )}
+                  </dl>
                   {r.url_fonte && (
-                    <a href={r.url_fonte} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-purple-400 hover:text-purple-300 mt-1">
+                    <a href={r.url_fonte} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-[color:var(--cor-texto-destaque)] hover:text-[color:var(--cor-texto-destaque)] mt-1">
                       Ver na fonte oficial <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
                 </div>
+                {onImportar && (
                 <button
                   onClick={() => onImportar(r)}
                   disabled={r.ja_importado || importando}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
                     r.ja_importado
                       ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 cursor-default'
-                      : 'bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-60'
+                      : 'bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent disabled:opacity-60'
                   }`}
                 >
                   {importando ? (
@@ -113,6 +137,7 @@ export function BuscaExternaProjetosLei({
                   )}
                   {r.ja_importado ? 'Importado' : 'Importar'}
                 </button>
+                )}
               </div>
             );
           })}

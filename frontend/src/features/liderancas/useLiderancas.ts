@@ -12,6 +12,7 @@ export interface Lideranca {
   id_lideranca: string;
   nm_completo: string;
   nr_telefone: string;
+  ds_email?: string | null;
   municipios: MunicipioAtuacao[];
   tp_influencia: string;
   ds_foto_url?: string | null;
@@ -22,6 +23,8 @@ export interface Lideranca {
 export type FormDataLideranca = {
   nm_completo: string;
   nr_telefone: string;
+  /** null envia "sem e-mail" ao backend, o que apaga um e-mail já cadastrado. */
+  ds_email: string | null;
   tp_influencia: string;
   municipios: string[];
 };

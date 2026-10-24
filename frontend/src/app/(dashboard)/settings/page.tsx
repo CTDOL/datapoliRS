@@ -1,24 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { Landmark, Users, MapPin, Lock, Cpu } from 'lucide-react';
+import { Landmark, Users, MapPin, Lock } from 'lucide-react';
 import { useSettings } from '@/features/settings/useSettings';
-import { usePlatformConfig } from '@/features/settings/usePlatformConfig';
 import { MandatoSettingsTab } from '@/features/settings/MandatoSettingsTab';
 import { EquipeSettingsTab } from '@/features/settings/EquipeSettingsTab';
 import { PreferenciasSettingsTab } from '@/features/settings/PreferenciasSettingsTab';
 import { SegurancaSettingsTab } from '@/features/settings/SegurancaSettingsTab';
-import { PlataformaSettingsTab } from '@/features/settings/PlataformaSettingsTab';
 import { useAuthStore } from '@/stores/useAuthStore';
 
-type TabKey = 'mandato' | 'equipe' | 'preferencias' | 'seguranca' | 'plataforma';
+type TabKey = 'mandato' | 'equipe' | 'preferencias' | 'seguranca';
 
 const TABS: { key: TabKey; label: string; icon: typeof Landmark }[] = [
   { key: 'mandato', label: 'Perfil do Mandato', icon: Landmark },
   { key: 'equipe', label: 'Equipe & Acessos', icon: Users },
   { key: 'preferencias', label: 'Preferências Táticas', icon: MapPin },
   { key: 'seguranca', label: 'Segurança & Dados', icon: Lock },
-  { key: 'plataforma', label: 'APIs & Sistema', icon: Cpu },
 ];
 
 export default function SettingsPage() {
@@ -38,9 +35,8 @@ export default function SettingsPage() {
     updateMember,
     changePassword,
     exportGabineteData,
+    testEmail,
   } = useSettings(isAdmin);
-
-  const { configuracoes, isLoading: isLoadingConfig, isSubmitting: isSubmittingConfig, salvarConfiguracoes } = usePlatformConfig(isAdmin);
 
   return (
     <div className="w-full h-full p-4 sm:p-8 flex flex-col gap-6 overflow-y-auto">
@@ -60,7 +56,7 @@ export default function SettingsPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex shrink-0 items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all -mb-px ${
                 isActive
-                  ? 'text-purple-400 border-purple-500'
+                  ? 'text-[color:var(--cor-texto-destaque)] border-[color:var(--cor-primaria)]'
                   : 'text-zinc-400 border-transparent hover:text-white'
               }`}
             >
@@ -100,15 +96,7 @@ export default function SettingsPage() {
             isSubmitting={isSubmitting}
             onChangePassword={changePassword}
             onExportData={exportGabineteData}
-          />
-        )}
-        {activeTab === 'plataforma' && (
-          <PlataformaSettingsTab
-            configuracoes={configuracoes}
-            isLoading={isLoadingConfig}
-            isSubmitting={isSubmittingConfig}
-            isAdmin={isAdmin}
-            onSave={salvarConfiguracoes}
+            onTestEmail={testEmail}
           />
         )}
       </div>

@@ -23,3 +23,16 @@ claude-skills.tar.gz
 # Certificados TLS do proxy reverso — chave privada nunca entra no Git.
 # Em CI sao gerados self-signed efemeros; na VPS sao provisionados no host.
 nginx/certs/
+
+# Status dos containers da barra de ambiente: gerado em dev e hml, nunca versionado
+frontend/public/ambiente-status.json
+frontend/public/ambiente-status.json.tmp
+
+# Base GeoIP (MaxMind): dado de terceiro, nunca versionado (ADR 040)
+backend/geoip/
+*.mmdb
+
+# Rascunhos e mentorias locais
+CLAUDE.md.sugerida
+GEMINI.md.sugerida
+PROMPT_MENTORIA_EXTERNA.md

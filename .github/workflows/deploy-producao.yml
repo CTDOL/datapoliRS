@@ -1,19 +1,26 @@
 name: Deploy Produção
 
-# Fluxo único, de dev direto para produção (exceção deliberada: não há hml na esteira deste sistema).
-#  - Fluxo: dev -> hml -> main (produção). hml é validado no Docker local (make hml-up) antes do PR para main.
-#  - push e pull_request em dev, hml e main: só testes, nunca build nem deploy.
-#  - workflow_dispatch na main: testes -> build das imagens -> deploy na VPS OCI (environment producao).
-#    O disparo é sempre manual (Regra 7.4 do cofre: nada de push ou merge acionando produção).
+# Esteira em dois fluxos (ADR 043).
+#  - Fluxo 1, dev -> hml: push direto para hml, sem testes e sem deploy. hml é o espelho local (make hml-up).
+#    Este workflow não roda nada para hml.
+#  - Fluxo 2, hml -> main -> produção: PR para main roda testes e o E2E de fumaça (check e2e).
+#    workflow_dispatch na main, com a versão SemVer (vX.Y.Z) de uma Release existente: validar-versao ->
+#    testes -> build das imagens -> deploy na VPS OCI (environment producao). Nenhum evento de Release dispara deploy.
+#    O disparo é sempre manual (Regra 7.4 do cofre: nada de push, merge ou Release acionando produção).
 #    Na carga inicial, popula o banco (municípios + uma carga).
+#  - push em dev e main: só testes, nunca build nem deploy.
 
 on:
   push:
-    branches: [ dev, hml, main ]
+    branches: [ dev, main ]
   pull_request:
-    branches: [ dev, hml, main ]
+    branches: [ main ]
   workflow_dispatch:
     inputs:
+      versao:
+        description: 'Versão SemVer da Release, no formato vX.Y.Z (ex: v0.2.0)'
+        required: true
+        type: string
       carga_tipo:
         description: 'Carga a enfileirar depois do deploy (none = só redeploy)'
         required: true
@@ -24,6 +31,21 @@ on:
         description: 'Ano do pleito da carga (ex: 2022)'
         required: false
         default: '2022'
+        type: string
+      seed_plataforma:
+        description: 'Cria ou garante o super-admin da plataforma após o deploy (idempotente; exige o secret PLATAFORMA_ADMIN_PASSWORD no environment producao)'
+        required: false
+        default: false
+        type: boolean
+      wipe_banco:
+        description: 'Instalação limpa: apaga o banco e os uploads da produção antes das migrações (o snapshot é feito antes). Exige confirmar_wipe igual à versão, seed_plataforma=true e carga_tipo=votacao.'
+        required: false
+        default: false
+        type: boolean
+      confirmar_wipe:
+        description: 'Digite a versão (ex: v0.2.0) para confirmar o wipe. Obrigatório com wipe_banco.'
+        required: false
+        default: ''
         type: string
 
 permissions:
@@ -90,12 +112,12 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: backend/requirements*.txt
 
       - name: Instalar Dependências
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt -r requirements-dev.txt
 
       # Banco vazio até o head: valida a cadeia completa de migrations do zero (doutrina de migrations).
       - name: Aplicar Migrations (Alembic, do zero)
@@ -138,8 +160,143 @@ jobs:
       - name: Testes Unitários (Vitest)
         run: npm run test
 
-  build:
+      # Erro de build tem que parar o PR para hml, e não só o job de build da main.
+      - name: Build (Next.js)
+        run: npm run build
+
+  # E2E de fumaça contra uma API real (login, Mapa Tático, Lideranças, Emendas, Projetos de Lei).
+  # Só roda em PR para main: é o gate da promoção hml -> main. Push para hml não passa por aqui (Fluxo 1, sem testes).
+  e2e:
     needs: [test-backend, test-frontend]
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: imresamu/postgis:16-3.4
+        env:
+          POSTGRES_USER: datapoli_user
+          POSTGRES_PASSWORD: datapoli_pass
+          POSTGRES_DB: datapoli_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U datapoli_user -d datapoli_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://datapoli_user:datapoli_pass@localhost:5432/datapoli_db
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ci-only-secret-not-for-production
+      ALLOWED_ORIGINS: http://127.0.0.1:3000
+      ADMIN_EMAIL: operador@campanha.com.br
+      ADMIN_PASSWORD: admin123
+      ADMIN_TENANT_ID: 11111111-2222-3333-4444-555555555555
+      ENVIRONMENT: test
+      # O rewrite /api do Next (frontend/next.config.ts) encaminha para esta API: sem NEXT_PUBLIC_API_URL,
+      # o navegador do teste fala same-origin, como no dev local.
+      API_INTERNAL_URL: http://127.0.0.1:8000
+
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v7
+
+      - name: Configurar Python (API para o E2E)
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements*.txt
+
+      - name: Instalar Dependências do Backend
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Aplicar Migrations (Alembic, do zero)
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Subir API em background (uvicorn)
+        working-directory: backend
+        run: |
+          nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/health > /dev/null && exit 0
+            sleep 2
+          done
+          echo "API não respondeu a tempo:"
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+
+      - name: Configurar Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar Dependências do Frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Instalar Playwright (Chromium)
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Testes E2E de Fumaça (Playwright)
+        working-directory: frontend
+        run: npx playwright test
+
+  validar-versao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSAO: ${{ inputs.versao }}
+
+    steps:
+      - name: Checkout com tags
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Validar formato, Release e commit
+        run: |
+          if [[ ! "$VERSAO" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Versão inválida: '$VERSAO'. Esperado vX.Y.Z." >&2
+            exit 1
+          fi
+          if ! gh release view "$VERSAO" --json isDraft --jq '.isDraft == false' | grep -q true; then
+            echo "A Release '$VERSAO' não existe ou ainda é rascunho." >&2
+            exit 1
+          fi
+          if [ "$(git rev-parse "$VERSAO^{commit}")" != "${{ github.sha }}" ]; then
+            echo "A tag '$VERSAO' não aponta para o commit construído (${{ github.sha }})." >&2
+            exit 1
+          fi
+
+  build:
+    needs: [test-backend, test-frontend, validar-versao]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -160,8 +317,10 @@ jobs:
             context: ./frontend
             dockerfile: frontend/Dockerfile
             target: production
-            # Assado no bundle (NEXT_PUBLIC_* só existe em build-time). Produção: sem selo de ambiente.
-            buildArgs: NEXT_PUBLIC_PORTAL_URL=https://api-datapoli.ctdol.com.br
+            # Assado no bundle (NEXT_PUBLIC_* só existe em build-time). Produção: selo PROTOTIPO enquanto a Regra 7.4.1 vigorar.
+            buildArgs: |
+              NEXT_PUBLIC_PORTAL_URL=https://api-datapoli.ctdol.com.br
+              NEXT_PUBLIC_ENV_LABEL=PROTOTIPO
           - image: ghcr.io/ctdol/datapolirs-etl
             context: .
             dockerfile: etl/Dockerfile
@@ -186,7 +345,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build e Push (linux/arm64, tag = SHA do commit)
+      - name: Build e Push (linux/arm64, tags = SHA do commit e versão)
         uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
@@ -194,7 +353,9 @@ jobs:
           target: ${{ matrix.target }}
           platforms: linux/arm64
           push: true
-          tags: ${{ matrix.image }}:${{ github.sha }}
+          tags: |
+            ${{ matrix.image }}:${{ github.sha }}
+            ${{ matrix.image }}:${{ inputs.versao }}
           build-args: ${{ matrix.buildArgs }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
@@ -212,12 +373,14 @@ jobs:
       packages: read
 
     env:
-      RELEASE_TAG: ${{ github.sha }}
+      RELEASE_TAG: ${{ inputs.versao }}
       # VPS_DEPLOY_PATH é variável do environment (não secret). Sem ela, o scp grava em "/".
       VPS_DEPLOY_PATH: ${{ vars.VPS_DEPLOY_PATH || '/opt/datapolirs' }}
       VPS: ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}
       CARGA_TIPO: ${{ inputs.carga_tipo || 'none' }}
       CARGA_ANO: ${{ inputs.carga_ano || '2022' }}
+      WIPE_BANCO: ${{ inputs.wipe_banco || false }}
+      CONFIRMAR_WIPE: ${{ inputs.confirmar_wipe || '' }}
       PUBLIC_API_URL: https://api-datapoli.ctdol.com.br/health
       PUBLIC_APP_URL: https://datapoli.ctdol.com.br/
 
@@ -226,6 +389,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Validar entradas do deploy
+        env:
+          SEED_PLATAFORMA: ${{ inputs.seed_plataforma }}
+          PLATAFORMA_ADMIN_PASSWORD: ${{ secrets.PLATAFORMA_ADMIN_PASSWORD }}
         run: |
           if [[ ! "$CARGA_TIPO" =~ ^(none|votacao|comparecimento)$ ]]; then
             echo "Carga inválida: '$CARGA_TIPO'." >&2
@@ -233,6 +399,17 @@ jobs:
           fi
           if [ "$CARGA_TIPO" != "none" ] && [[ ! "$CARGA_ANO" =~ ^(19|20)[0-9]{2}$ ]]; then
             echo "Ano inválido: '$CARGA_ANO'. Esperado AAAA (ex: 2022)." >&2
+            exit 1
+          fi
+          # Wipe: as travas ficam aqui, antes de qualquer mudança na VPS.
+          if [ "$WIPE_BANCO" = "true" ]; then
+            [ "$CONFIRMAR_WIPE" = "$RELEASE_TAG" ] || { echo "Wipe recusado: confirmar_wipe deve ser exatamente '$RELEASE_TAG'." >&2; exit 1; }
+            [ "$SEED_PLATAFORMA" = "true" ] || { echo "Wipe recusado: sem seed_plataforma o sistema nasce sem super-admin." >&2; exit 1; }
+            [ "$CARGA_TIPO" = "votacao" ] || { echo "Wipe recusado: carga_tipo deve ser votacao (municípios e votação)." >&2; exit 1; }
+          fi
+          # Falha antes de tocar a VPS: senha ausente ou curta só aparece depois do deploy, com a API já no ar.
+          if [ "$SEED_PLATAFORMA" = "true" ] && [ "${#PLATAFORMA_ADMIN_PASSWORD}" -lt 12 ]; then
+            echo "Secret PLATAFORMA_ADMIN_PASSWORD ausente ou menor que 12 caracteres no environment producao." >&2
             exit 1
           fi
 
@@ -243,7 +420,7 @@ jobs:
           chmod 600 ~/.ssh/vps_deploy_key
           ssh-keyscan -H "${{ secrets.VPS_SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      # Só o compose de produção vai para a VPS. O .env.prod (segredos reais) fica na VPS e nunca sai dela.
+      # Só o compose de produção vai para a VPS. O .env.prod de produção (segredos reais) fica na VPS e nunca sai dela.
       - name: Sincronizar docker-compose.prod.yml
         run: |
           scp -i ~/.ssh/vps_deploy_key docker-compose.prod.yml "$VPS:$VPS_DEPLOY_PATH/docker-compose.prod.yml"
@@ -255,12 +432,36 @@ jobs:
 
       - name: Pull + up (imagens do SHA deste commit)
         run: |
-          ssh -i ~/.ssh/vps_deploy_key "$VPS" bash -s -- "$VPS_DEPLOY_PATH" "$RELEASE_TAG" <<'REMOTO'
+          ssh -i ~/.ssh/vps_deploy_key "$VPS" bash -s -- "$VPS_DEPLOY_PATH" "$RELEASE_TAG" "$WIPE_BANCO" <<'REMOTO'
           set -e
           cd "$1"
           export RELEASE_TAG="$2"
-          docker compose -f docker-compose.prod.yml --env-file .env.prod pull
-          docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+          $COMPOSE pull
+          # Migrações antes da troca da API: o banco sobe sem recriar a API atual, e o alembic roda
+          # num container descartável. Se a migração falhar, o set -e aborta e a API anterior segue no ar.
+          $COMPOSE up -d postgres redis
+          # Snapshot antes da migração: lastro de restauração, sem apagar nada. Se o dump falhar, o set -e aborta
+          # antes do alembic e a API anterior segue no ar.
+          SNAPSHOT="$HOME/pre_${RELEASE_TAG}_$(date +%Y%m%d%H%M%S).dump"
+          $COMPOSE exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$SNAPSHOT"
+          test -s "$SNAPSHOT" || { echo "Snapshot pré-migração vazio: abortando." >&2; exit 1; }
+          echo "Snapshot pré-migração: $SNAPSHOT"
+          # Wipe (só com wipe_banco=true, já validado no runner): derruba os containers e apaga os volumes do
+          # projeto. O banco e os uploads antigos saem do ar. O snapshot acima fica em $HOME para restauração.
+          if [ "$3" = "true" ]; then
+            echo "WIPE: removendo containers e volumes do projeto. Snapshot preservado em $SNAPSHOT."
+            $COMPOSE down -v --remove-orphans
+            $COMPOSE up -d postgres redis
+            for i in $(seq 1 30); do
+              $COMPOSE exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' && break
+              sleep 2
+              [ "$i" -lt 30 ] || { echo "Postgres não subiu após o wipe." >&2; exit 1; }
+            done
+            echo "Postgres limpo e pronto para as migrações."
+          fi
+          $COMPOSE run --rm --no-deps api alembic upgrade head
+          $COMPOSE up -d
           REMOTO
 
       - name: Health check dos serviços na VPS
@@ -297,11 +498,21 @@ jobs:
           $COMPOSE run --rm --no-deps etl-worker python -m etl.enfileirar_carga "$3" "$4"
           REMOTO
 
+      # Super-admin da plataforma (ADR 037), só com o input seed_plataforma. Entra pela esteira, depois da
+      # aprovação do environment, sem SSH avulso. A senha vem do secret do environment e segue por stdin.
+      - name: Garantir super-admin da plataforma (opcional)
+        if: inputs.seed_plataforma
+        env:
+          PLATAFORMA_ADMIN_PASSWORD: ${{ secrets.PLATAFORMA_ADMIN_PASSWORD }}
+        run: |
+          printf '%s\n' "$PLATAFORMA_ADMIN_PASSWORD" | ssh -i ~/.ssh/vps_deploy_key "$VPS" \
+            "cd '$VPS_DEPLOY_PATH' && docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T api python -m scripts.seed_plataforma --producao"
+
       - name: Health check público (através do gateway e da Cloudflare)
         run: |
           for url in "$PUBLIC_API_URL" "$PUBLIC_APP_URL"; do
             ok=false
-            for i in $(seq 1 20); do
+            for _ in $(seq 1 20); do
               if curl -sf "$url" > /dev/null; then
                 echo "OK: $url"
                 ok=true

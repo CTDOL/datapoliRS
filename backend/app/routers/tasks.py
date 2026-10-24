@@ -2,7 +2,7 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 import asyncpg
-from app.core.dependencies import getDbConnection, get_current_user
+from app.core.dependencies import getDbConnection, get_current_user, require_role, bloquear_super_admin
 from app.schemas.user import UserInDB
 from app.services.task_service import TaskService
 from app.schemas.task import TarefaCreate, TarefaUpdate, TarefaResponse
@@ -11,7 +11,7 @@ from app.core.rate_limit import RateLimiter
 router = APIRouter(
     prefix="/api/v1/gabinete/tarefas",
     tags=["Gabinete Digital & Tarefas"],
-    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="tasks"))]
+    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="tasks")), Depends(bloquear_super_admin)]
 )
 
 
@@ -23,7 +23,7 @@ router = APIRouter(
 )
 async def criar_tarefa(
     payload: TarefaCreate,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> TarefaResponse:
     return await TaskService.createTarefa(connection, current_user.tenant_id, payload)
@@ -51,7 +51,7 @@ async def listar_tarefas(
 async def atualizar_tarefa(
     id_tarefa: uuid.UUID,
     payload: TarefaUpdate,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> TarefaResponse:
     return await TaskService.updateTarefa(connection, current_user.tenant_id, id_tarefa, payload)
@@ -64,7 +64,7 @@ async def atualizar_tarefa(
 )
 async def remover_tarefa(
     id_tarefa: uuid.UUID,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> None:
     await TaskService.deleteTarefa(connection, current_user.tenant_id, id_tarefa)

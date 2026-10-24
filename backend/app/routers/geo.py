@@ -28,7 +28,7 @@ GEO_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800"
 @router.get(
     "/municipios",
     summary="Recupera o GeoJSON dos municípios do RS",
-    description="Retorna a FeatureCollection completa dos 496 municípios do Rio Grande do Sul gerada diretamente via PostGIS (ST_AsGeoJSON) com cache Redis."
+    description="Retorna a FeatureCollection completa dos 497 municípios do Rio Grande do Sul gerada diretamente via PostGIS (ST_AsGeoJSON) com cache Redis."
 )
 async def obter_municipios_geojson(
     response: Response,

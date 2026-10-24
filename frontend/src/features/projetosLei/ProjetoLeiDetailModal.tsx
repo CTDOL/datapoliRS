@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, UserPlus, Trash2, Plus, Loader2, CheckCircle2, Circle, Clock } from 'lucide-react';
+import { usePermissoes } from '@/stores/usePermissoes';
 import { api } from '@/services/api';
 import { ProjetoLei, descreverConferencia } from './useProjetosLei';
 import { useProjetoLeiDetalhe } from './useProjetoLeiDetalhe';
@@ -30,10 +31,11 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
     observadores, tarefas, isSubmitting,
     addObservador, removeObservador, createTarefa, updateTarefaStatus, deleteTarefa,
   } = useProjetoLeiDetalhe(idProjetoLei);
+  const { podeEscrever, podeExcluir } = usePermissoes();
 
   const [liderancas, setLiderancas] = useState<LiderancaOption[]>([]);
   const [observadorSelecionado, setObservadorSelecionado] = useState('');
-  const [novaTarefa, setNovaTarefa] = useState({ titulo: '', prazo: '', id_lideranca_responsavel: '' });
+  const [novaTarefa, setNovaTarefa] = useState({ titulo: '', prazo: '', ids_responsaveis: [] as string[] });
 
   useEffect(() => {
     if (!projetoLei) return;
@@ -41,7 +43,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
       .then((res) => setLiderancas(res.data.items))
       .catch((err) => console.error(err));
     const timer = setTimeout(() => {
-      setNovaTarefa({ titulo: '', prazo: '', id_lideranca_responsavel: '' });
+      setNovaTarefa({ titulo: '', prazo: '', ids_responsaveis: [] });
       setObservadorSelecionado('');
     }, 0);
     return () => clearTimeout(timer);
@@ -62,9 +64,9 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
     const ok = await createTarefa({
       titulo: novaTarefa.titulo.trim(),
       prazo: novaTarefa.prazo || undefined,
-      id_lideranca_responsavel: novaTarefa.id_lideranca_responsavel || undefined,
+      ids_responsaveis: novaTarefa.ids_responsaveis,
     });
-    if (ok) setNovaTarefa({ titulo: '', prazo: '', id_lideranca_responsavel: '' });
+    if (ok) setNovaTarefa({ titulo: '', prazo: '', ids_responsaveis: [] });
   };
 
   const cicloStatus = (atual: string) => {
@@ -95,7 +97,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                   {projetoLei.situacao && <span>Situação: {projetoLei.situacao}</span>}
                   <span title="Última conferência na fonte oficial">({descreverConferencia(projetoLei.ultima_sincronizacao)})</span>
                   {projetoLei.url_fonte && (
-                    <a href={projetoLei.url_fonte} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300">
+                    <a href={projetoLei.url_fonte} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[color:var(--cor-texto-destaque)] hover:text-[color:var(--cor-texto-destaque)]">
                       Fonte oficial <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
@@ -115,17 +117,20 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                   {observadores.map((o) => (
                     <span key={o.id_lideranca} className="flex items-center gap-1.5 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 rounded-full pl-3 pr-1.5 py-1 text-xs">
                       {o.nm_completo}
-                      <button onClick={() => removeObservador(o.id_lideranca)} className="hover:text-white p-0.5">
-                        <X className="w-3 h-3" />
-                      </button>
+                      {podeEscrever && (
+                        <button onClick={() => removeObservador(o.id_lideranca)} className="hover:text-white p-0.5">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>
+                {podeEscrever && (
                 <div className="flex gap-2">
                   <select
                     value={observadorSelecionado}
                     onChange={(e) => setObservadorSelecionado(e.target.value)}
-                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50"
+                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   >
                     <option value="">Selecionar liderança...</option>
                     {liderancasDisponiveis.map((l) => (
@@ -135,11 +140,12 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                   <button
                     onClick={handleAddObservador}
                     disabled={!observadorSelecionado || isSubmitting}
-                    className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-xl disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium"
+                    className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-3 py-2 rounded-xl disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium"
                   >
                     <UserPlus className="w-4 h-4" /> Vincular
                   </button>
                 </div>
+                )}
               </div>
 
               {/* Tarefas */}
@@ -151,7 +157,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                     const Icon = STATUS_ICON[t.tp_status] || Circle;
                     return (
                       <div key={t.id_tarefa} className="flex items-center justify-between gap-3 bg-zinc-950/60 border border-zinc-800 rounded-xl px-3.5 py-2.5">
-                        <button onClick={() => updateTarefaStatus(t.id_tarefa, cicloStatus(t.tp_status))} className="flex items-center gap-2 text-left min-w-0 flex-1">
+                        <button onClick={() => updateTarefaStatus(t.id_tarefa, cicloStatus(t.tp_status))} disabled={!podeEscrever} className="flex items-center gap-2 text-left min-w-0 flex-1 disabled:cursor-default">
                           <Icon className={`w-4 h-4 shrink-0 ${t.tp_status === 'Concluída' ? 'text-teal-400' : t.tp_status === 'Em Andamento' ? 'text-amber-400' : 'text-zinc-500'}`} />
                           <div className="min-w-0">
                             <p className={`text-sm truncate ${t.tp_status === 'Concluída' ? 'text-zinc-500 line-through' : 'text-white'}`}>{t.titulo}</p>
@@ -161,45 +167,62 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                             </p>
                           </div>
                         </button>
-                        <button onClick={() => deleteTarefa(t.id_tarefa)} className="text-zinc-500 hover:text-red-400 p-1 shrink-0">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {podeExcluir && (
+                          <button onClick={() => deleteTarefa(t.id_tarefa)} className="text-zinc-500 hover:text-red-400 p-1 shrink-0">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     );
                   })}
                 </div>
+                {podeEscrever && (
                 <form onSubmit={handleCreateTarefa} className="flex flex-wrap gap-2">
                   <input
                     type="text"
                     value={novaTarefa.titulo}
                     onChange={(e) => setNovaTarefa({ ...novaTarefa, titulo: e.target.value })}
                     placeholder="Nova tarefa..."
-                    className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   />
                   <input
                     type="date"
                     value={novaTarefa.prazo}
                     onChange={(e) => setNovaTarefa({ ...novaTarefa, prazo: e.target.value })}
-                    className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   />
-                  <select
-                    value={novaTarefa.id_lideranca_responsavel}
-                    onChange={(e) => setNovaTarefa({ ...novaTarefa, id_lideranca_responsavel: e.target.value })}
-                    className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50"
-                  >
-                    <option value="">Sem responsável</option>
-                    {liderancas.map((l) => (
-                      <option key={l.id_lideranca} value={l.id_lideranca}>{l.nm_completo}</option>
-                    ))}
-                  </select>
+                  <details className="relative">
+                    <summary className="cursor-pointer list-none bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white">
+                      Responsáveis ({novaTarefa.ids_responsaveis.length})
+                    </summary>
+                    <div className="absolute z-10 mt-1 w-64 max-h-60 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 p-2 space-y-1 shadow-xl">
+                      {liderancas.length === 0 && <p className="text-xs text-zinc-500 px-1">Nenhuma liderança cadastrada.</p>}
+                      {liderancas.map((l) => (
+                        <label key={l.id_lideranca} className="flex items-center gap-2 px-1 py-1 text-sm text-zinc-200 hover:bg-zinc-800 rounded-lg cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={novaTarefa.ids_responsaveis.includes(l.id_lideranca)}
+                            onChange={(e) => setNovaTarefa({
+                              ...novaTarefa,
+                              ids_responsaveis: e.target.checked
+                                ? [...novaTarefa.ids_responsaveis, l.id_lideranca]
+                                : novaTarefa.ids_responsaveis.filter((id) => id !== l.id_lideranca),
+                            })}
+                          />
+                          {l.nm_completo}
+                        </label>
+                      ))}
+                    </div>
+                  </details>
                   <button
                     type="submit"
                     disabled={!novaTarefa.titulo.trim() || isSubmitting}
-                    className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-xl disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium"
+                    className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-3 py-2 rounded-xl disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium"
                   >
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                   </button>
                 </form>
+                )}
               </div>
             </div>
           </motion.div>

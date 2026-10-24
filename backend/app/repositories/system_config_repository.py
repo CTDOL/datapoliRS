@@ -30,4 +30,4 @@ class SystemConfigRepository:
                     )
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao atualizar configurações do sistema: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database update error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422

@@ -1,11 +1,14 @@
+import glob
 import os
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, Query, Request, UploadFile, File, HTTPException, status
 import asyncpg
-from app.core.dependencies import getDbConnection, get_current_user, require_role
+from app.core.dependencies import getDbConnection, get_current_user, require_role, bloquear_super_admin
 from app.schemas.user import UserInDB
+from app.services import observabilidade_service
 from app.services.cabinet_service import CabinetService
+from app.services.image_sanitizer_service import ImageSanitizerService
 from app.schemas.leadership import (
     LiderancaCreate,
     LiderancaUpdate,
@@ -14,14 +17,31 @@ from app.schemas.leadership import (
 )
 from app.core.rate_limit import RateLimiter
 
-UPLOADS_DIR = "app/uploads/liderancas"
+UPLOADS_DIR = os.environ.get("UPLOADS_DIR", "app/uploads/liderancas")
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FOTO_SIZE_BYTES = 5 * 1024 * 1024  # 5MB
+
+# Papéis que podem ver a contagem de tarefas por liderança (ADR 045-tarefas / ADR 036).
+PAPEIS_VEEM_CONTAGEM_TAREFAS = {"admin", "operador"}  # Matriz RBAC, ADR 036
+
+
+def _ocultar_contagem_tarefas(lideranca, usuario: UserInDB):
+    """Zera a contagem de tarefas para papéis fora de PAPEIS_VEEM_CONTAGEM_TAREFAS."""
+    if usuario.role not in PAPEIS_VEEM_CONTAGEM_TAREFAS:
+        lideranca.tarefas_abertas = None
+    return lideranca
+
+
+def _fotosDaLideranca(idLideranca: uuid.UUID) -> list[str]:
+    """Arquivos de foto da liderança: o nome antigo `{id}.{ext}` e o atual `{id}-{hash}.{ext}`."""
+    return glob.glob(os.path.join(UPLOADS_DIR, f"{idLideranca}.*")) + \
+        glob.glob(os.path.join(UPLOADS_DIR, f"{idLideranca}-*"))
+
 
 router = APIRouter(
     prefix="/api/v1/gabinete/liderancas",
     tags=["Gabinete Digital & Lideranças"],
-    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="cabinet"))]
+    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="cabinet")), Depends(bloquear_super_admin)]
 )
 
 
@@ -33,7 +53,7 @@ router = APIRouter(
 )
 async def cadastrar_lideranca(
     payload: LiderancaCreate,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaResponse:
     """Cria uma nova liderança vinculada exclusivamente ao gabinete (tenant_id)."""
@@ -56,7 +76,7 @@ async def listar_liderancas(
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaPageResponse:
     """Recupera a lista paginada de lideranças cadastradas no gabinete isolado."""
-    return await CabinetService.listLeaderships(
+    resposta = await CabinetService.listLeaderships(
         connection=connection,
         tenantId=current_user.tenant_id,
         ibgeCode=cd_ibge_7,
@@ -66,6 +86,9 @@ async def listar_liderancas(
         page=page,
         pageSize=page_size
     )
+    for lideranca in resposta.items:
+        _ocultar_contagem_tarefas(lideranca, current_user)
+    return resposta
 
 
 @router.get(
@@ -79,7 +102,8 @@ async def obter_lideranca_por_id(
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaResponse:
     """Retorna os dados cadastrais da liderança se pertencer ao gabinete autenticado."""
-    return await CabinetService.getLeadershipById(connection, current_user.tenant_id, id_lideranca)
+    lideranca = await CabinetService.getLeadershipById(connection, current_user.tenant_id, id_lideranca)
+    return _ocultar_contagem_tarefas(lideranca, current_user)
 
 
 @router.put(
@@ -90,7 +114,7 @@ async def obter_lideranca_por_id(
 async def atualizar_lideranca(
     id_lideranca: uuid.UUID,
     payload: LiderancaUpdate,
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaResponse:
     """Atualiza as informações da liderança no gabinete."""
@@ -105,10 +129,10 @@ async def atualizar_lideranca(
 async def enviar_foto_lideranca(
     id_lideranca: uuid.UUID,
     arquivo: UploadFile = File(...),
-    current_user: UserInDB = Depends(get_current_user),
+    current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> LiderancaResponse:
-    """Salva a foto em disco (volume dedicado) e associa a URL pública à liderança."""
+    """Sanitiza a foto (sem EXIF/GPS), grava com hash no nome e associa a URL pública à liderança."""
     if arquivo.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -125,14 +149,28 @@ async def enviar_foto_lideranca(
     # Valida que a liderança existe e pertence a este tenant antes de tocar no disco.
     await CabinetService.getLeadershipById(connection, current_user.tenant_id, id_lideranca)
 
-    extensao = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}[arquivo.content_type]
+    # FR-006: o formato vale pelo conteúdo decodificado, não pelo content_type declarado.
+    imagem = ImageSanitizerService.sanitize(conteudo)
+    nomeArquivo = f"{id_lideranca}-{imagem.sha256[:16]}.{imagem.extensao}"
     os.makedirs(UPLOADS_DIR, exist_ok=True)
-    caminhoArquivo = os.path.join(UPLOADS_DIR, f"{id_lideranca}.{extensao}")
+    caminhoArquivo = os.path.join(UPLOADS_DIR, nomeArquivo)
+    anteriores = [f for f in _fotosDaLideranca(id_lideranca) if f != caminhoArquivo]
+    jaExistia = os.path.exists(caminhoArquivo)  # reenvio da mesma foto: mesmo hash, mesmo nome
     with open(caminhoArquivo, "wb") as destino:
-        destino.write(conteudo)
+        destino.write(imagem.conteudo)
 
-    fotoUrl = f"/uploads/liderancas/{id_lideranca}.{extensao}"
-    return await CabinetService.setFotoUrl(connection, current_user.tenant_id, id_lideranca, fotoUrl)
+    fotoUrl = f"/uploads/liderancas/{nomeArquivo}"
+    try:
+        resposta = await CabinetService.setFotoUrl(connection, current_user.tenant_id, id_lideranca, fotoUrl)
+    except Exception:
+        # Sem a URL no banco, o arquivo novo ficaria órfão; a foto anterior continua valendo.
+        if not jaExistia:
+            os.remove(caminhoArquivo)
+        raise
+
+    for caminhoAnterior in anteriores:
+        os.remove(caminhoAnterior)
+    return resposta
 
 
 @router.delete(
@@ -141,13 +179,15 @@ async def enviar_foto_lideranca(
     summary="Remove uma liderança do gabinete (requer papel admin)"
 )
 async def remover_lideranca(
+    request: Request,
     id_lideranca: uuid.UUID,
     current_user: UserInDB = Depends(require_role(["admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> None:
     """Exclui a liderança do gabinete garantindo isolamento por tenant_id (e a foto em disco, se houver)."""
-    for extensao in ("jpg", "png", "webp"):
-        caminhoArquivo = os.path.join(UPLOADS_DIR, f"{id_lideranca}.{extensao}")
-        if os.path.exists(caminhoArquivo):
-            os.remove(caminhoArquivo)
+    # O banco vem antes do disco: o serviço confere o gabinete (404 para outro tenant) e só
+    # depois de a exclusão dar certo as fotos saem. O diretório é único para todos os gabinetes.
     await CabinetService.deleteLeadership(connection, current_user.tenant_id, id_lideranca)
+    for caminhoArquivo in _fotosDaLideranca(id_lideranca):
+        os.remove(caminhoArquivo)
+    await observabilidade_service.registrar_operacao(connection, "lideranca_excluida", request, current_user, 204)

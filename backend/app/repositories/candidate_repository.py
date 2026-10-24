@@ -24,10 +24,11 @@ class CandidateRepository:
         params: List[Any] = []
         paramIndex = 1
 
-        if searchTerm and searchTerm.strip():
-            wildcard = f"%{searchTerm.strip()}%"
+        # Cada palavra precisa aparecer no nome de urna ou no nome civil, em qualquer ordem:
+        # "Luciano Zucco" acha LUCIANO LORENZINI ZUCCO, que não contém a frase contínua.
+        for palavra in (searchTerm or "").split():
             conditions.append(f"(unaccent(c.nm_urna_candidato) ILIKE unaccent(${paramIndex}) OR unaccent(c.nm_candidato) ILIKE unaccent(${paramIndex}))")
-            params.append(wildcard)
+            params.append(f"%{palavra}%")
             paramIndex += 1
 
         if cargoCode is not None:
@@ -74,7 +75,7 @@ class CandidateRepository:
             return [dict(record) for record in records]
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao buscar candidaturas: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     async def getCandidateBySq(
         self,
@@ -107,7 +108,7 @@ class CandidateRepository:
             return dict(record) if record else None
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao recuperar candidato SQ {sqCandidato}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     async def listCargos(self, connection: asyncpg.Connection) -> List[Dict[str, Any]]:
         """Lista todos os cargos eleitorais cadastrados."""

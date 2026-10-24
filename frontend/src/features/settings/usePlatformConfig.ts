@@ -5,7 +5,7 @@ export interface ConfiguracaoItem {
   chave: string;
   valor: string;
   tipo: 'int' | 'string';
-  categoria: 'eleitoral' | 'rate_limit' | 'cache';
+  categoria: 'eleitoral' | 'rate_limit' | 'cache' | 'sistema' | 'apis';
   descricao: string;
   updated_at: string;
 }

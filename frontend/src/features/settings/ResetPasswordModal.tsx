@@ -78,8 +78,8 @@ export function ResetPasswordModal({ isOpen, member, onClose, onSubmit }: Props)
             {/* Header */}
             <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
-                  <KeyRound className="w-5 h-5 text-purple-400" />
+                <div className="w-10 h-10 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+                  <KeyRound className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-white">Redefinir Senha de Membro</h2>
@@ -118,7 +118,7 @@ export function ResetPasswordModal({ isOpen, member, onClose, onSubmit }: Props)
                       minLength={8}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                       placeholder="Mínimo 8 caracteres"
                     />
                   </div>
@@ -133,7 +133,7 @@ export function ResetPasswordModal({ isOpen, member, onClose, onSubmit }: Props)
                       minLength={8}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                       placeholder="Repita a nova senha"
                     />
                   </div>
@@ -155,7 +155,7 @@ export function ResetPasswordModal({ isOpen, member, onClose, onSubmit }: Props)
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-xl font-medium shadow-lg flex items-center justify-center gap-2 text-sm disabled:opacity-70 transition-all"
+                      className="flex-1 bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-4 py-3 rounded-xl font-medium shadow-lg flex items-center justify-center gap-2 text-sm disabled:opacity-70 transition-all"
                     >
                       {isSubmitting ? (
                         <Loader2 className="w-4 h-4 animate-spin" />

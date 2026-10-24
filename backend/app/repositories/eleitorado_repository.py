@@ -38,7 +38,7 @@ class EleitoradoRepository:
             return [dict(record) for record in records]
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao buscar comparecimento por município (ano={ano}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     @staticmethod
     async def getTotalRs(
@@ -61,4 +61,4 @@ class EleitoradoRepository:
             return dict(record)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao buscar total de eleitorado RS (ano={ano}): {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422

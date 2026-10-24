@@ -52,24 +52,15 @@ Esse script vai baixar os resultados oficiais do TSE, cruzar os dados, somar os 
 
 ## 🚦 Esteira de entrega
 
-O código sobe sempre na ordem `dev` → `hml` → `main` → Release, cada etapa com um portão diferente:
+O código segue sempre o caminho `dev` → `hml` → `main`, e cada passo entra por Pull Request:
 
-| Etapa | Como se promove | O que roda |
-|---|---|---|
-| `dev` | push direto | `test` (pytest) e `frontend` (lint, typecheck, vitest, Playwright em loopback) |
-| `hml` | PR de `dev` | os dois acima **+ `e2e-parity`** |
-| `main` | PR de `hml`, título `release: vX.Y.Z` | os três acima + `docker-publish` (imagens multi-arch no GHCR) |
-| Produção | **Release publicada** | `deploy` — pull da imagem taggeada e `up -d` na VPS via SSH |
+1. Trabalhe e commite na `dev`.
+2. Abra um PR de `dev` para `hml`. Teste no ambiente de homologação local (`make hml-up`) e faça o merge.
+3. Abra um PR de `hml` para `main`. Faça o merge.
+4. Deploy em produção: manual, pelo workflow `Deploy Produção` (disparo `workflow_dispatch` na `main`). Nada dispara produção automaticamente.
 
-### Por que existe o `e2e-parity`
+Os testes (`test-backend` e `test-frontend`) rodam em push e PR para `dev`, `hml` e `main`. Build e deploy rodam só no disparo manual na `main`.
 
-As suítes de `dev` rodam em loopback puro e estruturalmente não enxergam bugs de roteamento por subdomínio, CORS e compartilhamento do cookie de sessão entre `app.*` e `api.*`. O `e2e-parity` sobe a stack de produção inteira — mesmo `docker-compose.prod.yml`, com o Nginx real na frente — dentro do runner e dispara o Playwright **através do proxy**. É o único lugar onde essa classe de bug aparece.
+## 📚 Documentação complementar
 
-Ele roda em push para `hml` e em PR para `hml` e `main`. Os três checks (`test`, `frontend`, `e2e-parity`) são obrigatórios para merge nessas duas branches.
-
-> Até a v0.1.3 o job só rodava em push, nunca em PR — o PR ficava verde sem exercitar paridade nenhuma e só o merge quebrava. Foi assim que a ausência dos certificados TLS do Nginx sobreviveu a três merges sem ninguém notar.
-
-### Produção
-
-O gatilho é **exclusivamente** a Release publicada — nunca push direto em `main`. A imagem implantada é a taggeada com a versão da Release, nunca `:latest`, para que o que está rodando na VPS seja sempre rastreável até um ponto do histórico.
-
+- [Geolocalização de IPs (MaxMind GeoLite2)](docs/GEOLOCALIZACAO_MAXMIND.md): base local, credenciais, comandos e atribuição obrigatória.

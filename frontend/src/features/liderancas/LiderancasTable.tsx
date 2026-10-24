@@ -1,13 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Loader2, Edit2, Trash2, Search, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
 import { Lideranca } from './useLiderancas';
-import { api } from '@/services/api';
+import { useMunicipios } from '@/features/geo/useMunicipios';
 import { buildWhatsappLink } from '@/utils/whatsapp';
-
-interface MunicipioItem {
-  cd_ibge_7: string;
-  nm_municipio: string;
-}
 
 const TIPOS_INFLUENCIA = ['Comunitária', 'Religiosa', 'Empresarial', 'Política'];
 
@@ -47,11 +42,7 @@ export function LiderancasTable({
   onPageChange,
 }: LiderancasTableProps) {
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
-  const [municipios, setMunicipios] = useState<MunicipioItem[]>([]);
-
-  useEffect(() => {
-    api.get('/api/v1/geo/municipios/lista').then((res) => setMunicipios(res.data)).catch(() => {});
-  }, []);
+  const { municipios } = useMunicipios();
 
   return (
     <div className="flex-1 bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl">
@@ -63,13 +54,13 @@ export function LiderancasTable({
             value={termo}
             onChange={(e) => onTermoChange(e.target.value)}
             placeholder="Buscar por nome..."
-            className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
           />
         </div>
         <select
           value={filtroCidade}
           onChange={(e) => onFiltroCidadeChange(e.target.value)}
-          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] appearance-none"
         >
           <option value="">Todos os municípios</option>
           {municipios.map((m) => (
@@ -79,7 +70,7 @@ export function LiderancasTable({
         <select
           value={filtroTipo}
           onChange={(e) => onFiltroTipoChange(e.target.value)}
-          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] appearance-none"
         >
           <option value="">Todos os tipos</option>
           {TIPOS_INFLUENCIA.map((t) => (
@@ -94,6 +85,7 @@ export function LiderancasTable({
             <tr className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400 text-xs uppercase tracking-wider">
               <th className="px-6 py-4 font-semibold">Nome Completo</th>
               <th className="px-6 py-4 font-semibold">Telefone</th>
+              <th className="px-6 py-4 font-semibold">E-mail</th>
               <th className="px-6 py-4 font-semibold">Municípios</th>
               <th className="px-6 py-4 font-semibold">Tipo</th>
               <th className="px-6 py-4 font-semibold">Status</th>
@@ -102,7 +94,7 @@ export function LiderancasTable({
           </thead>
           <tbody className="divide-y divide-zinc-800/50 text-sm">
             {isLoading ? (
-              <tr><td colSpan={6} className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-4" /><p className="text-zinc-400">Carregando...</p></td></tr>
+              <tr><td colSpan={6} className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 text-[color:var(--cor-texto-destaque)] animate-spin mx-auto mb-4" /><p className="text-zinc-400">Carregando...</p></td></tr>
             ) : liderancas.length === 0 ? (
               <tr><td colSpan={6} className="px-6 py-12 text-center text-zinc-400">Nenhuma liderança encontrada.</td></tr>
             ) : (
@@ -114,7 +106,7 @@ export function LiderancasTable({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={l.ds_foto_url} alt={l.nm_completo} className="w-8 h-8 rounded-full object-cover" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">{l.nm_completo.charAt(0)}</div>
+                        <div className="w-8 h-8 rounded-full bg-[color:var(--cor-destaque-10)] flex items-center justify-center text-[color:var(--cor-texto-destaque)]">{l.nm_completo.charAt(0)}</div>
                       )}
                       {l.nm_completo}
                     </div>
@@ -140,6 +132,13 @@ export function LiderancasTable({
                     )}
                   </td>
                   <td className="px-6 py-4 text-zinc-300">
+                    {l.ds_email ? (
+                      <a href={`mailto:${l.ds_email}`} className="hover:text-white hover:underline break-all">{l.ds_email}</a>
+                    ) : (
+                      'N/I'
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-zinc-300">
                     {l.municipios && l.municipios.length > 0
                       ? l.municipios.map((m) => m.nm_municipio || m.cd_ibge_7).join(', ')
                       : 'N/I'}
@@ -148,9 +147,11 @@ export function LiderancasTable({
                   <td className="px-6 py-4"><span className={`flex items-center gap-2 ${l.is_ativo ? 'text-teal-400' : 'text-zinc-500'}`}><span className={`w-2 h-2 rounded-full ${l.is_ativo ? 'bg-teal-400' : 'bg-zinc-500'}`} />{l.is_ativo ? 'Ativo' : 'Inativo'}</span></td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => onEdit && onEdit(l)} className="text-zinc-400 hover:text-purple-400 p-2 transition-colors">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
+                      {onEdit && (
+                        <button onClick={() => onEdit(l)} className="text-zinc-400 hover:text-[color:var(--cor-texto-destaque)] p-2 transition-colors">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
                       {canDelete && (
                         confirmandoId === l.id_lideranca ? (
                           <div className="flex items-center gap-1">

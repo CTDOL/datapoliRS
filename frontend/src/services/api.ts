@@ -27,7 +27,9 @@ api.interceptors.response.use(
     // A própria tentativa de login rejeitada não deve disparar o
     // redirecionamento de sessão expirada: isso recarregava a página antes
     // do formulário conseguir exibir "Credenciais inválidas...".
-    if (!isTentativaDeLogin && error.response && (error.response.status === 401 || error.response.status === 403)) {
+    // Só 401 é sessão expirada. 403 é permissão negada (papel errado, troca de senha obrigatória):
+    // não derruba a sessão, quem trata é a própria tela.
+    if (!isTentativaDeLogin && error.response && error.response.status === 401) {
       // Força o logout no frontend e limpa a store
       useAuthStore.getState().logout();
 

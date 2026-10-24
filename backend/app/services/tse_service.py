@@ -7,11 +7,12 @@ TSE_BASE_URL = "https://divulgacandcontas.tse.jus.br/divulga/rest/v1/candidatura
 
 
 class TSEService:
-    def __init__(self, timeout: float = 10.0):
+    def __init__(self, timeout: float = 10.0, base_url: str = TSE_BASE_URL):
         self.timeout = timeout
+        self.base_url = base_url
 
     async def _get(self, endpoint: str) -> Optional[Dict[str, Any]]:
-        url = f"{TSE_BASE_URL}/{endpoint}"
+        url = f"{self.base_url}/{endpoint}"
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.get(url)
             if response.status_code == 200:

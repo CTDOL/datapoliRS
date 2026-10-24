@@ -36,7 +36,7 @@ class VotingRepository:
             return [dict(record) for record in records]
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao buscar votos do candidato SQ {sqCandidato}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
 
     async def getVotesByCandidateNumberAndCargo(
         self,
@@ -72,4 +72,4 @@ class VotingRepository:
             return dict(candidateRecord)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao localizar candidato por número {candidateNumber}: {dbError}", exc_info=True)
-            raise RuntimeError(f"Database query error: {dbError}") from dbError
+            raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422

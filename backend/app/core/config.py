@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,6 +8,7 @@ class AppSettings(BaseSettings):
     
     # Informações da API
     API_TITLE: str = "datapoliRS - Inteligência Eleitoral & Gabinete Digital"
+    # Versão do contrato da API. Não é a versão da release (ver ADR 043).
     API_VERSION: str = "2.0.0"
     API_DESCRIPTION: str = "Microsserviço analítico de dados eleitorais e gestão de gabinete com PostGIS e Redis."
     
@@ -51,15 +53,25 @@ class AppSettings(BaseSettings):
     ADMIN_PASSWORD: str
     ADMIN_TENANT_ID: str = "11111111-2222-3333-4444-555555555555"
 
+    # Base GeoLite2-City (MaxMind) para localizar IPs suspeitos. Vazio = sem localização (ADR 040).
+    GEOIP_DB_PATH: str = ""
+
     # CORS - lista separada por vírgula das origens do frontend
     ALLOWED_ORIGINS: str = "http://localhost:3000"
+
+    # E-mail (SMTP). Host vazio = envio desligado; em dev aponta para o Mailpit local (captura, nada sai).
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 1025
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "DATAPOLIRS <nao-responda@datapoli.local>"
 
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=Path(__file__).resolve().parents[3] / ".env",
         env_file_encoding="utf-8",
         extra="ignore"
     )
