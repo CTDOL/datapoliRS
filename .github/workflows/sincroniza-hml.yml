@@ -1,0 +1,90 @@
+name: Sincroniza HML
+
+# Espelho automático do dev no hml (ADR 047).
+#  - Disparo: push em dev. Nenhum passo humano depois do push.
+#  - Passo 1: avança a branch hml para o SHA de dev, sempre fast-forward (nunca força).
+#  - Passo 2: no runner self-hosted deste Mac, atualiza a worktree datapoliRS-hml para o SHA
+#    e recria os containers do hml a partir dela.
+#  - Passo 3: confere SHA, origem dos mounts, health e head do alembic. Falha = job vermelho.
+#  - Sem testes neste fluxo (ADR 043, Fluxo 1). Produção continua em deploy-producao.yml, com trava humana.
+
+on:
+  push:
+    branches: [ dev ]
+
+concurrency:
+  group: sincroniza-hml
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  HML_WORKTREE: /Users/cpinfo/Documents/datapoliRS-hml
+  HML_API: datapoli_api_hml
+  HML_HEALTH_URL: http://127.0.0.1:8081/health
+
+jobs:
+  sincroniza:
+    runs-on: [ self-hosted, macOS, hml-local ]
+    timeout-minutes: 25
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Avança a branch hml (fast-forward)
+        run: git push origin "${GITHUB_SHA}:refs/heads/hml"
+
+      - name: Worktree do hml limpa e no SHA de dev
+        run: |
+          set -euo pipefail
+          test -z "$(git -C "$HML_WORKTREE" status --porcelain)" || { echo "worktree do hml tem alteracoes locais"; exit 1; }
+          git -C "$HML_WORKTREE" fetch origin
+          git -C "$HML_WORKTREE" checkout --detach "$GITHUB_SHA"
+
+      - name: Dependencias mudaram? Remove o volume node_modules do frontend
+        run: |
+          set -euo pipefail
+          if git diff --name-only "${{ github.event.before }}" "$GITHUB_SHA" | grep -Eq '^(frontend/package(-lock)?\.json|backend/requirements.*\.txt)$'; then
+            echo "dependencias mudaram: recriando o volume node_modules"
+            docker volume rm datapolirs_datapolirs_frontend_hml_node_data || true
+          fi
+
+      - name: Remove containers do hml criados por outra pasta
+        env:
+          PATH: /usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin
+        run: |
+          set -euo pipefail
+          for c in datapoli_api_hml datapoli_frontend_hml; do
+            origem=$(docker inspect "$c" --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>/dev/null || true)
+            if [ -n "$origem" ] && [ "$origem" != "$HML_WORKTREE" ]; then
+              echo "$c foi criado por $origem: removendo para recriar a partir da worktree"
+              docker rm -f "$c"
+            fi
+          done
+
+      - name: Recria os containers do hml a partir da worktree
+        env:
+          PATH: /usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin
+        run: |
+          set -euo pipefail
+          cd "$HML_WORKTREE"
+          docker compose -f docker-compose.hml.yml up -d --build
+
+      - name: Confere SHA, origem dos mounts e saude
+        env:
+          PATH: /usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin
+        run: |
+          set -euo pipefail
+          test "$(git -C "$HML_WORKTREE" rev-parse HEAD)" = "$GITHUB_SHA" || { echo "SHA da worktree diverge de dev"; exit 1; }
+          docker inspect "$HML_API" --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' | grep -q "^${HML_WORKTREE}/backend/app$" \
+            || { echo "a API do hml nao monta o codigo da worktree"; exit 1; }
+          for i in $(seq 1 30); do
+            curl -sf "$HML_HEALTH_URL" > /dev/null && break
+            sleep 2
+            if [ "$i" = 30 ]; then echo "health do hml nao respondeu"; exit 1; fi
+          done
+          docker exec "$HML_API" alembic current | grep -q "(head)" || { echo "alembic do hml nao esta no head"; exit 1; }
+          echo "hml sincronizado em $GITHUB_SHA"
