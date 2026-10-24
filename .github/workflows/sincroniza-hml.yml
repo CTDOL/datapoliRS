@@ -40,6 +40,13 @@ jobs:
           printf '{"cliPluginsExtraDirs":["%s/.docker/cli-plugins"]}\n' "$HOME" > "$DOCKER_CONFIG/config.json"
           ln -sfn "$HOME/.docker/contexts" "$DOCKER_CONFIG/contexts"
 
+      - name: DIAG temporario docker
+        run: |
+          echo "DOCKER_CONFIG=$DOCKER_CONFIG HOME=$HOME"; ls -la "$DOCKER_CONFIG"; cat "$DOCKER_CONFIG/config.json"
+          docker info 2>&1 | grep -i "cred\|context" || true
+          docker pull docker/dockerfile:1 2>&1 | tail -3 || true
+          echo "--- HOME config ---"; grep -i credsStore "$HOME/.docker/config.json" || true
+
       - name: Checkout dev
         uses: actions/checkout@v4
         with:
