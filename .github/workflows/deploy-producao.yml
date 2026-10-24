@@ -259,8 +259,13 @@ jobs:
           set -e
           cd "$1"
           export RELEASE_TAG="$2"
-          docker compose -f docker-compose.prod.yml --env-file .env pull
-          docker compose -f docker-compose.prod.yml --env-file .env up -d
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
+          $COMPOSE pull
+          # Migrações antes da troca da API: o banco sobe sem recriar a API atual, e o alembic roda
+          # num container descartável. Se a migração falhar, o set -e aborta e a API anterior segue no ar.
+          $COMPOSE up -d postgres redis
+          $COMPOSE run --rm --no-deps api alembic upgrade head
+          $COMPOSE up -d
           REMOTO
 
       - name: Health check dos serviços na VPS

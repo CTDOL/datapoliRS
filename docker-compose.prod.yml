@@ -60,7 +60,9 @@ services:
     image: ghcr.io/ctdol/datapolirs-api:${RELEASE_TAG}
     container_name: datapoli_api_prod
     restart: unless-stopped
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # Sem migrações no boot: o schema é aplicado por um passo explícito do deploy
+    # (alembic upgrade head num container descartável, antes do up -d da API).
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - datapolirs_uploads_data_prod:/app/app/uploads
       - datapolirs_geoip_data_prod:/app/geoip:ro
