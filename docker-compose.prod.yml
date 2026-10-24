@@ -5,9 +5,9 @@
 # frontend:3000 e api:8000 pela rede datapolirs_datapoli_network_prod.
 #
 # Uso:
-#   cp .env.example .env             # no servidor: preencher domínios e segredos reais (seção Produção)
-#   RELEASE_TAG=<tag> docker compose -f docker-compose.prod.yml pull
-#   RELEASE_TAG=<tag> docker compose -f docker-compose.prod.yml up -d
+#   cp .env.example .env.prod        # no servidor: preencher domínios e segredos reais (seção Produção)
+#   RELEASE_TAG=<tag> docker compose -f docker-compose.prod.yml --env-file .env.prod pull
+#   RELEASE_TAG=<tag> docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 #
 # Sem --build: os serviços usam image: do GHCR, nada é construído aqui.
 
@@ -49,7 +49,7 @@ services:
     container_name: datapoli_geoipupdate_prod
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.prod
     environment:
       - GEOIPUPDATE_EDITION_IDS=GeoLite2-City
       - GEOIPUPDATE_FREQUENCY=24
@@ -67,7 +67,7 @@ services:
       - datapolirs_uploads_data_prod:/app/app/uploads
       - datapolirs_geoip_data_prod:/app/geoip:ro
     env_file:
-      - .env
+      - .env.prod
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=8000
@@ -119,7 +119,7 @@ services:
     restart: unless-stopped
     command: python -m etl.worker
     env_file:
-      - .env
+      - .env.prod
     environment:
       - PYTHONUNBUFFERED=1
       - POSTGRES_HOST=postgres

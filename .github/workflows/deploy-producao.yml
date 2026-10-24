@@ -32,6 +32,11 @@ on:
         required: false
         default: '2022'
         type: string
+      seed_plataforma:
+        description: 'Cria ou garante o super-admin da plataforma após o deploy (idempotente; exige o secret PLATAFORMA_ADMIN_PASSWORD no environment producao)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -370,6 +375,9 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Validar entradas do deploy
+        env:
+          SEED_PLATAFORMA: ${{ inputs.seed_plataforma }}
+          PLATAFORMA_ADMIN_PASSWORD: ${{ secrets.PLATAFORMA_ADMIN_PASSWORD }}
         run: |
           if [[ ! "$CARGA_TIPO" =~ ^(none|votacao|comparecimento)$ ]]; then
             echo "Carga inválida: '$CARGA_TIPO'." >&2
@@ -377,6 +385,11 @@ jobs:
           fi
           if [ "$CARGA_TIPO" != "none" ] && [[ ! "$CARGA_ANO" =~ ^(19|20)[0-9]{2}$ ]]; then
             echo "Ano inválido: '$CARGA_ANO'. Esperado AAAA (ex: 2022)." >&2
+            exit 1
+          fi
+          # Falha antes de tocar a VPS: senha ausente ou curta só aparece depois do deploy, com a API já no ar.
+          if [ "$SEED_PLATAFORMA" = "true" ] && [ "${#PLATAFORMA_ADMIN_PASSWORD}" -lt 12 ]; then
+            echo "Secret PLATAFORMA_ADMIN_PASSWORD ausente ou menor que 12 caracteres no environment producao." >&2
             exit 1
           fi
 
@@ -387,7 +400,7 @@ jobs:
           chmod 600 ~/.ssh/vps_deploy_key
           ssh-keyscan -H "${{ secrets.VPS_SSH_HOST }}" >> ~/.ssh/known_hosts
 
-      # Só o compose de produção vai para a VPS. O .env de produção (segredos reais) fica na VPS e nunca sai dela.
+      # Só o compose de produção vai para a VPS. O .env.prod de produção (segredos reais) fica na VPS e nunca sai dela.
       - name: Sincronizar docker-compose.prod.yml
         run: |
           scp -i ~/.ssh/vps_deploy_key docker-compose.prod.yml "$VPS:$VPS_DEPLOY_PATH/docker-compose.prod.yml"
@@ -403,11 +416,17 @@ jobs:
           set -e
           cd "$1"
           export RELEASE_TAG="$2"
-          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
           $COMPOSE pull
           # Migrações antes da troca da API: o banco sobe sem recriar a API atual, e o alembic roda
           # num container descartável. Se a migração falhar, o set -e aborta e a API anterior segue no ar.
           $COMPOSE up -d postgres redis
+          # Snapshot antes da migração: lastro de restauração, sem apagar nada. Se o dump falhar, o set -e aborta
+          # antes do alembic e a API anterior segue no ar.
+          SNAPSHOT="$HOME/pre_${RELEASE_TAG}_$(date +%Y%m%d%H%M%S).dump"
+          $COMPOSE exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$SNAPSHOT"
+          test -s "$SNAPSHOT" || { echo "Snapshot pré-migração vazio: abortando." >&2; exit 1; }
+          echo "Snapshot pré-migração: $SNAPSHOT"
           $COMPOSE run --rm --no-deps api alembic upgrade head
           $COMPOSE up -d
           REMOTO
@@ -418,7 +437,7 @@ jobs:
           set -e
           cd "$1"
           export RELEASE_TAG="$2"
-          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
           total=$($COMPOSE config --services | wc -l)
           for i in $(seq 1 30); do
             running=$($COMPOSE ps --status running --services | wc -l)
@@ -441,10 +460,20 @@ jobs:
           set -e
           cd "$1"
           export RELEASE_TAG="$2"
-          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env"
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
           $COMPOSE run --rm --no-deps etl-worker python -m etl.import_municipios_geojson
           $COMPOSE run --rm --no-deps etl-worker python -m etl.enfileirar_carga "$3" "$4"
           REMOTO
+
+      # Super-admin da plataforma (ADR 037), só com o input seed_plataforma. Entra pela esteira, depois da
+      # aprovação do environment, sem SSH avulso. A senha vem do secret do environment e segue por stdin.
+      - name: Garantir super-admin da plataforma (opcional)
+        if: inputs.seed_plataforma
+        env:
+          PLATAFORMA_ADMIN_PASSWORD: ${{ secrets.PLATAFORMA_ADMIN_PASSWORD }}
+        run: |
+          printf '%s\n' "$PLATAFORMA_ADMIN_PASSWORD" | ssh -i ~/.ssh/vps_deploy_key "$VPS" \
+            "cd '$VPS_DEPLOY_PATH' && docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T api python -m scripts.seed_plataforma --producao"
 
       - name: Health check público (através do gateway e da Cloudflare)
         run: |

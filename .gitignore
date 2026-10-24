@@ -31,3 +31,8 @@ frontend/public/ambiente-status.json.tmp
 # Base GeoIP (MaxMind): dado de terceiro, nunca versionado (ADR 040)
 backend/geoip/
 *.mmdb
+
+# Rascunhos e mentorias locais
+CLAUDE.md.sugerida
+GEMINI.md.sugerida
+PROMPT_MENTORIA_EXTERNA.md
