@@ -45,7 +45,7 @@ export default function LiderancasPage() {
             setEditingLideranca(null);
             setIsModalOpen(true);
           }}
-          className="shrink-0 bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
+          className="shrink-0 bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
         >
           <Plus className="w-5 h-5" />
           Adicionar Liderança

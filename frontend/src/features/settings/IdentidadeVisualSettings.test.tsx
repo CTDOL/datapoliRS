@@ -27,7 +27,7 @@ describe('IdentidadeVisualSettings', () => {
     fireEvent.submit(container.querySelector('form')!);
 
     await waitFor(() => expect(api.put).toHaveBeenCalledWith('/api/v1/gabinete/tema',
-      { cor_primaria: '#1d4ed8', cor_secundaria: '#0e7490' }));
+      { cor_primaria: '#1d4ed8', cor_secundaria: '#0e7490', tp_tema: 'escuro' }));
   });
 
   it('mostra o motivo quando a API recusa a cor (contraste)', async () => {

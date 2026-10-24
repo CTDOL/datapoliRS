@@ -77,8 +77,8 @@ export function PreferenciasSettingsTab() {
   return (
     <div className="max-w-2xl space-y-8">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
-          <MapPin className="w-5 h-5 text-purple-400" />
+        <div className="w-10 h-10 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+          <MapPin className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
         </div>
         <div>
           <h2 className="text-lg font-bold text-white">Preferências Táticas & Mapa</h2>
@@ -96,7 +96,7 @@ export function PreferenciasSettingsTab() {
               onClick={() => handleMapaPadraoChange(opt.value)}
               className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
                 mapaPadrao === opt.value
-                  ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                  ? 'bg-[color:var(--cor-destaque-10)] text-[color:var(--cor-texto-destaque)] border-[color:var(--cor-destaque-30)]'
                   : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700'
               }`}
             >
@@ -120,8 +120,8 @@ export function PreferenciasSettingsTab() {
                 onChange={() => handleFonteToggle(key)}
                 className="sr-only"
               />
-              <span className={`w-5 h-5 rounded-md border flex items-center justify-center ${fontes[key] ? 'bg-purple-600 border-purple-500' : 'border-zinc-700'}`}>
-                {fontes[key] && <Check className="w-3.5 h-3.5 text-white" />}
+              <span className={`w-5 h-5 rounded-md border flex items-center justify-center ${fontes[key] ? 'bg-[color:var(--cor-primaria)] border-[color:var(--cor-primaria)]' : 'border-zinc-700'}`}>
+                {fontes[key] && <Check className="w-3.5 h-3.5 text-on-accent" />}
               </span>
               <span className="text-sm text-zinc-200">{label}</span>
             </label>

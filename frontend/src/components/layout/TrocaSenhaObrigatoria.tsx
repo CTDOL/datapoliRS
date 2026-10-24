@@ -67,7 +67,7 @@ export function TrocaSenhaObrigatoria() {
         {erro && <p role="alert" className="text-sm text-red-400">{erro}</p>}
 
         <button type="submit" disabled={enviando}
-                className="w-full rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-60 text-white font-medium py-2.5">
+                className="w-full rounded-xl bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] disabled:opacity-60 text-on-accent font-medium py-2.5">
           {enviando ? 'Salvando...' : 'Salvar nova senha'}
         </button>
       </form>

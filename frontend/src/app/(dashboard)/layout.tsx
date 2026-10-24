@@ -28,7 +28,7 @@ export default function DashboardLayout({
     api
       .get('/api/v1/auth/me')
       .then((res) => {
-        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role, nm_mandato: res.data.nm_mandato, must_change_password: res.data.must_change_password, cor_primaria: res.data.cor_primaria, cor_secundaria: res.data.cor_secundaria });
+        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role, nm_mandato: res.data.nm_mandato, must_change_password: res.data.must_change_password, cor_primaria: res.data.cor_primaria, cor_secundaria: res.data.cor_secundaria, tp_tema: res.data.tp_tema, });
       })
       .catch(() => {
         // 401/403 já é tratado pelo interceptor global (redireciona para /login).
@@ -43,6 +43,11 @@ export default function DashboardLayout({
       raiz.style.removeProperty('--cor-primaria');
     };
   }, [user?.cor_primaria]);
+
+  // Tema claro ou escuro do gabinete: o atributo data-tema é lido pelo globals.css.
+  useEffect(() => {
+    document.documentElement.dataset.tema = user?.tp_tema ?? 'escuro';
+  }, [user?.tp_tema]);
 
   const handleLogout = async () => {
     // Cookie é HttpOnly: só o backend consegue removê-lo (Set-Cookie de expiração).
@@ -108,8 +113,8 @@ export default function DashboardLayout({
 
         {/* Brand Header */}
         <div className={`p-6 flex items-center gap-3 border-b border-zinc-800/40 ${isCollapsed ? 'lg:p-4 lg:justify-center' : ''}`}>
-          <div className="w-10 h-10 shrink-0 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-            <Shield className="w-5 h-5 text-purple-400" />
+          <div className="w-10 h-10 shrink-0 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)] shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+            <Shield className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
           </div>
           <div className={`min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
             <h2 className="text-white font-bold tracking-tight">DATAPOLIRS</h2>
@@ -146,7 +151,7 @@ export default function DashboardLayout({
                     : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50 border border-transparent'
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${isActive ? 'text-purple-400' : 'text-zinc-500'}`} />
+                <item.icon className={`w-5 h-5 ${isActive ? 'text-[color:var(--cor-texto-destaque)]' : 'text-zinc-500'}`} />
                 <span className={`font-medium text-sm ${isCollapsed ? 'lg:hidden' : ''}`}>{item.name}</span>
               </Link>
             );
@@ -205,8 +210,8 @@ export default function DashboardLayout({
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="w-8 h-8 shrink-0 bg-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20">
-            <Shield className="w-4 h-4 text-purple-400" />
+          <div className="w-8 h-8 shrink-0 bg-[color:var(--cor-destaque-10)] rounded-lg flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+            <Shield className="w-4 h-4 text-[color:var(--cor-texto-destaque)]" />
           </div>
           <span className="text-white font-bold tracking-tight text-sm">DATAPOLIRS</span>
         </header>

@@ -39,8 +39,8 @@ export function EquipeSettingsTab({ team, isLoading, isSubmitting, isAdmin, curr
     <div className="max-w-4xl space-y-5">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
-            <Users className="w-5 h-5 text-purple-400" />
+          <div className="w-10 h-10 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+            <Users className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">Equipe & Gestão de Acessos</h2>
@@ -49,7 +49,7 @@ export function EquipeSettingsTab({ team, isLoading, isSubmitting, isAdmin, curr
         </div>
         <button
           onClick={() => setIsInviteModalOpen(true)}
-          className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2"
+          className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-4 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2"
         >
           <UserPlus className="w-4 h-4" />
           Convidar Membro
@@ -91,7 +91,7 @@ export function EquipeSettingsTab({ team, isLoading, isSubmitting, isAdmin, curr
                       <select
                         value={member.role}
                         onChange={(e) => onUpdateMember(member.id, { role: e.target.value as TeamRole })}
-                        className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-white outline-none focus:ring-2 focus:ring-purple-500/50 text-xs"
+                        className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] text-xs"
                       >
                         <option value="admin">{ROLE_LABELS.admin}</option>
                         <option value="operador">{ROLE_LABELS.operador}</option>
@@ -109,7 +109,7 @@ export function EquipeSettingsTab({ team, isLoading, isSubmitting, isAdmin, curr
                         <button
                           onClick={() => setMemberForPasswordReset(member)}
                           title="Redefinir senha deste membro"
-                          className="text-xs px-2.5 py-1.5 rounded-lg border border-purple-800/50 text-purple-300 hover:bg-purple-950/40 hover:border-purple-700 transition-colors flex items-center gap-1.5"
+                          className="text-xs px-2.5 py-1.5 rounded-lg border border-[color:var(--cor-destaque-30)] text-[color:var(--cor-texto-destaque)] hover:bg-[color:var(--cor-destaque-10)] hover:border-[color:var(--cor-destaque-50)] transition-colors flex items-center gap-1.5"
                         >
                           <KeyRound className="w-3.5 h-3.5" />
                           <span>Senha</span>

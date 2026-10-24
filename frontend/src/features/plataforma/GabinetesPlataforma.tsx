@@ -154,7 +154,7 @@ export function GabinetesPlataforma() {
                  className="rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2 text-sm text-white" />
           <input required type="password" minLength={8} placeholder="Senha inicial do admin (mín. 8)" value={novo.senha_inicial} onChange={(e) => setNovo({ ...novo, senha_inicial: e.target.value })}
                  className="rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2 text-sm text-white sm:col-span-2" />
-          <button type="submit" className="sm:col-span-2 justify-self-start bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium">
+          <button type="submit" className="sm:col-span-2 justify-self-start bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-4 py-2.5 rounded-xl text-sm font-medium">
             Criar gabinete
           </button>
         </form>

@@ -55,7 +55,7 @@ export default function SettingsPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`flex shrink-0 items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all -mb-px ${
                 isActive
-                  ? 'text-purple-400 border-purple-500'
+                  ? 'text-[color:var(--cor-texto-destaque)] border-[color:var(--cor-primaria)]'
                   : 'text-zinc-400 border-transparent hover:text-white'
               }`}
             >

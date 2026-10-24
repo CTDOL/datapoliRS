@@ -46,7 +46,7 @@ export default function EmendasPage() {
             setEditingEmenda(null);
             setIsModalOpen(true);
           }}
-          className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2"
+          className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
           Nova Emenda

@@ -54,13 +54,13 @@ export function LiderancasTable({
             value={termo}
             onChange={(e) => onTermoChange(e.target.value)}
             placeholder="Buscar por nome..."
-            className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
           />
         </div>
         <select
           value={filtroCidade}
           onChange={(e) => onFiltroCidadeChange(e.target.value)}
-          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] appearance-none"
         >
           <option value="">Todos os municípios</option>
           {municipios.map((m) => (
@@ -70,7 +70,7 @@ export function LiderancasTable({
         <select
           value={filtroTipo}
           onChange={(e) => onFiltroTipoChange(e.target.value)}
-          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] appearance-none"
         >
           <option value="">Todos os tipos</option>
           {TIPOS_INFLUENCIA.map((t) => (
@@ -93,7 +93,7 @@ export function LiderancasTable({
           </thead>
           <tbody className="divide-y divide-zinc-800/50 text-sm">
             {isLoading ? (
-              <tr><td colSpan={6} className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-4" /><p className="text-zinc-400">Carregando...</p></td></tr>
+              <tr><td colSpan={6} className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 text-[color:var(--cor-texto-destaque)] animate-spin mx-auto mb-4" /><p className="text-zinc-400">Carregando...</p></td></tr>
             ) : liderancas.length === 0 ? (
               <tr><td colSpan={6} className="px-6 py-12 text-center text-zinc-400">Nenhuma liderança encontrada.</td></tr>
             ) : (
@@ -105,7 +105,7 @@ export function LiderancasTable({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={l.ds_foto_url} alt={l.nm_completo} className="w-8 h-8 rounded-full object-cover" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">{l.nm_completo.charAt(0)}</div>
+                        <div className="w-8 h-8 rounded-full bg-[color:var(--cor-destaque-10)] flex items-center justify-center text-[color:var(--cor-texto-destaque)]">{l.nm_completo.charAt(0)}</div>
                       )}
                       {l.nm_completo}
                     </div>
@@ -140,7 +140,7 @@ export function LiderancasTable({
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {onEdit && (
-                        <button onClick={() => onEdit(l)} className="text-zinc-400 hover:text-purple-400 p-2 transition-colors">
+                        <button onClick={() => onEdit(l)} className="text-zinc-400 hover:text-[color:var(--cor-texto-destaque)] p-2 transition-colors">
                           <Edit2 className="w-4 h-4" />
                         </button>
                       )}

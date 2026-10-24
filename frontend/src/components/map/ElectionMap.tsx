@@ -15,6 +15,7 @@ import {
   popupMunicipio,
 } from './mapLayers';
 import { useMunicipiosGeoJson } from './useMunicipiosGeoJson';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export interface MunicipioAtuacaoPoint {
   cd_ibge_7: string;
@@ -59,7 +60,8 @@ export default function ElectionMap({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
-  const [mapTheme, setMapTheme] = useState<MapTheme>('dark');
+  const tpTema = useAuthStore((estado) => estado.user?.tp_tema);
+  const [mapTheme, setMapTheme] = useState<MapTheme>(tpTema === 'claro' ? 'light' : 'dark');
 
   const geojson = useMunicipiosGeoJson();
   // Só cria a camada; quem a coloca no mapa é o efeito de visibilidade.
@@ -173,7 +175,7 @@ export default function ElectionMap({
           onClick={() => setMapTheme('dark')}
           className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
             mapTheme === 'dark'
-              ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+              ? 'bg-[color:var(--cor-primaria)] text-on-accent shadow-md shadow-[0_4px_14px_0_var(--cor-destaque-25)]'
               : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
           }`}
         >

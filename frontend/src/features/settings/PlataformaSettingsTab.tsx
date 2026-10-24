@@ -104,7 +104,7 @@ export function PlataformaSettingsTab({ configuracoes, isLoading, isSubmitting, 
                   readOnly={CHAVES_SOMENTE_LEITURA.includes(item.chave)}
                   value={valores[item.chave] ?? ''}
                   onChange={(e) => setValores({ ...valores, [item.chave]: e.target.value })}
-                  className="w-40 shrink-0 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-purple-500/50 text-right read-only:opacity-60"
+                  className="w-40 shrink-0 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white text-sm outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] text-right read-only:opacity-60"
                 />
               </div>
               );
@@ -120,7 +120,7 @@ export function PlataformaSettingsTab({ configuracoes, isLoading, isSubmitting, 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2 disabled:opacity-70"
+        className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2 disabled:opacity-70"
       >
         {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
         Salvar Alterações

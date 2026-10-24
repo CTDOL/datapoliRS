@@ -63,7 +63,7 @@ function FormularioCarga({ onEnviar, erroEnvio }: {
             className="mt-1 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-white font-mono" />
         </label>
         <button type="button" disabled={!podeEnviar} onClick={enviar}
-          className="rounded bg-violet-600 px-4 py-2 text-white disabled:opacity-40 disabled:cursor-not-allowed">
+          className="rounded bg-[color:var(--cor-primaria)] px-4 py-2 text-on-accent disabled:opacity-40 disabled:cursor-not-allowed">
           {enviando ? 'Enfileirando…' : 'Carregar'}
         </button>
       </div>
@@ -85,7 +85,7 @@ function AtivarPleito({ pleito, onAtivar, erroAtivacao }: {
   const podeAtivar = confirmacao.trim() === esperado && !bloqueadoSemAceite;
 
   if (!aberto) {
-    return <button type="button" onClick={() => setAberto(true)} className="underline text-violet-300">Ativar</button>;
+    return <button type="button" onClick={() => setAberto(true)} className="underline text-[color:var(--cor-texto-destaque)]">Ativar</button>;
   }
   return (
     <div className="flex flex-col gap-2 min-w-[14rem]">
@@ -100,7 +100,7 @@ function AtivarPleito({ pleito, onAtivar, erroAtivacao }: {
       <div className="flex gap-2">
         <button type="button" disabled={!podeAtivar}
           onClick={async () => { if (await onAtivar(pleito.cd_eleicao, confirmacao.trim(), aceitar)) setAberto(false); }}
-          className="rounded bg-violet-600 px-3 py-1 text-white disabled:opacity-40">Confirmar</button>
+          className="rounded bg-[color:var(--cor-primaria)] px-3 py-1 text-on-accent disabled:opacity-40">Confirmar</button>
         <button type="button" onClick={() => setAberto(false)} className="text-zinc-400 underline">Cancelar</button>
       </div>
       {erroAtivacao && <p className="text-red-400 text-xs">{erroAtivacao}</p>}

@@ -10,7 +10,7 @@ const FONTE_LABEL: Record<string, string> = {
 const FONTE_STYLES: Record<string, string> = {
   ALRS: 'bg-teal-500/10 text-teal-400 border-teal-500/20',
   CAMARA: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  SENADO: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  SENADO: 'bg-[color:var(--cor-destaque-10)] text-[color:var(--cor-texto-destaque)] border-[color:var(--cor-destaque-20)]',
 };
 
 /** Explica a falha de uma fonte sem sugerir que o problema passa sozinho: a fonte pode estar fora do ar de vez. */
@@ -53,7 +53,7 @@ export function BuscaExternaProjetosLei({
           value={nomeBusca}
           onChange={(e) => onNomeBuscaChange(e.target.value)}
           placeholder="Nome do parlamentar (ex: Delegada Nadine)"
-          className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
         />
       </div>
 
@@ -113,7 +113,7 @@ export function BuscaExternaProjetosLei({
                     )}
                   </dl>
                   {r.url_fonte && (
-                    <a href={r.url_fonte} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-purple-400 hover:text-purple-300 mt-1">
+                    <a href={r.url_fonte} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] text-[color:var(--cor-texto-destaque)] hover:text-[color:var(--cor-texto-destaque)] mt-1">
                       Ver na fonte oficial <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
@@ -125,7 +125,7 @@ export function BuscaExternaProjetosLei({
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold shrink-0 transition-colors ${
                     r.ja_importado
                       ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 cursor-default'
-                      : 'bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-60'
+                      : 'bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent disabled:opacity-60'
                   }`}
                 >
                   {importando ? (

@@ -97,7 +97,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                   {projetoLei.situacao && <span>Situação: {projetoLei.situacao}</span>}
                   <span title="Última conferência na fonte oficial">({descreverConferencia(projetoLei.ultima_sincronizacao)})</span>
                   {projetoLei.url_fonte && (
-                    <a href={projetoLei.url_fonte} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-purple-400 hover:text-purple-300">
+                    <a href={projetoLei.url_fonte} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[color:var(--cor-texto-destaque)] hover:text-[color:var(--cor-texto-destaque)]">
                       Fonte oficial <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
@@ -130,7 +130,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                   <select
                     value={observadorSelecionado}
                     onChange={(e) => setObservadorSelecionado(e.target.value)}
-                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50"
+                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   >
                     <option value="">Selecionar liderança...</option>
                     {liderancasDisponiveis.map((l) => (
@@ -140,7 +140,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                   <button
                     onClick={handleAddObservador}
                     disabled={!observadorSelecionado || isSubmitting}
-                    className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-xl disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium"
+                    className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-3 py-2 rounded-xl disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium"
                   >
                     <UserPlus className="w-4 h-4" /> Vincular
                   </button>
@@ -183,18 +183,18 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                     value={novaTarefa.titulo}
                     onChange={(e) => setNovaTarefa({ ...novaTarefa, titulo: e.target.value })}
                     placeholder="Nova tarefa..."
-                    className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   />
                   <input
                     type="date"
                     value={novaTarefa.prazo}
                     onChange={(e) => setNovaTarefa({ ...novaTarefa, prazo: e.target.value })}
-                    className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   />
                   <select
                     value={novaTarefa.id_lideranca_responsavel}
                     onChange={(e) => setNovaTarefa({ ...novaTarefa, id_lideranca_responsavel: e.target.value })}
-                    className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50"
+                    className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   >
                     <option value="">Sem responsável</option>
                     {liderancas.map((l) => (
@@ -204,7 +204,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                   <button
                     type="submit"
                     disabled={!novaTarefa.titulo.trim() || isSubmitting}
-                    className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-xl disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium"
+                    className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-3 py-2 rounded-xl disabled:opacity-50 flex items-center gap-1.5 text-sm font-medium"
                   >
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                   </button>

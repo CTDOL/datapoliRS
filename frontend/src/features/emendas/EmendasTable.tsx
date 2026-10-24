@@ -60,7 +60,7 @@ export function EmendasTable({
             value={termo}
             onChange={(e) => onTermoChange(e.target.value)}
             placeholder="Buscar por objeto ou número..."
-            className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            className="w-full bg-zinc-950/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
           />
         </div>
         <input
@@ -68,12 +68,12 @@ export function EmendasTable({
           value={anoExercicio}
           onChange={(e) => onAnoChange(e.target.value ? Number(e.target.value) : '')}
           placeholder="Ano"
-          className="w-24 bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="w-24 bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
         />
         <select
           value={tpSituacao}
           onChange={(e) => onSituacaoChange(e.target.value)}
-          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50"
+          className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
         >
           <option value="">Todas as situações</option>
           <option value="Indicada">Indicada</option>
@@ -99,7 +99,7 @@ export function EmendasTable({
           </thead>
           <tbody className="divide-y divide-zinc-800/50 text-sm">
             {isLoading ? (
-              <tr><td colSpan={8} className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-4" /><p className="text-zinc-400">Carregando...</p></td></tr>
+              <tr><td colSpan={8} className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 text-[color:var(--cor-texto-destaque)] animate-spin mx-auto mb-4" /><p className="text-zinc-400">Carregando...</p></td></tr>
             ) : emendas.length === 0 ? (
               <tr><td colSpan={8} className="px-6 py-12 text-center text-zinc-400">Nenhuma emenda encontrada.</td></tr>
             ) : (
@@ -122,7 +122,7 @@ export function EmendasTable({
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {onEdit && (
-                        <button onClick={() => onEdit(e)} className="text-zinc-400 hover:text-purple-400 p-2 transition-colors">
+                        <button onClick={() => onEdit(e)} className="text-zinc-400 hover:text-[color:var(--cor-texto-destaque)] p-2 transition-colors">
                           <Edit2 className="w-4 h-4" />
                         </button>
                       )}

@@ -45,10 +45,12 @@ def validar_cor_primaria(hexa: Optional[str]) -> None:
 
 async def obter_tema(connection: asyncpg.Connection, id_tenant) -> dict:
     linha = await connection.fetchrow(
-        "SELECT cor_primaria, cor_secundaria FROM tb_tenants WHERE id_tenant = $1", id_tenant
+        "SELECT cor_primaria, cor_secundaria, tp_tema FROM tb_tenants WHERE id_tenant = $1", id_tenant
     )
-    return {"cor_primaria": linha["cor_primaria"], "cor_secundaria": linha["cor_secundaria"]} if linha else \
-        {"cor_primaria": None, "cor_secundaria": None}
+    if linha is None:
+        return {"cor_primaria": None, "cor_secundaria": None, "tp_tema": "escuro"}
+    return {"cor_primaria": linha["cor_primaria"], "cor_secundaria": linha["cor_secundaria"],
+            "tp_tema": linha["tp_tema"]}
 
 
 async def salvar_tema(connection: asyncpg.Connection, id_tenant, payload: TemaUpdate) -> dict:
@@ -56,8 +58,14 @@ async def salvar_tema(connection: asyncpg.Connection, id_tenant, payload: TemaUp
     if payload.cor_secundaria is not None and not PADRAO_HEX.match(payload.cor_secundaria):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail="Cor secundária em formato inválido. Use #RRGGBB.")
-    await connection.execute(
-        "UPDATE tb_tenants SET cor_primaria = $2, cor_secundaria = $3 WHERE id_tenant = $1",
-        id_tenant, payload.cor_primaria, payload.cor_secundaria,
+    linha = await connection.fetchrow(
+        """
+        UPDATE tb_tenants
+        SET cor_primaria = $2, cor_secundaria = $3, tp_tema = COALESCE($4, tp_tema)
+        WHERE id_tenant = $1
+        RETURNING cor_primaria, cor_secundaria, tp_tema
+        """,
+        id_tenant, payload.cor_primaria, payload.cor_secundaria, payload.tp_tema,
     )
-    return {"cor_primaria": payload.cor_primaria, "cor_secundaria": payload.cor_secundaria}
+    return {"cor_primaria": linha["cor_primaria"], "cor_secundaria": linha["cor_secundaria"],
+            "tp_tema": linha["tp_tema"]}

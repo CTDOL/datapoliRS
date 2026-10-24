@@ -101,8 +101,8 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
           >
         <div className="p-6 border-b border-zinc-800 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
-              <UserPlus className="w-5 h-5 text-purple-400" />
+            <div className="w-10 h-10 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+              <UserPlus className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
             </div>
             <h2 className="text-xl font-bold text-white">{initialData ? 'Editar Liderança' : 'Nova Liderança'}</h2>
           </div>
@@ -117,7 +117,7 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-20 h-20 rounded-2xl bg-zinc-950 border-2 border-dashed border-zinc-700 hover:border-purple-500/50 flex items-center justify-center overflow-hidden shrink-0 transition-colors"
+              className="w-20 h-20 rounded-2xl bg-zinc-950 border-2 border-dashed border-zinc-700 hover:border-[color:var(--cor-destaque-50)] flex items-center justify-center overflow-hidden shrink-0 transition-colors"
             >
               {fotoPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -135,12 +135,12 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
 
           <div>
             <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1.5">Nome Completo</label>
-            <input type="text" required value={formData.nm_completo} onChange={(e) => setFormData({...formData, nm_completo: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50" placeholder="Ex: João da Silva"/>
+            <input type="text" required value={formData.nm_completo} onChange={(e) => setFormData({...formData, nm_completo: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]" placeholder="Ex: João da Silva"/>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1.5 flex items-center gap-1"><Phone className="w-3 h-3"/> Telefone</label>
-            <input type="text" required value={formData.nr_telefone} onChange={(e) => setFormData({...formData, nr_telefone: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50" placeholder="(51) 99999-9999"/>
+            <input type="text" required value={formData.nr_telefone} onChange={(e) => setFormData({...formData, nr_telefone: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]" placeholder="(51) 99999-9999"/>
           </div>
 
           <div>
@@ -151,7 +151,7 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
             {formData.municipios.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {formData.municipios.map((cd) => (
-                  <span key={cd} className="inline-flex items-center gap-1 bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded-full px-2.5 py-1 text-xs">
+                  <span key={cd} className="inline-flex items-center gap-1 bg-[color:var(--cor-destaque-10)] text-[color:var(--cor-texto-destaque)] border border-[color:var(--cor-destaque-20)] rounded-full px-2.5 py-1 text-xs">
                     {nomeDoMunicipio(cd)}
                     <button type="button" onClick={() => toggleMunicipio(cd)} className="hover:text-white">
                       <X className="w-3 h-3" />
@@ -168,7 +168,7 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
                 value={buscaMunicipio}
                 onChange={(e) => setBuscaMunicipio(e.target.value)}
                 placeholder="Buscar município..."
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-8 pr-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-8 pr-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
               />
             </div>
             <div className="max-h-40 overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl divide-y divide-zinc-800/50">
@@ -183,7 +183,7 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
                       type="checkbox"
                       checked={formData.municipios.includes(m.cd_ibge_7)}
                       onChange={() => toggleMunicipio(m.cd_ibge_7)}
-                      className="accent-purple-500"
+                      className="accent-[color:var(--cor-primaria)]"
                     />
                     {m.nm_municipio}
                   </label>
@@ -194,7 +194,7 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
 
           <div>
             <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1.5">Tipo de Influência</label>
-            <select value={formData.tp_influencia} onChange={(e) => setFormData({...formData, tp_influencia: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50">
+            <select value={formData.tp_influencia} onChange={(e) => setFormData({...formData, tp_influencia: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]">
               <option value="Comunitária">Comunitária</option>
               <option value="Religiosa">Religiosa</option>
               <option value="Empresarial">Empresarial</option>
@@ -207,7 +207,7 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
               type="submit"
               disabled={isSubmitting || formData.municipios.length === 0}
               title={formData.municipios.length === 0 ? 'Selecione pelo menos um município' : undefined}
-              className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-xl font-medium shadow-lg flex justify-center disabled:opacity-70"
+              className="flex-1 bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-4 py-3 rounded-xl font-medium shadow-lg flex justify-center disabled:opacity-70"
             >
               {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar'}
             </button>

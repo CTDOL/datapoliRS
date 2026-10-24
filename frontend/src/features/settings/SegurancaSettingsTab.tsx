@@ -50,8 +50,8 @@ export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, 
     <div className="max-w-2xl space-y-10">
       <div>
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
-            <Lock className="w-5 h-5 text-purple-400" />
+          <div className="w-10 h-10 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+            <Lock className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">Segurança da Conta</h2>
@@ -67,7 +67,7 @@ export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, 
               required
               value={senhaAtual}
               onChange={(e) => setSenhaAtual(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -79,7 +79,7 @@ export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, 
                 minLength={8}
                 value={novaSenha}
                 onChange={(e) => setNovaSenha(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                 placeholder="Mínimo 8 caracteres"
               />
             </div>
@@ -91,7 +91,7 @@ export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, 
                 minLength={8}
                 value={confirmacao}
                 onChange={(e) => setConfirmacao(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
               />
             </div>
           </div>
@@ -105,7 +105,7 @@ export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2 disabled:opacity-70"
+            className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2 disabled:opacity-70"
           >
             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
             Alterar Senha
@@ -115,8 +115,8 @@ export function SegurancaSettingsTab({ isAdmin, isSubmitting, onChangePassword, 
 
       <div className="pt-6 border-t border-zinc-800/60">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
-            <ShieldAlert className="w-5 h-5 text-purple-400" />
+          <div className="w-10 h-10 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+            <ShieldAlert className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">Exportação de Dados (LGPD/Backup)</h2>

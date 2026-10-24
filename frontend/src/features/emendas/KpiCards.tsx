@@ -15,7 +15,7 @@ export function KpiCards({ kpis }: KpiCardsProps) {
       label: 'Total de Emendas',
       value: kpis ? String(kpis.total_emendas) : '—',
       icon: FileText,
-      color: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+      color: 'text-[color:var(--cor-texto-destaque)] bg-[color:var(--cor-destaque-10)] border-[color:var(--cor-destaque-20)]',
     },
     {
       label: 'Valor Indicado',

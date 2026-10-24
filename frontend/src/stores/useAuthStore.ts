@@ -11,6 +11,8 @@ interface User {
   /** Cor de destaque do gabinete (ADR 038). Null = padrão da plataforma. */
   cor_primaria?: string | null;
   cor_secundaria?: string | null;
+  /** Tema da interface do gabinete. Ausente ou null é tratado como escuro. */
+  tp_tema?: 'escuro' | 'claro' | null;
 }
 
 interface AuthState {
@@ -18,6 +20,8 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (user: User) => void;
   logout: () => void;
+  /** Troca o tema sem recarregar: o layout reaplica o data-tema a partir deste valor. */
+  atualizarTema: (tema: 'escuro' | 'claro') => void;
 }
 
 export const useAuthStore = create<AuthState>()((set) => ({
@@ -25,4 +29,5 @@ export const useAuthStore = create<AuthState>()((set) => ({
   isAuthenticated: false,
   login: (user) => set({ user, isAuthenticated: true }),
   logout: () => set({ user: null, isAuthenticated: false }),
+  atualizarTema: (tema) => set((estado) => (estado.user ? { user: { ...estado.user, tp_tema: tema } } : {})),
 }));

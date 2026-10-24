@@ -1,7 +1,7 @@
 const LABELS: Record<string, { text: string; className: string }> = {
   DESENVOLVIMENTO: {
     text: "AMBIENTE DE DESENVOLVIMENTO — Sala Vermelha (dados não-produtivos)",
-    className: "bg-red-600 text-white",
+    className: "bg-red-600 text-on-accent",
   },
   HOMOLOGACAO: {
     text: "AMBIENTE DE HOMOLOGAÇÃO — Sandbox de Paridade (dados de teste)",

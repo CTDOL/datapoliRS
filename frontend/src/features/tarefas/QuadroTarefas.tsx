@@ -111,7 +111,7 @@ function PainelComentarios({ tarefa, podeComentar, listar, comentar, onFechar }:
           <label className="sr-only" htmlFor="novo-comentario">Registrar andamento</label>
           <input id="novo-comentario" value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={2000}
             placeholder="Registrar andamento…" className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white" />
-          <button type="submit" className="px-3 py-2 rounded-lg bg-purple-600 text-white text-sm">Registrar</button>
+          <button type="submit" className="px-3 py-2 rounded-lg bg-[color:var(--cor-primaria)] text-on-accent text-sm">Registrar</button>
         </form>
       )}
     </aside>

@@ -68,7 +68,7 @@ async def read_current_user(
 ):
     # nm_mandato vai para o cabeçalho da tela: o operador precisa ver em qual gabinete está.
     gabinete = await connection.fetchrow(
-        "SELECT nm_mandato, cor_primaria, cor_secundaria FROM tb_tenants WHERE id_tenant = $1",
+        "SELECT nm_mandato, cor_primaria, cor_secundaria, tp_tema FROM tb_tenants WHERE id_tenant = $1",
         current_user.tenant_id,
     )
     return {
@@ -79,6 +79,7 @@ async def read_current_user(
         "nm_mandato": gabinete["nm_mandato"] if gabinete else None,
         "cor_primaria": gabinete["cor_primaria"] if gabinete else None,
         "cor_secundaria": gabinete["cor_secundaria"] if gabinete else None,
+        "tp_tema": gabinete["tp_tema"] if gabinete else "escuro",
     }
 
 

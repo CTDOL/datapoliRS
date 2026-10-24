@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Palette, Save } from 'lucide-react';
 import { api } from '@/services/api';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 // Padrão da plataforma, usado enquanto o gabinete não escolheu cores (ADR 038).
 const COR_PADRAO = '#9333ea';
+
+type Tema = 'escuro' | 'claro';
 
 interface Props {
   isAdmin: boolean;
@@ -15,6 +18,7 @@ interface Props {
 export function IdentidadeVisualSettings({ isAdmin }: Props) {
   const [corPrimaria, setCorPrimaria] = useState(COR_PADRAO);
   const [corSecundaria, setCorSecundaria] = useState('#0e7490');
+  const [tema, setTema] = useState<Tema>('escuro');
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
@@ -25,6 +29,7 @@ export function IdentidadeVisualSettings({ isAdmin }: Props) {
       .then((res) => {
         if (res.data.cor_primaria) setCorPrimaria(res.data.cor_primaria);
         if (res.data.cor_secundaria) setCorSecundaria(res.data.cor_secundaria);
+        if (res.data.tp_tema) setTema(res.data.tp_tema);
       })
       .catch(() => setMensagem({ tipo: 'erro', texto: 'Não foi possível carregar as cores do gabinete.' }))
       .finally(() => setCarregando(false));
@@ -35,8 +40,9 @@ export function IdentidadeVisualSettings({ isAdmin }: Props) {
     setSalvando(true);
     setMensagem(null);
     try {
-      await api.put('/api/v1/gabinete/tema', { cor_primaria: corPrimaria, cor_secundaria: corSecundaria });
-      setMensagem({ tipo: 'ok', texto: 'Cores salvas. Elas valem a partir da próxima entrada no sistema.' });
+      await api.put('/api/v1/gabinete/tema', { cor_primaria: corPrimaria, cor_secundaria: corSecundaria, tp_tema: tema });
+      useAuthStore.getState().atualizarTema(tema);
+      setMensagem({ tipo: 'ok', texto: 'Identidade visual salva.' });
     } catch (erro: unknown) {
       const detalhe = (erro as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setMensagem({ tipo: 'erro', texto: detalhe ?? 'Não foi possível salvar as cores.' });
@@ -51,7 +57,7 @@ export function IdentidadeVisualSettings({ isAdmin }: Props) {
         <Palette className="w-4 h-4" /> Identidade visual do gabinete
       </h3>
       <p className="text-xs text-zinc-400 mt-1">
-        Cores da paleta do partido. O contraste mínimo é exigido para o texto branco nos botões.
+        Cores da paleta do partido e tema da interface. O contraste mínimo é exigido para o texto branco nos botões.
       </p>
 
       {carregando ? (
@@ -73,6 +79,19 @@ export function IdentidadeVisualSettings({ isAdmin }: Props) {
             </label>
           </div>
 
+          <fieldset className="text-xs text-zinc-300">
+            <legend className="mb-1">Tema da interface</legend>
+            <div className="flex gap-4">
+              {(['escuro', 'claro'] as const).map((opcao) => (
+                <label key={opcao} className="flex items-center gap-2 capitalize">
+                  <input type="radio" name="tema" value={opcao} checked={tema === opcao}
+                         onChange={() => setTema(opcao)} disabled={!isAdmin} />
+                  {opcao}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           {mensagem && (
             <p role={mensagem.tipo === 'erro' ? 'alert' : 'status'}
                className={`text-sm ${mensagem.tipo === 'erro' ? 'text-red-400' : 'text-teal-400'}`}>
@@ -82,7 +101,7 @@ export function IdentidadeVisualSettings({ isAdmin }: Props) {
 
           {isAdmin && (
             <button type="submit" disabled={salvando}
-                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 text-white px-4 py-2.5 rounded-xl text-sm font-medium">
+                    className="flex items-center gap-2 bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] disabled:opacity-60 text-on-accent px-4 py-2.5 rounded-xl text-sm font-medium">
               {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Salvar cores
             </button>
           )}

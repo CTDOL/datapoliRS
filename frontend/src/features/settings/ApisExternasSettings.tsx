@@ -117,7 +117,7 @@ export function ApisExternasSettings() {
         type="button"
         onClick={salvar}
         disabled={salvando}
-        className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 disabled:opacity-70"
+        className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 disabled:opacity-70"
       >
         {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
         Salvar fontes de dados
