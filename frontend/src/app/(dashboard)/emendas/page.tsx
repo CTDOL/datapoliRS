@@ -6,6 +6,7 @@ import { useEmendas } from '@/features/emendas/useEmendas';
 import { EmendasTable } from '@/features/emendas/EmendasTable';
 import { EmendaFormModal } from '@/features/emendas/EmendaFormModal';
 import { KpiCards } from '@/features/emendas/KpiCards';
+import { AvisoDebitoEmendas } from '@/features/emendas/AvisoDebitoEmendas';
 import { Emenda } from '@/features/emendas/useEmendas';
 import { usePermissoes } from '@/stores/usePermissoes';
 
@@ -53,6 +54,8 @@ export default function EmendasPage() {
         </button>
         )}
       </div>
+
+      <AvisoDebitoEmendas />
 
       <KpiCards kpis={kpis} />
 
