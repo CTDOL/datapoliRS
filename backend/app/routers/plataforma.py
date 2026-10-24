@@ -72,7 +72,10 @@ async def alertas(
 
 @router.get("/logs", summary="Trilha de acesso, mais recente primeiro")
 async def listar_logs(
-    evento: Optional[str] = Query(None, pattern="^(login_ok|login_falha|acesso_negado_403)$"),
+    evento: Optional[str] = Query(
+        None,
+        pattern="^(login_ok|login_falha|acesso_negado_403|exportacao_dados|lideranca_excluida|usuario_alterado)$",
+    ),
     limite: int = Query(100, ge=1, le=500),
     current_user: UserInDB = Depends(require_role(["super_admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection),

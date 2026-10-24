@@ -11,7 +11,7 @@ interface Alerta { severidade: 'alta' | 'media'; titulo: string; detalhe: string
 interface IpSuspeito { ip: string; falhas_login: number; emails_distintos: number; negados_403: number; ultimo_evento: string; motivos: string[]; localizacao: string | null; coordenadas: [number, number] | null }
 interface Registro { created_at: string; evento: string; email: string | null; caminho: string | null; ip: string | null; status_http: number | null }
 
-const EVENTOS = ['', 'login_ok', 'login_falha', 'acesso_negado_403'];
+const EVENTOS = ['', 'login_ok', 'login_falha', 'acesso_negado_403', 'exportacao_dados', 'lideranca_excluida', 'usuario_alterado'];
 
 const COLUNAS_IPS: Coluna<IpSuspeito>[] = [
   { titulo: 'IP', valor: (s) => s.ip },

@@ -1,7 +1,8 @@
 import uuid
 from typing import Any, Dict, List
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 import asyncpg
+from app.services import observabilidade_service
 from app.core.dependencies import getDbConnection, get_current_user, require_role, bloquear_super_admin
 from app.core.rate_limit import RateLimiter
 from app.schemas.user import UserInDB
@@ -85,14 +86,17 @@ async def convidar_usuario_gabinete(
     summary="Altera papel ou status de um usuário do gabinete (requer papel admin)"
 )
 async def atualizar_usuario_gabinete(
+    request: Request,
     id_user: uuid.UUID,
     payload: TeamMemberUpdate,
     current_user: UserInDB = Depends(require_role(["admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> TeamMemberResponse:
-    return await TeamService.updateMember(
+    atualizado = await TeamService.updateMember(
         connection, current_user.tenant_id, current_user.id, id_user, payload
     )
+    await observabilidade_service.registrar_operacao(connection, "usuario_alterado", request, current_user, 200)
+    return atualizado
 
 
 @router.get(
@@ -101,10 +105,12 @@ async def atualizar_usuario_gabinete(
     response_class=Response
 )
 async def exportar_dados_gabinete(
+    request: Request,
     current_user: UserInDB = Depends(require_role(["admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> Response:
     csvContent = await TenantService.exportGabineteData(connection, current_user.tenant_id)
+    await observabilidade_service.registrar_operacao(connection, "exportacao_dados", request, current_user, 200)
     return Response(
         content=csvContent,
         media_type="text/csv",

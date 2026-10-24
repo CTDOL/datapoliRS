@@ -38,6 +38,22 @@ class UserRepository:
         return dict(record) if record else None
 
     @staticmethod
+    async def countOtherActiveAdmins(
+        connection: asyncpg.Connection, tenantId: uuid.UUID, exceptUserId: uuid.UUID
+    ) -> int:
+        """Admins ativos do gabinete além do usuário informado. FOR UPDATE: chamado dentro da
+        transação da alteração, impede que dois pedidos simultâneos rebaixem os dois últimos admins."""
+        records = await connection.fetch(
+            """
+            SELECT id FROM tb_users
+            WHERE tenant_id = $1 AND role = 'admin' AND is_active AND id <> $2
+            FOR UPDATE;
+            """,
+            tenantId, exceptUserId,
+        )
+        return len(records)
+
+    @staticmethod
     async def createInTenant(
         connection: asyncpg.Connection,
         tenantId: uuid.UUID,

@@ -1,9 +1,11 @@
-from typing import List, Optional
+from typing import List, Literal, Optional, get_args
 from uuid import UUID
 from datetime import date, datetime
 from pydantic import BaseModel, Field, ConfigDict
 
-TAREFA_STATUS_VALIDOS = ("Pendente", "Em Andamento", "Concluída")
+# Status gravados (ADR 046 §2.3). O banco tem o mesmo domínio num CHECK (migração r8b9c0d1e2f3).
+StatusTarefa = Literal["Pendente", "Em Andamento", "Concluída", "Cancelada"]
+TAREFA_STATUS_VALIDOS = get_args(StatusTarefa)
 
 
 class TarefaCreate(BaseModel):
@@ -15,7 +17,7 @@ class TarefaCreate(BaseModel):
     titulo: str = Field(..., min_length=3, max_length=255)
     descricao: Optional[str] = None
     prazo: Optional[date] = None
-    tp_status: str = Field(default="Pendente", max_length=20)
+    tp_status: StatusTarefa = "Pendente"
 
 
 class TarefaUpdate(BaseModel):
@@ -24,7 +26,7 @@ class TarefaUpdate(BaseModel):
     titulo: Optional[str] = Field(None, min_length=3, max_length=255)
     descricao: Optional[str] = None
     prazo: Optional[date] = None
-    tp_status: Optional[str] = None
+    tp_status: Optional[StatusTarefa] = None
 
 
 class ResponsavelTarefa(BaseModel):

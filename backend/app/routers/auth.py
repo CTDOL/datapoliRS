@@ -4,7 +4,7 @@ import asyncpg
 from app.core.config import settings
 from app.services.auth_service import AuthService
 from app.core.dependencies import AUTH_COOKIE_NAME, get_current_user, getDbConnection
-from app.core.rate_limit import RateLimiter
+from app.core.rate_limit import RateLimiter, LimitePorConta
 from app.services import observabilidade_service, preferencias_service
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserInDB, PasswordChangeRequest
@@ -20,6 +20,9 @@ credentials_exception = HTTPException(
 
 ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60
 
+# Por conta, além do limite por IP da rota: segura tentativa distribuída contra um e-mail.
+limitePorConta = LimitePorConta(times=10, seconds=900, configKey="login_conta")
+
 
 @router.post("/login", dependencies=[Depends(RateLimiter(times=5, seconds=60, configKey="login"))])
 async def login(
@@ -29,12 +32,16 @@ async def login(
     connection: asyncpg.Connection = Depends(getDbConnection)
 ):
     ip = request.client.host if request.client else None
+    await limitePorConta.verificar(form_data.username)
     row = await UserRepository.getAuthByEmail(connection, form_data.username)
     if row is None or not row["is_active"] or not AuthService.verify_password(form_data.password, row["hashed_password"]):
         # Registra a falha sem dizer se o e-mail existe: o log guarda o e-mail tentado (ADR 040).
         await observabilidade_service.registrar(connection, "login_falha", form_data.username, None,
                                                 "/api/v1/auth/login", ip, 401)
+        await limitePorConta.registrarFalha(form_data.username)
         raise credentials_exception
+
+    await limitePorConta.limpar(form_data.username)
 
     await observabilidade_service.registrar(connection, "login_ok", row["email"], str(row["tenant_id"]),
                                             "/api/v1/auth/login", ip, 200)

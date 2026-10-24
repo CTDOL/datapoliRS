@@ -181,6 +181,18 @@ class CabinetRepository:
             raise RuntimeError(f"Database query error: {dbError}") from dbError
 
     @staticmethod
+    async def pertenceAoGabinete(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+        leadershipId: uuid.UUID
+    ) -> bool:
+        """Conferência leve de posse, para servir a foto sem montar a liderança inteira."""
+        return bool(await connection.fetchval(
+            "SELECT 1 FROM tb_gabinete_liderancas WHERE tenant_id = $1 AND id_lideranca = $2;",
+            tenantId, leadershipId,
+        ))
+
+    @staticmethod
     async def getLeadershipById(
         connection: asyncpg.Connection,
         tenantId: uuid.UUID,
@@ -255,9 +267,26 @@ class CabinetRepository:
         leadershipId: uuid.UUID
     ) -> bool:
         """Exclui uma liderança política com garantia de multi-tenancy (municípios em cascata via FK)."""
+        # ADR 046, fase Expand: a coluna legada de tarefas acompanha a tabela de vínculo.
+        # Onde a liderança era a responsável principal, passa a ser o próximo responsável
+        # (na ordem de exibição, por nome) ou nenhum.
+        reapontarTarefas = """
+            UPDATE tb_gabinete_tarefas t
+            SET id_lideranca_responsavel = (
+                SELECT v.id_lideranca
+                FROM tb_gabinete_tarefa_liderancas v
+                JOIN tb_gabinete_liderancas l ON l.id_lideranca = v.id_lideranca
+                WHERE v.tenant_id = $1 AND v.id_tarefa = t.id_tarefa AND v.id_lideranca <> $2
+                ORDER BY l.nm_completo
+                LIMIT 1
+            )
+            WHERE t.tenant_id = $1 AND t.id_lideranca_responsavel = $2;
+        """
         query = "DELETE FROM tb_gabinete_liderancas WHERE tenant_id = $1 AND id_lideranca = $2;"
         try:
-            result = await connection.execute(query, tenantId, leadershipId)
+            async with connection.transaction():
+                await connection.execute(reapontarTarefas, tenantId, leadershipId)
+                result = await connection.execute(query, tenantId, leadershipId)
             return result == "DELETE 1"
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao deletar liderança {leadershipId} (tenant {tenantId}): {dbError}", exc_info=True)

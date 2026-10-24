@@ -2,10 +2,11 @@ import glob
 import os
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, Query, Request, UploadFile, File, HTTPException, status
 import asyncpg
 from app.core.dependencies import getDbConnection, get_current_user, require_role, bloquear_super_admin
 from app.schemas.user import UserInDB
+from app.services import observabilidade_service
 from app.services.cabinet_service import CabinetService
 from app.services.image_sanitizer_service import ImageSanitizerService
 from app.schemas.leadership import (
@@ -178,11 +179,15 @@ async def enviar_foto_lideranca(
     summary="Remove uma liderança do gabinete (requer papel admin)"
 )
 async def remover_lideranca(
+    request: Request,
     id_lideranca: uuid.UUID,
     current_user: UserInDB = Depends(require_role(["admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> None:
     """Exclui a liderança do gabinete garantindo isolamento por tenant_id (e a foto em disco, se houver)."""
+    # O banco vem antes do disco: o serviço confere o gabinete (404 para outro tenant) e só
+    # depois de a exclusão dar certo as fotos saem. O diretório é único para todos os gabinetes.
+    await CabinetService.deleteLeadership(connection, current_user.tenant_id, id_lideranca)
     for caminhoArquivo in _fotosDaLideranca(id_lideranca):
         os.remove(caminhoArquivo)
-    await CabinetService.deleteLeadership(connection, current_user.tenant_id, id_lideranca)
+    await observabilidade_service.registrar_operacao(connection, "lideranca_excluida", request, current_user, 204)

@@ -36,6 +36,7 @@ from app.routers.admin import router as admin_router
 from app.routers.manutencao import router as manutencao_router
 from app.routers.preferencias import router as preferencias_router
 from app.routers.email import router as email_router
+from app.routers.fotos import router as fotos_router
 
 # Configuração de Logging Estruturado
 logging.basicConfig(
@@ -109,8 +110,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Fotos de liderança enviadas via upload — volume dedicado e persistente
 # (datapolirs_uploads_data), separado de app/static que é conteúdo do build.
+# Não há StaticFiles aqui: a rota de app/routers/fotos.py exige sessão e confere o gabinete.
 os.makedirs("app/uploads/liderancas", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="app/uploads"), name="uploads")
 
 # Registro dos Controladores da Sprint 2
 app.include_router(geo_router)
@@ -129,6 +130,7 @@ app.include_router(manutencao_router)
 app.include_router(preferencias_router)
 app.include_router(produtividade_router)
 app.include_router(email_router)
+app.include_router(fotos_router)
 
 
 

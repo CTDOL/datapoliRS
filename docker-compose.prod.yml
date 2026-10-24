@@ -80,6 +80,10 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - ALLOWED_ORIGINS=${APP_PROTOCOL:-https}://${APP_DOMAIN}
+      # O uvicorn confia no X-Forwarded-For só quando a conexão vem das redes internas do
+      # Docker (Nginx e o rewrite do frontend). Assim o limitador e a trilha de acesso veem o
+      # IP real do cliente. Nunca usar "*": qualquer cliente passaria a forjar o IP.
+      - FORWARDED_ALLOW_IPS=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
     depends_on:
       postgres:
         condition: service_healthy

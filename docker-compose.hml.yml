@@ -37,6 +37,8 @@ services:
       - REDIS_URL=redis://datapoli_redis_non_prod:6379/0
       - ENVIRONMENT=hml
       - DATABASE_ENV=NON_PRODUCTION
+      # Mesma confiança no proxy da produção (ver docker-compose.prod.yml).
+      - FORWARDED_ALLOW_IPS=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
       - SECRET_KEY=${SECRET_KEY:?defina SECRET_KEY no .env}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-operador@campanha.com.br}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env}

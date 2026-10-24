@@ -9,6 +9,16 @@ databasePool: Optional[asyncpg.Pool] = None
 
 
 import asyncio
+from urllib.parse import urlsplit
+
+
+def _destinoSemCredenciais() -> str:
+    """Host, porta e banco para o log. A URL de conexão leva a senha e nunca vai para o log."""
+    if settings.DATABASE_URL:
+        partes = urlsplit(settings.DATABASE_URL)
+        return f"{partes.hostname}:{partes.port or 5432}{partes.path}"
+    return f"{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+
 
 async def initializeDatabasePool() -> asyncpg.Pool:
     """Inicializa o pool de conexões assíncronas com o PostgreSQL/PostGIS."""
@@ -25,7 +35,7 @@ async def initializeDatabasePool() -> asyncpg.Pool:
     )
 
     if isPoolStale:
-        logger.info(f"Conectando ao PostgreSQL via asyncpg (DATABASE_URL={settings.DATABASE_URL})...")
+        logger.info(f"Conectando ao PostgreSQL via asyncpg ({_destinoSemCredenciais()})...")
         try:
             if settings.DATABASE_URL:
                 databasePool = await asyncpg.create_pool(

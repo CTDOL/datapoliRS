@@ -8,7 +8,9 @@ from jose import JWTError, jwt
 from app.core import redis_client
 from app.core.config import settings
 
-EVENTOS = ("login_ok", "login_falha", "acesso_negado_403")
+# Operações sobre dados pessoais entram na mesma trilha (revisão de 2026-10-24, M5).
+EVENTOS_DADOS = ("exportacao_dados", "lideranca_excluida", "usuario_alterado")
+EVENTOS = ("login_ok", "login_falha", "acesso_negado_403") + EVENTOS_DADOS
 JANELA_ALERTA_MINUTOS = 60
 LIMITE_FALHAS_LOGIN = 5
 JANELA_NEGADOS_MINUTOS = 10
@@ -26,6 +28,13 @@ async def registrar(connection: asyncpg.Connection, evento: str, email: Optional
         """,
         evento, email, tenant_id, caminho, ip, status_http,
     )
+
+
+async def registrar_operacao(connection: asyncpg.Connection, evento: str, request: Any,
+                             usuario: Any, status_http: int) -> None:
+    """Quem fez, quando e sobre qual registro: o caminho da rota leva o id do alvo."""
+    ip = request.client.host if request.client else None
+    await registrar(connection, evento, usuario.email, str(usuario.tenant_id), request.url.path, ip, status_http)
 
 
 def identificar_pelo_token(token: Optional[str]) -> Dict[str, Optional[str]]:
