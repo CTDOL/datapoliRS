@@ -37,6 +37,16 @@ on:
         required: false
         default: false
         type: boolean
+      wipe_banco:
+        description: 'Instalação limpa: apaga o banco e os uploads da produção antes das migrações (o snapshot é feito antes). Exige confirmar_wipe igual à versão, seed_plataforma=true e carga_tipo=votacao.'
+        required: false
+        default: false
+        type: boolean
+      confirmar_wipe:
+        description: 'Digite a versão (ex: v0.2.0) para confirmar o wipe. Obrigatório com wipe_banco.'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -367,6 +377,8 @@ jobs:
       VPS: ${{ secrets.VPS_SSH_USER }}@${{ secrets.VPS_SSH_HOST }}
       CARGA_TIPO: ${{ inputs.carga_tipo || 'none' }}
       CARGA_ANO: ${{ inputs.carga_ano || '2022' }}
+      WIPE_BANCO: ${{ inputs.wipe_banco || false }}
+      CONFIRMAR_WIPE: ${{ inputs.confirmar_wipe || '' }}
       PUBLIC_API_URL: https://api-datapoli.ctdol.com.br/health
       PUBLIC_APP_URL: https://datapoli.ctdol.com.br/
 
@@ -386,6 +398,12 @@ jobs:
           if [ "$CARGA_TIPO" != "none" ] && [[ ! "$CARGA_ANO" =~ ^(19|20)[0-9]{2}$ ]]; then
             echo "Ano inválido: '$CARGA_ANO'. Esperado AAAA (ex: 2022)." >&2
             exit 1
+          fi
+          # Wipe: as travas ficam aqui, antes de qualquer mudança na VPS.
+          if [ "$WIPE_BANCO" = "true" ]; then
+            [ "$CONFIRMAR_WIPE" = "$RELEASE_TAG" ] || { echo "Wipe recusado: confirmar_wipe deve ser exatamente '$RELEASE_TAG'." >&2; exit 1; }
+            [ "$SEED_PLATAFORMA" = "true" ] || { echo "Wipe recusado: sem seed_plataforma o sistema nasce sem super-admin." >&2; exit 1; }
+            [ "$CARGA_TIPO" = "votacao" ] || { echo "Wipe recusado: carga_tipo deve ser votacao (municípios e votação)." >&2; exit 1; }
           fi
           # Falha antes de tocar a VPS: senha ausente ou curta só aparece depois do deploy, com a API já no ar.
           if [ "$SEED_PLATAFORMA" = "true" ] && [ "${#PLATAFORMA_ADMIN_PASSWORD}" -lt 12 ]; then
@@ -412,7 +430,7 @@ jobs:
 
       - name: Pull + up (imagens do SHA deste commit)
         run: |
-          ssh -i ~/.ssh/vps_deploy_key "$VPS" bash -s -- "$VPS_DEPLOY_PATH" "$RELEASE_TAG" <<'REMOTO'
+          ssh -i ~/.ssh/vps_deploy_key "$VPS" bash -s -- "$VPS_DEPLOY_PATH" "$RELEASE_TAG" "$WIPE_BANCO" <<'REMOTO'
           set -e
           cd "$1"
           export RELEASE_TAG="$2"
@@ -427,6 +445,19 @@ jobs:
           $COMPOSE exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$SNAPSHOT"
           test -s "$SNAPSHOT" || { echo "Snapshot pré-migração vazio: abortando." >&2; exit 1; }
           echo "Snapshot pré-migração: $SNAPSHOT"
+          # Wipe (só com wipe_banco=true, já validado no runner): derruba os containers e apaga os volumes do
+          # projeto. O banco e os uploads antigos saem do ar. O snapshot acima fica em $HOME para restauração.
+          if [ "$3" = "true" ]; then
+            echo "WIPE: removendo containers e volumes do projeto. Snapshot preservado em $SNAPSHOT."
+            $COMPOSE down -v --remove-orphans
+            $COMPOSE up -d postgres redis
+            for i in $(seq 1 30); do
+              $COMPOSE exec -T postgres sh -c 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' && break
+              sleep 2
+              [ "$i" -lt 30 ] || { echo "Postgres não subiu após o wipe." >&2; exit 1; }
+            done
+            echo "Postgres limpo e pronto para as migrações."
+          fi
           $COMPOSE run --rm --no-deps api alembic upgrade head
           $COMPOSE up -d
           REMOTO
