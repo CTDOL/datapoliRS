@@ -16,6 +16,8 @@ from app.core.dependencies import getDbConnection
 from app.core.bootstrap import ensureAdminUser
 from app.schemas.candidate import CandidataDetalhada
 from app.services.tse_service import TSEService
+from app.services.apis_service import ApisService
+from app.routers.produtividade import router as produtividade_router
 from app.services.voting_service import VotingService
 from app.routers.voting import get_voting_service
 from app.services.system_config_service import SystemConfigService
@@ -28,8 +30,11 @@ from app.routers.legislative import router as legislative_router
 from app.routers.tasks import router as tasks_router
 from app.routers.auth import router as auth_router
 from app.routers.tenant import router as tenant_router
+from app.routers.plataforma import router as plataforma_router
+from app.routers.tema import router as tema_router
 from app.routers.admin import router as admin_router
 from app.routers.manutencao import router as manutencao_router
+from app.routers.preferencias import router as preferencias_router
 
 # Configuração de Logging Estruturado
 logging.basicConfig(
@@ -65,6 +70,7 @@ app = FastAPI(
 )
 
 from app.core.exceptions import register_exception_handlers
+from app.core import database as database_core
 
 # Configuração de CORS
 app.add_middleware(
@@ -77,6 +83,24 @@ app.add_middleware(
 
 # Registra Global Exception Handlers (RFC 7807)
 register_exception_handlers(app)
+
+
+@app.middleware("http")
+async def registrar_acesso_negado(request, call_next):
+    """Registra cada 403 com caminho, IP e, quando o token é válido, o e-mail (ADR 040)."""
+    resposta = await call_next(request)
+    if resposta.status_code == 403 and database_core.databasePool is not None:
+        from app.core.dependencies import AUTH_COOKIE_NAME
+        from app.services import observabilidade_service
+        identificado = observabilidade_service.identificar_pelo_token(request.cookies.get(AUTH_COOKIE_NAME))
+        ip = request.client.host if request.client else None
+        try:
+            async with database_core.databasePool.acquire() as conexao:
+                await observabilidade_service.registrar(conexao, "acesso_negado_403", identificado["email"],
+                                                        identificado["tenant_id"], request.url.path, ip, 403)
+        except Exception:  # noqa: BLE001 - o log nunca derruba a resposta
+            logger.warning("Falha ao registrar acesso negado", exc_info=True)
+    return resposta
 
 # Monta o diretório de arquivos estáticos (Frontend)
 os.makedirs("app/static", exist_ok=True)
@@ -97,10 +121,13 @@ app.include_router(legislative_router)
 app.include_router(tasks_router)
 app.include_router(auth_router)
 app.include_router(tenant_router)
+app.include_router(plataforma_router)
+app.include_router(tema_router)
 app.include_router(admin_router)
 app.include_router(manutencao_router)
+app.include_router(preferencias_router)
+app.include_router(produtividade_router)
 
-tse_service = TSEService(timeout=settings.TSE_TIMEOUT_SECONDS)
 
 
 @app.get("/", tags=["Frontend"])
@@ -135,7 +162,10 @@ async def consultar_deputada_rs(
     ano = ano if ano is not None else await SystemConfigService.getInt(connection, "eleitoral.election_year", settings.ELECTION_YEAR)
     codigo_eleicao = codigo_eleicao or await SystemConfigService.getStr(connection, "eleitoral.tse_codigo_eleicao", settings.TSE_CODIGO_ELEICAO)
     cd_cargo = cd_cargo if cd_cargo is not None else await SystemConfigService.getInt(connection, "eleitoral.default_cargo_code", settings.DEFAULT_CARGO_CODE)
-    resultado = await tse_service.pesquisar_deputada_rs(nome, ano, codigo_eleicao, cd_cargo)
+    if not await ApisService.ativa(connection, "tse"):
+        raise HTTPException(status_code=503, detail="A consulta ao TSE está desligada pelo administrador da plataforma.")
+    servico = TSEService(timeout=settings.TSE_TIMEOUT_SECONDS, base_url=await ApisService.endereco(connection, "tse"))
+    resultado = await servico.pesquisar_deputada_rs(nome, ano, codigo_eleicao, cd_cargo)
     if not resultado:
         raise HTTPException(
             status_code=404,

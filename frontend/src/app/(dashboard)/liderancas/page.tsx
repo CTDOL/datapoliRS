@@ -6,7 +6,7 @@ import { useLiderancas } from '@/features/liderancas/useLiderancas';
 import { LiderancasTable } from '@/features/liderancas/LiderancasTable';
 import { LiderancaFormModal } from '@/features/liderancas/LiderancaFormModal';
 import { Lideranca } from '@/features/liderancas/useLiderancas';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { usePermissoes } from '@/stores/usePermissoes';
 
 export default function LiderancasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,7 +30,7 @@ export default function LiderancasPage() {
     uploadFoto,
     deleteLideranca,
   } = useLiderancas();
-  const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
+  const { podeEscrever, podeExcluir } = usePermissoes();
 
   return (
     <div className="w-full h-full p-4 sm:p-8 flex flex-col relative">
@@ -39,27 +39,29 @@ export default function LiderancasPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Lideranças Políticas</h1>
           <p className="text-zinc-400 mt-1 text-sm sm:text-base">Gestão de contatos e influenciadores do Gabinete.</p>
         </div>
+        {podeEscrever && (
         <button
           onClick={() => {
             setEditingLideranca(null);
             setIsModalOpen(true);
           }}
-          className="shrink-0 bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
+          className="shrink-0 bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
         >
           <Plus className="w-5 h-5" />
           Adicionar Liderança
         </button>
+        )}
       </div>
 
       <LiderancasTable
         liderancas={liderancas}
         isLoading={isLoading}
-        onEdit={(lideranca) => {
+        onEdit={podeEscrever ? (lideranca) => {
           setEditingLideranca(lideranca);
           setIsModalOpen(true);
-        }}
+        } : undefined}
         onDelete={(lideranca) => deleteLideranca(lideranca.id_lideranca)}
-        canDelete={isAdmin}
+        canDelete={podeExcluir}
         termo={termo}
         onTermoChange={setTermo}
         filtroCidade={filtroCidade}

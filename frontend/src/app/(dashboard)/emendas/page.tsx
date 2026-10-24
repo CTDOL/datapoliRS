@@ -7,7 +7,7 @@ import { EmendasTable } from '@/features/emendas/EmendasTable';
 import { EmendaFormModal } from '@/features/emendas/EmendaFormModal';
 import { KpiCards } from '@/features/emendas/KpiCards';
 import { Emenda } from '@/features/emendas/useEmendas';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { usePermissoes } from '@/stores/usePermissoes';
 
 export default function EmendasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,7 +31,7 @@ export default function EmendasPage() {
     updateEmenda,
     deleteEmenda,
   } = useEmendas();
-  const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
+  const { podeEscrever, podeExcluir } = usePermissoes();
 
   return (
     <div className="w-full h-full p-4 sm:p-8 flex flex-col gap-6 relative overflow-y-auto">
@@ -40,16 +40,18 @@ export default function EmendasPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Emendas Orçamentárias</h1>
           <p className="text-zinc-400 mt-1">Acompanhamento de indicações, empenhos e pagamentos do mandato.</p>
         </div>
+        {podeEscrever && (
         <button
           onClick={() => {
             setEditingEmenda(null);
             setIsModalOpen(true);
           }}
-          className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2"
+          className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
           Nova Emenda
         </button>
+        )}
       </div>
 
       <KpiCards kpis={kpis} />
@@ -57,12 +59,12 @@ export default function EmendasPage() {
       <EmendasTable
         emendas={emendas}
         isLoading={isLoading}
-        onEdit={(emenda) => {
+        onEdit={podeEscrever ? (emenda) => {
           setEditingEmenda(emenda);
           setIsModalOpen(true);
-        }}
+        } : undefined}
         onDelete={(emenda) => deleteEmenda(emenda.id_emenda)}
-        canDelete={isAdmin}
+        canDelete={podeExcluir}
         termo={termo}
         onTermoChange={setTermo}
         anoExercicio={anoExercicio}

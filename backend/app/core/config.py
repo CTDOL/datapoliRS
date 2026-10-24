@@ -52,6 +52,9 @@ class AppSettings(BaseSettings):
     ADMIN_PASSWORD: str
     ADMIN_TENANT_ID: str = "11111111-2222-3333-4444-555555555555"
 
+    # Base GeoLite2-City (MaxMind) para localizar IPs suspeitos. Vazio = sem localização (ADR 040).
+    GEOIP_DB_PATH: str = ""
+
     # CORS - lista separada por vírgula das origens do frontend
     ALLOWED_ORIGINS: str = "http://localhost:3000"
 

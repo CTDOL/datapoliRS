@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Landmark, Save } from 'lucide-react';
 import { FormOptions, TenantProfile, TenantProfileUpdate } from './useSettings';
+import { IdentidadeVisualSettings } from './IdentidadeVisualSettings';
 
 interface Props {
   profile: TenantProfile | null;
@@ -51,10 +52,11 @@ export function MandatoSettingsTab({ profile, options, isLoading, isSubmitting, 
   };
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="max-w-2xl space-y-5">
       <div className="flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
-          <Landmark className="w-5 h-5 text-purple-400" />
+        <div className="w-10 h-10 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+          <Landmark className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
         </div>
         <div>
           <h2 className="text-lg font-bold text-white">Perfil do Mandato</h2>
@@ -71,7 +73,7 @@ export function MandatoSettingsTab({ profile, options, isLoading, isSubmitting, 
           disabled={!isAdmin}
           value={nmMandato}
           onChange={(e) => setNmMandato(e.target.value)}
-          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] disabled:opacity-60 disabled:cursor-not-allowed"
         />
       </div>
 
@@ -82,7 +84,7 @@ export function MandatoSettingsTab({ profile, options, isLoading, isSubmitting, 
             disabled={!isAdmin}
             value={cdCargo}
             onChange={(e) => setCdCargo(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <option value="">Não especificado</option>
             {options?.cargos.map((c) => (
@@ -96,7 +98,7 @@ export function MandatoSettingsTab({ profile, options, isLoading, isSubmitting, 
             disabled={!isAdmin}
             value={nrPartido}
             onChange={(e) => setNrPartido(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <option value="">Não especificado</option>
             {options?.partidos.map((p) => (
@@ -112,7 +114,7 @@ export function MandatoSettingsTab({ profile, options, isLoading, isSubmitting, 
           disabled={!isAdmin}
           value={cdIbgeBase}
           onChange={(e) => setCdIbgeBase(e.target.value)}
-          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <option value="">Não especificado</option>
           {options?.municipios.map((m) => (
@@ -132,12 +134,14 @@ export function MandatoSettingsTab({ profile, options, isLoading, isSubmitting, 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2 disabled:opacity-70"
+          className="bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-5 py-2.5 rounded-xl font-medium transition-all shadow-lg flex items-center gap-2 disabled:opacity-70"
         >
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Salvar Alterações
         </button>
       )}
     </form>
+    <IdentidadeVisualSettings isAdmin={isAdmin} />
+    </>
   );
 }

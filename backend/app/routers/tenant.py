@@ -2,7 +2,7 @@ import uuid
 from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, Response, status
 import asyncpg
-from app.core.dependencies import getDbConnection, get_current_user, require_role
+from app.core.dependencies import getDbConnection, get_current_user, require_role, bloquear_super_admin
 from app.core.rate_limit import RateLimiter
 from app.schemas.user import UserInDB
 from app.schemas.tenant import TenantProfileResponse, TenantProfileUpdate
@@ -13,7 +13,7 @@ from app.services.team_service import TeamService
 router = APIRouter(
     prefix="/api/v1/gabinete",
     tags=["Configurações do Gabinete"],
-    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="tenant"))]
+    dependencies=[Depends(RateLimiter(times=30, seconds=1, configKey="tenant")), Depends(bloquear_super_admin)]
 )
 
 

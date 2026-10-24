@@ -5,9 +5,9 @@
 # frontend:3000 e api:8000 pela rede datapolirs_datapoli_network_prod.
 #
 # Uso:
-#   cp .env.prod.example .env.prod   # preencher domínios e segredos reais
-#   RELEASE_TAG=<tag> docker compose -f docker-compose.prod.yml --env-file .env.prod pull
-#   RELEASE_TAG=<tag> docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#   cp .env.example .env             # no servidor: preencher domínios e segredos reais (seção Produção)
+#   RELEASE_TAG=<tag> docker compose -f docker-compose.prod.yml pull
+#   RELEASE_TAG=<tag> docker compose -f docker-compose.prod.yml up -d
 #
 # Sem --build: os serviços usam image: do GHCR, nada é construído aqui.
 
@@ -44,18 +44,34 @@ services:
     networks:
       - datapoli_network_prod
 
+  geoipupdate:
+    image: maxmindinc/geoipupdate@sha256:51e70dd6f16cd3e4d845ac02d09940b10772a75b9d741427d235a78570923c1d
+    container_name: datapoli_geoipupdate_prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - GEOIPUPDATE_EDITION_IDS=GeoLite2-City
+      - GEOIPUPDATE_FREQUENCY=24
+    volumes:
+      - datapolirs_geoip_data_prod:/usr/share/GeoIP
+
   api:
     image: ghcr.io/ctdol/datapolirs-api:${RELEASE_TAG}
     container_name: datapoli_api_prod
     restart: unless-stopped
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # Sem migrações no boot: o schema é aplicado por um passo explícito do deploy
+    # (alembic upgrade head num container descartável, antes do up -d da API).
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     volumes:
       - datapolirs_uploads_data_prod:/app/app/uploads
+      - datapolirs_geoip_data_prod:/app/geoip:ro
     env_file:
-      - .env.prod
+      - .env
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=8000
+      - GEOIP_DB_PATH=/app/geoip/GeoLite2-City.mmdb
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -99,7 +115,7 @@ services:
     restart: unless-stopped
     command: python -m etl.worker
     env_file:
-      - .env.prod
+      - .env
     environment:
       - PYTHONUNBUFFERED=1
       - POSTGRES_HOST=postgres
@@ -116,6 +132,7 @@ services:
       - datapoli_network_prod
 
 volumes:
+  datapolirs_geoip_data_prod:
   datapolirs_postgres_data_prod:
   datapolirs_redis_data_prod:
   datapolirs_uploads_data_prod:

@@ -7,8 +7,7 @@ import asyncpg
 class ManutencaoRepository:
     """Leitura da saúde dos dados eleitorais e do histórico de cargas (tb_carga_etl)."""
 
-    @staticmethod
-    async def saudePorPleito(connection: asyncpg.Connection) -> List[Dict[str, Any]]:
+    async def saudePorPleito(self, connection: asyncpg.Connection) -> List[Dict[str, Any]]:
         query = """
             SELECT
                 e.cd_eleicao,
@@ -33,8 +32,7 @@ class ManutencaoRepository:
         records = await connection.fetch(query)
         return [dict(record) for record in records]
 
-    @staticmethod
-    async def listarCargas(connection: asyncpg.Connection, limite: int) -> List[Dict[str, Any]]:
+    async def listarCargas(self, connection: asyncpg.Connection, limite: int) -> List[Dict[str, Any]]:
         query = """
             SELECT id_carga, tipo, ano_eleicao, cd_eleicoes, arquivo_origem, sha256,
                    tamanho_bytes, iniciado_em, concluido_em, status, linhas_carregadas,
@@ -46,8 +44,7 @@ class ManutencaoRepository:
         records = await connection.fetch(query, limite)
         return [dict(record) for record in records]
 
-    @staticmethod
-    async def criarJob(connection: asyncpg.Connection, tipo: str, ano: int, solicitadoPor: str) -> Dict[str, Any]:
+    async def criarJob(self, connection: asyncpg.Connection, tipo: str, ano: int, solicitadoPor: str) -> Dict[str, Any]:
         """Enfileira uma carga. Levanta UniqueViolationError se já houver um job ativo (índice único parcial)."""
         record = await connection.fetchrow(
             """
@@ -60,8 +57,7 @@ class ManutencaoRepository:
         )
         return dict(record)
 
-    @staticmethod
-    async def listarJobs(connection: asyncpg.Connection, limite: int) -> List[Dict[str, Any]]:
+    async def listarJobs(self, connection: asyncpg.Connection, limite: int) -> List[Dict[str, Any]]:
         records = await connection.fetch(
             """
             SELECT id_job, tipo, ano_eleicao, status, solicitado_por, solicitado_em,
@@ -75,16 +71,14 @@ class ManutencaoRepository:
         return [dict(record) for record in records]
 
 
-    @staticmethod
-    async def pleito(connection: asyncpg.Connection, cdEleicao: str) -> Optional[Dict[str, Any]]:
+    async def pleito(self, connection: asyncpg.Connection, cdEleicao: str) -> Optional[Dict[str, Any]]:
         record = await connection.fetchrow(
             "SELECT cd_eleicao, ano_eleicao, ds_eleicao FROM tb_eleicoes WHERE cd_eleicao = $1;",
             cdEleicao,
         )
         return dict(record) if record else None
 
-    @staticmethod
-    async def existeCargaOkDeVotacao(connection: asyncpg.Connection, cdEleicao: str, ano: int) -> bool:
+    async def existeCargaOkDeVotacao(self, connection: asyncpg.Connection, cdEleicao: str, ano: int) -> bool:
         return await connection.fetchval(
             """
             SELECT EXISTS (
@@ -95,8 +89,7 @@ class ManutencaoRepository:
             ano, cdEleicao,
         )
 
-    @staticmethod
-    async def registrarAuditoria(connection: asyncpg.Connection, acao: str, detalhe: Dict[str, Any], operador: str) -> None:
+    async def registrarAuditoria(self, connection: asyncpg.Connection, acao: str, detalhe: Dict[str, Any], operador: str) -> None:
         await connection.execute(
             "INSERT INTO tb_auditoria_manutencao (acao, detalhe, operador) VALUES ($1, $2::jsonb, $3);",
             acao, json.dumps(detalhe), operador,

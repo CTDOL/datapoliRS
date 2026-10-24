@@ -5,7 +5,7 @@ import { useProjetosLei, ProjetoLei } from '@/features/projetosLei/useProjetosLe
 import { BuscaExternaProjetosLei } from '@/features/projetosLei/BuscaExternaProjetosLei';
 import { ProjetosLeiTable } from '@/features/projetosLei/ProjetosLeiTable';
 import { ProjetoLeiDetailModal } from '@/features/projetosLei/ProjetoLeiDetailModal';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { usePermissoes } from '@/stores/usePermissoes';
 
 export default function ProjetosLeiPage() {
   const [projetoAberto, setProjetoAberto] = useState<ProjetoLei | null>(null);
@@ -15,7 +15,7 @@ export default function ProjetosLeiPage() {
     page, setPage, totalPages, total, deleteProjetoLei,
     sincronizar, sincronizandoId, syncFeedback,
   } = useProjetosLei();
-  const isAdmin = useAuthStore((state) => state.user?.role === 'admin');
+  const { podeEscrever, podeExcluir } = usePermissoes();
 
   return (
     <div className="w-full h-full p-4 sm:p-8 flex flex-col gap-6 relative overflow-y-auto">
@@ -31,7 +31,7 @@ export default function ProjetosLeiPage() {
         fontesComErro={fontesComErro}
         isBuscando={isBuscando}
         importandoChave={importandoChave}
-        onImportar={importar}
+        onImportar={podeEscrever ? importar : undefined}
       />
 
       <ProjetosLeiTable
@@ -39,12 +39,12 @@ export default function ProjetosLeiPage() {
         isLoading={isLoading}
         onAbrir={setProjetoAberto}
         onDelete={(pl) => deleteProjetoLei(pl.id_projeto_lei)}
-        canDelete={isAdmin}
-        onSincronizar={async (pl) => {
+        canDelete={podeExcluir}
+        onSincronizar={podeEscrever ? async (pl) => {
           const atualizado = await sincronizar(pl.id_projeto_lei);
           // Se o modal desta proposição estiver aberto, ele passa a mostrar a situação nova.
           if (atualizado && projetoAberto?.id_projeto_lei === pl.id_projeto_lei) setProjetoAberto(atualizado);
-        }}
+        } : undefined}
         sincronizandoId={sincronizandoId}
         syncFeedback={syncFeedback}
         termo={termo}

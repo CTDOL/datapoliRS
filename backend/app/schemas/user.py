@@ -8,6 +8,7 @@ class UserInDB(BaseModel):
     is_active: bool
     tenant_id: uuid.UUID
     role: str
+    must_change_password: bool = False
 
 class TokenData(BaseModel):
     email: Optional[str] = None

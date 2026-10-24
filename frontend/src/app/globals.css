@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Cor do gabinete (ADR 038). O layout sobrescreve --cor-primaria com a cor salva; o padrão é o roxo da plataforma. */
+  --cor-primaria: #9333ea;
+  --cor-primaria-hover: color-mix(in srgb, var(--cor-primaria) 85%, #000);
+  --cor-destaque-10: color-mix(in srgb, var(--cor-primaria) 10%, transparent);
+  --cor-destaque-20: color-mix(in srgb, var(--cor-primaria) 20%, transparent);
+  --cor-destaque-25: color-mix(in srgb, var(--cor-primaria) 25%, transparent);
+  --cor-destaque-30: color-mix(in srgb, var(--cor-primaria) 30%, transparent);
+  --cor-destaque-50: color-mix(in srgb, var(--cor-primaria) 50%, transparent);
+  /* Cor usada em texto de destaque: clareada no escuro para ter contraste sobre o fundo escuro. */
+  --cor-texto-destaque: color-mix(in srgb, var(--cor-primaria) 60%, #fff);
 }
 
 @theme inline {
@@ -10,6 +20,41 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Texto sobre cor de destaque (botões, badges). Fica branco nos dois temas. */
+  --color-on-accent: #ffffff;
+}
+
+/* Tema claro do gabinete (data-tema="claro", definido no layout do dashboard).
+   Inverte a escala neutra do Tailwind e escurece o texto branco. Cores de destaque
+   que viram texto no fundo claro ganham um tom mais escuro. */
+:root[data-tema="claro"] {
+  --background: #fafafa;
+  --foreground: #18181b;
+  /* No claro, o texto de destaque escurece para ter contraste sobre o fundo claro. */
+  --cor-texto-destaque: color-mix(in srgb, var(--cor-primaria) 85%, #000);
+  --color-white: #18181b;
+  --color-zinc-50: #09090b;
+  --color-zinc-100: #18181b;
+  --color-zinc-200: #27272a;
+  --color-zinc-300: #3f3f46;
+  --color-zinc-400: #52525b;
+  --color-zinc-600: #a1a1aa;
+  --color-zinc-700: #d4d4d8;
+  --color-zinc-800: #e4e4e7;
+  --color-zinc-900: #f4f4f5;
+  --color-zinc-950: #fafafa;
+  --color-red-300: #b91c1c;
+  --color-red-400: #dc2626;
+  --color-purple-300: #7e22ce;
+  --color-purple-400: #9333ea;
+  --color-violet-300: #6d28d9;
+  --color-amber-300: #b45309;
+  --color-amber-400: #d97706;
+  --color-emerald-400: #059669;
+  --color-teal-400: #0d9488;
+  --color-blue-400: #2563eb;
+  --color-indigo-300: #4338ca;
+  --color-indigo-400: #4f46e5;
 }
 
 @media (prefers-color-scheme: dark) {

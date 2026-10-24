@@ -8,11 +8,14 @@ import {
   adicionarCamadasBase,
   aplicarEstiloCoropletico,
   ajustarVisibilidadeCoropletica,
+  agruparPorMunicipio,
   iconeLideranca,
   pontosDasLiderancas,
   popupLideranca,
+  popupMunicipio,
 } from './mapLayers';
 import { useMunicipiosGeoJson } from './useMunicipiosGeoJson';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export interface MunicipioAtuacaoPoint {
   cd_ibge_7: string;
@@ -57,7 +60,8 @@ export default function ElectionMap({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
-  const [mapTheme, setMapTheme] = useState<MapTheme>('dark');
+  const tpTema = useAuthStore((estado) => estado.user?.tp_tema);
+  const [mapTheme, setMapTheme] = useState<MapTheme>(tpTema === 'claro' ? 'light' : 'dark');
 
   const geojson = useMunicipiosGeoJson();
   // Só cria a camada; quem a coloca no mapa é o efeito de visibilidade.
@@ -82,7 +86,15 @@ export default function ElectionMap({
     const mapInstance = L.map(mapContainer.current, { zoomControl: true, keyboard: false }).setView([-30.0346, -51.2177], 7);
     map.current = mapInstance;
 
+    // Quando a barra lateral recolhe ou expande, o container muda de largura sem
+    // recarregar a página: o Leaflet precisa recalcular o tamanho para não deixar área cinza.
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => mapInstance.invalidateSize())
+      : null;
+    observer?.observe(mapContainer.current);
+
     return () => {
+      observer?.disconnect();
       mapInstance.remove();
       map.current = null;
       markersRef.current = [];
@@ -121,19 +133,22 @@ export default function ElectionMap({
     // No modo "apenas votação", os pontos de lideranças ficam ocultos.
     if (viewMode === 'votacao') return;
 
-    const icone = iconeLideranca();
-    pontosDasLiderancas(liderancasEstaveis).forEach(({ l, mun }, i) => {
-      // Pequeno spiderify matemático
-      const lng = Number(mun.longitude) + Math.cos(i) * 0.0002;
-      const lat = Number(mun.latitude) + Math.sin(i) * 0.0002;
-
+    // Um pino por município, com contador quando há mais de uma liderança.
+    // Antes, cada liderança recebia um deslocamento de ~20 m: no zoom do estado
+    // esses pinos ficavam sobrepostos e pareciam um só.
+    agruparPorMunicipio(liderancasEstaveis).forEach(({ mun, liderancas }) => {
       // keyboard:false — sem isso o Leaflet torna o marcador focável (tabindex)
       // e chama .focus() nele ao clicar; como o <main> do dashboard tem
       // overflow-hidden (ADR de layout fixo), o navegador faz scroll-into-view
       // programático ali mesmo sem barra de rolagem visível, empurrando o
       // cabeçalho/seletor de modo para fora da viewport ao abrir o popup.
-      const marker = L.marker([lat, lng], { icon: icone, keyboard: false }).addTo(m);
-      marker.bindPopup(popupLideranca(l, mun));
+      const marker = L.marker([Number(mun.latitude), Number(mun.longitude)], {
+        icon: iconeLideranca(liderancas.length),
+        keyboard: false,
+      }).addTo(m);
+      marker.bindPopup(
+        liderancas.length === 1 ? popupLideranca(liderancas[0], mun) : popupMunicipio(mun, liderancas)
+      );
       markersRef.current.push(marker);
     });
   }, [liderancasEstaveis, viewMode]);
@@ -160,7 +175,7 @@ export default function ElectionMap({
           onClick={() => setMapTheme('dark')}
           className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
             mapTheme === 'dark'
-              ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+              ? 'bg-[color:var(--cor-primaria)] text-on-accent shadow-md shadow-[0_4px_14px_0_var(--cor-destaque-25)]'
               : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
           }`}
         >

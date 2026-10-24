@@ -61,3 +61,6 @@ O código segue sempre o caminho `dev` → `hml` → `main`, e cada passo entra 
 
 Os testes (`test-backend` e `test-frontend`) rodam em push e PR para `dev`, `hml` e `main`. Build e deploy rodam só no disparo manual na `main`.
 
+## 📚 Documentação complementar
+
+- [Geolocalização de IPs (MaxMind GeoLite2)](docs/GEOLOCALIZACAO_MAXMIND.md): base local, credenciais, comandos e atribuição obrigatória.

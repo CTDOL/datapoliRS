@@ -80,8 +80,8 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
           >
             <div className="p-6 border-b border-zinc-800 flex justify-between items-center sticky top-0 bg-zinc-900 z-10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
-                  <FileText className="w-5 h-5 text-purple-400" />
+                <div className="w-10 h-10 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+                  <FileText className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
                 </div>
                 <h2 className="text-xl font-bold text-white">{initialData ? 'Editar Emenda' : 'Nova Emenda'}</h2>
               </div>
@@ -98,7 +98,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                   rows={2}
                   value={formData.ds_objeto}
                   onChange={(e) => setFormData({ ...formData, ds_objeto: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] resize-none"
                   placeholder="Ex: Pavimentação de ruas no bairro Centro"
                 />
               </div>
@@ -110,7 +110,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                     type="text"
                     value={formData.nr_emenda || ''}
                     onChange={(e) => setFormData({ ...formData, nr_emenda: e.target.value })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                     placeholder="Ex: 12345678"
                   />
                 </div>
@@ -121,7 +121,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                     required
                     value={formData.ano_exercicio}
                     onChange={(e) => setFormData({ ...formData, ano_exercicio: Number(e.target.value) })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   />
                 </div>
               </div>
@@ -132,7 +132,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                   <select
                     value={formData.tp_emenda || ''}
                     onChange={(e) => setFormData({ ...formData, tp_emenda: e.target.value })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   >
                     <option value="Individual">Individual</option>
                     <option value="Bancada">Bancada</option>
@@ -145,7 +145,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                   <select
                     value={formData.cd_ibge_7 || ''}
                     onChange={(e) => setFormData({ ...formData, cd_ibge_7: e.target.value })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                     disabled={loadingMun}
                   >
                     <option value="">Não especificado</option>
@@ -162,7 +162,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                   type="text"
                   value={formData.ds_area || ''}
                   onChange={(e) => setFormData({ ...formData, ds_area: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   placeholder="Ex: Saúde, Educação, Infraestrutura..."
                 />
               </div>
@@ -174,7 +174,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                     type="number" step="0.01" min="0"
                     value={formData.vl_indicado}
                     onChange={(e) => setFormData({ ...formData, vl_indicado: e.target.value })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   />
                 </div>
                 <div>
@@ -183,7 +183,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                     type="number" step="0.01" min="0"
                     value={formData.vl_empenhado}
                     onChange={(e) => setFormData({ ...formData, vl_empenhado: e.target.value })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   />
                 </div>
                 <div>
@@ -192,7 +192,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                     type="number" step="0.01" min="0"
                     value={formData.vl_pago}
                     onChange={(e) => setFormData({ ...formData, vl_pago: e.target.value })}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   />
                 </div>
               </div>
@@ -202,7 +202,7 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                 <select
                   value={formData.tp_situacao}
                   onChange={(e) => setFormData({ ...formData, tp_situacao: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                 >
                   <option value="Indicada">Indicada</option>
                   <option value="Empenhada">Empenhada</option>
@@ -217,13 +217,13 @@ export function EmendaFormModal({ isOpen, onClose, onSubmit, isSubmitting, initi
                   rows={2}
                   value={formData.ds_observacoes || ''}
                   onChange={(e) => setFormData({ ...formData, ds_observacoes: e.target.value })}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] resize-none"
                 />
               </div>
 
               <div className="pt-2 flex gap-3">
                 <button type="button" onClick={onClose} className="flex-1 px-4 py-3 rounded-xl border border-zinc-700 text-zinc-300 hover:bg-zinc-800 transition-colors">Cancelar</button>
-                <button type="submit" disabled={isSubmitting} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-xl font-medium shadow-lg flex justify-center disabled:opacity-70">
+                <button type="submit" disabled={isSubmitting} className="flex-1 bg-[color:var(--cor-primaria)] hover:bg-[color:var(--cor-primaria-hover)] text-on-accent px-4 py-3 rounded-xl font-medium shadow-lg flex justify-center disabled:opacity-70">
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar'}
                 </button>
               </div>

@@ -2,7 +2,7 @@ import re
 import asyncio
 import logging
 import unicodedata
-from typing import List, Optional, Dict, Any, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 import httpx
 from bs4 import BeautifulSoup
 from app.schemas.legislative import ProposicaoExterna
@@ -31,11 +31,14 @@ class CamaraAdapter:
 
     BASE_URL = "https://dadosabertos.camara.leg.br/api/v2"
 
+    def __init__(self, base_url: Optional[str] = None):
+        self.base_url = base_url or self.BASE_URL
+
     async def buscar_por_nome(self, nome: str, limite: int = 15) -> List[ProposicaoExterna]:
         params = {"autor": nome, "itens": limite, "ordem": "DESC", "ordenarPor": "id"}
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(f"{self.BASE_URL}/proposicoes", params=params)
+                response = await client.get(f"{self.base_url}/proposicoes", params=params)
                 response.raise_for_status()
                 dados = response.json().get("dados", [])
         except (httpx.HTTPError, ValueError) as erro:
@@ -62,7 +65,7 @@ class CamaraAdapter:
     async def buscar_detalhe(self, identificador_externo: str, **_ignored) -> Optional[Dict[str, Any]]:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(f"{self.BASE_URL}/proposicoes/{identificador_externo}")
+                response = await client.get(f"{self.base_url}/proposicoes/{identificador_externo}")
                 response.raise_for_status()
                 item = response.json().get("dados", {})
         except httpx.HTTPError as erro:
@@ -92,8 +95,11 @@ class SenadoAdapter:
 
     BASE_URL = "https://legis.senado.leg.br/dadosabertos"
 
+    def __init__(self, base_url: Optional[str] = None):
+        self.base_url = base_url or self.BASE_URL
+
     async def _resolver_codigo_senador(self, nome: str, client: httpx.AsyncClient) -> Optional[str]:
-        response = await client.get(f"{self.BASE_URL}/senador/lista/atual.json")
+        response = await client.get(f"{self.base_url}/senador/lista/atual.json")
         response.raise_for_status()
         parlamentares = (
             response.json()
@@ -117,7 +123,7 @@ class SenadoAdapter:
                 codigo = await self._resolver_codigo_senador(nome, client)
                 if not codigo:
                     return []
-                response = await client.get(f"{self.BASE_URL}/processo", params={"codigoParlamentarAutor": codigo})
+                response = await client.get(f"{self.base_url}/processo", params={"codigoParlamentarAutor": codigo})
                 response.raise_for_status()
                 materias = response.json()
         except (httpx.HTTPError, ValueError) as erro:
@@ -176,6 +182,9 @@ class AlrsAdapter:
     """
 
     BASE_URL = "https://ww4.al.rs.gov.br"
+
+    def __init__(self, base_url: Optional[str] = None):
+        self.base_url = base_url or self.BASE_URL
     # A ALRS varia de 0,3s (sem resultado) a 30s+ (consulta "fria"); 10s
     # derrubava a maioria dos acertos. O teto fica abaixo dos 30s do proxy de
     # rewrite do Next.js (proxyTimeout padrão), que cortaria a resposta inteira
@@ -200,7 +209,7 @@ class AlrsAdapter:
         }
         try:
             async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
-                response = await client.get(f"{self.BASE_URL}/legislativo/pesquisa", params=params)
+                response = await client.get(f"{self.base_url}/legislativo/pesquisa", params=params)
                 response.raise_for_status()
         except httpx.HTTPError as erro:
             logger.error(f"ALRS indisponível ao buscar proposições de '{nome}': {type(erro).__name__}: {erro}")
@@ -233,7 +242,7 @@ class AlrsAdapter:
                 ementa=ementa or None,
                 situacao=situacao or None,
                 autor=proponente or nome,
-                url_fonte=f"{self.BASE_URL}/proposicao/{tipo}/{numero}/{ano}/{uuid_externo}",
+                url_fonte=f"{self.base_url}/proposicao/{tipo}/{numero}/{ano}/{uuid_externo}",
             ))
         return resultados
 
@@ -243,7 +252,7 @@ class AlrsAdapter:
     ) -> Optional[Dict[str, Any]]:
         if not (tipo and numero and ano):
             return None
-        url = f"{self.BASE_URL}/proposicao/{tipo}/{numero}/{ano}/{identificador_externo}"
+        url = f"{self.base_url}/proposicao/{tipo}/{numero}/{ano}/{identificador_externo}"
         try:
             async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
                 response = await client.get(url)
@@ -275,29 +284,41 @@ class AlrsAdapter:
         }
 
 
-_ADAPTERS = {
-    FONTE_ALRS: AlrsAdapter(),
-    FONTE_CAMARA: CamaraAdapter(),
-    FONTE_SENADO: SenadoAdapter(),
+_CLASSES_ADAPTADORES = {
+    FONTE_ALRS: AlrsAdapter,
+    FONTE_CAMARA: CamaraAdapter,
+    FONTE_SENADO: SenadoAdapter,
 }
 
+_ADAPTERS = {fonte: classe() for fonte, classe in _CLASSES_ADAPTADORES.items()}
 
-def obter_adaptador(fonte: str):
-    adaptador = _ADAPTERS.get(fonte.upper())
-    if not adaptador:
+
+def obter_adaptador(fonte: str, base_url: Optional[str] = None):
+    """Adaptador da fonte. Com `base_url` (endereço configurado pelo super-admin), cria uma instância com esse endereço."""
+    chave = fonte.upper()
+    if chave not in _CLASSES_ADAPTADORES:
         raise ValueError(f"Fonte legislativa desconhecida: {fonte}")
-    return adaptador
+    if base_url is None:
+        return _ADAPTERS[chave]
+    return _CLASSES_ADAPTADORES[chave](base_url)
 
 
-async def buscar_em_todas_fontes(nome: str) -> Tuple[List[ProposicaoExterna], List[str]]:
+async def buscar_em_todas_fontes(
+    nome: str,
+    bases: Optional[Dict[str, str]] = None,
+    desligadas: Iterable[str] = (),
+) -> Tuple[List[ProposicaoExterna], List[str]]:
     """Consulta ALRS, Câmara e Senado em paralelo. Uma fonte fora do ar não
     derruba as outras: seus resultados entram na lista e a fonte que falhou
     (timeout, 5xx, HTML fora do esperado) volta em `fontes_com_erro`, pra que
     a interface avise "ALRS não respondeu" em vez de um falso "nenhuma
-    proposição encontrada"."""
-    fontes = list(_ADAPTERS.keys())
+    proposição encontrada". `bases` troca o endereço de cada fonte e
+    `desligadas` deixa de fora as fontes que o super-admin desligou."""
+    desligadas = set(desligadas)
+    fontes = [fonte for fonte in _CLASSES_ADAPTADORES if fonte not in desligadas]
+    adaptadores = {fonte: obter_adaptador(fonte, (bases or {}).get(fonte)) for fonte in fontes}
     resultados_por_fonte = await asyncio.gather(
-        *(_ADAPTERS[fonte].buscar_por_nome(nome) for fonte in fontes),
+        *(adaptadores[fonte].buscar_por_nome(nome) for fonte in fontes),
         return_exceptions=True,
     )
     agregados: List[ProposicaoExterna] = []

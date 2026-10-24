@@ -57,12 +57,12 @@ export function ProjetosLeiTable({
             value={termo}
             onChange={(e) => onTermoChange(e.target.value)}
             placeholder="Buscar por ementa/autor/número..."
-            className="w-64 bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+            className="w-64 bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
           />
           <select
             value={fonte}
             onChange={(e) => onFonteChange(e.target.value)}
-            className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-purple-500/50"
+            className="bg-zinc-950/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
           >
             <option value="">Todas as fontes</option>
             <option value="ALRS">Assembleia RS</option>
@@ -85,7 +85,7 @@ export function ProjetosLeiTable({
           </thead>
           <tbody className="divide-y divide-zinc-800/50 text-sm">
             {isLoading ? (
-              <tr><td colSpan={5} className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-4" /><p className="text-zinc-400">Carregando...</p></td></tr>
+              <tr><td colSpan={5} className="px-6 py-12 text-center"><Loader2 className="w-8 h-8 text-[color:var(--cor-texto-destaque)] animate-spin mx-auto mb-4" /><p className="text-zinc-400">Carregando...</p></td></tr>
             ) : projetosLei.length === 0 ? (
               <tr><td colSpan={5} className="px-6 py-12 text-center text-zinc-400">Nenhum projeto de lei importado ainda.</td></tr>
             ) : (
@@ -119,7 +119,7 @@ export function ProjetosLeiTable({
                           <RefreshCw className={`w-4 h-4 ${sincronizandoId === pl.id_projeto_lei ? 'animate-spin' : ''}`} />
                         </button>
                       )}
-                      <button onClick={() => onAbrir(pl)} className="text-zinc-400 hover:text-purple-400 p-2 transition-colors" title="Observadores e tarefas">
+                      <button onClick={() => onAbrir(pl)} className="text-zinc-400 hover:text-[color:var(--cor-texto-destaque)] p-2 transition-colors" title="Observadores e tarefas">
                         <Users className="w-4 h-4" />
                       </button>
                       {pl.url_fonte && (

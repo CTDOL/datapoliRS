@@ -5,7 +5,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/services/api';
-import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X, Database } from 'lucide-react';
+import { CabecalhoSessao } from '@/components/layout/CabecalhoSessao';
+import { TrocaSenhaObrigatoria } from '@/components/layout/TrocaSenhaObrigatoria';
+import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X, Database, ChevronLeft, ChevronRight, Cpu, Landmark as Mandato, Activity, ListChecks, LayoutDashboard } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -16,6 +18,8 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { user, logout, login } = useAuthStore();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Recolhimento só existe no desktop (lg); na gaveta do mobile o menu segue com largura total.
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // A store (Zustand, sem persist) some num refresh de página; o cookie
   // HttpOnly continua válido. Sem isso, o botão de admin (role) some ao dar F5.
@@ -24,12 +28,26 @@ export default function DashboardLayout({
     api
       .get('/api/v1/auth/me')
       .then((res) => {
-        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role });
+        login({ email: res.data.email, tenant_id: res.data.tenant_id, role: res.data.role, nm_mandato: res.data.nm_mandato, must_change_password: res.data.must_change_password, cor_primaria: res.data.cor_primaria, cor_secundaria: res.data.cor_secundaria, tp_tema: res.data.tp_tema, preferencias: res.data.preferencias });
       })
       .catch(() => {
         // 401/403 já é tratado pelo interceptor global (redireciona para /login).
       });
   }, [user, login]);
+
+  // Cor do gabinete (ADR 038): vira a variável --cor-primaria usada no destaque da navegação e da marca.
+  useEffect(() => {
+    const raiz = document.documentElement;
+    raiz.style.setProperty('--cor-primaria', user?.cor_primaria ?? '#9333ea');
+    return () => {
+      raiz.style.removeProperty('--cor-primaria');
+    };
+  }, [user?.cor_primaria]);
+
+  // Tema claro ou escuro do gabinete: o atributo data-tema é lido pelo globals.css.
+  useEffect(() => {
+    document.documentElement.dataset.tema = user?.tp_tema ?? 'escuro';
+  }, [user?.tp_tema]);
 
   const handleLogout = async () => {
     // Cookie é HttpOnly: só o backend consegue removê-lo (Set-Cookie de expiração).
@@ -41,13 +59,32 @@ export default function DashboardLayout({
     }
   };
 
-  const navItems = [
+  // Área da plataforma (ADR 039): o super-admin não administra gabinete e tem navegação própria.
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  const naAreaPlataforma = pathname.startsWith('/plataforma') || pathname.startsWith('/manutencao');
+
+  useEffect(() => {
+    if (!user) return;
+    if (isSuperAdmin && !naAreaPlataforma) router.replace('/plataforma');
+    if (!isSuperAdmin && pathname.startsWith('/plataforma')) router.replace('/');
+  }, [user, isSuperAdmin, naAreaPlataforma, pathname, router]);
+
+  const navItemsPlataforma = [
+    { name: 'Gabinetes', href: '/plataforma', icon: Mandato },
+    { name: 'Dados eleitorais', href: '/manutencao', icon: Database },
+    { name: 'APIs & sistema', href: '/plataforma/configuracoes', icon: Cpu },
+    { name: 'Observabilidade', href: '/plataforma/observabilidade', icon: Activity },
+  ];
+
+  const navItems = isSuperAdmin ? navItemsPlataforma : [
     { name: 'Mapa Tático', href: '/', icon: Map },
     { name: 'Lideranças', href: '/liderancas', icon: Users },
     { name: 'Projetos de Lei', href: '/projetos-lei', icon: Landmark },
+    { name: 'Tarefas', href: '/tarefas', icon: ListChecks },
+    ...(user?.role === 'admin' ? [{ name: 'Visão geral', href: '/produtividade', icon: LayoutDashboard }] : []),
     { name: 'Emendas', href: '/emendas', icon: FileText },
     { name: 'Configurações', href: '/settings', icon: Settings },
-    { name: 'Manutenção', href: '/manutencao', icon: Database, adminOnly: true },
   ];
 
   return (
@@ -68,18 +105,18 @@ export default function DashboardLayout({
       {/* z-[1300]: o Leaflet empilha panes/controles até ~z-1000 e passaria por
           cima da gaveta, deixando "Pesquisa Pública" e "Desconectar" inacessíveis. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-[1300] w-64 max-w-[80vw] flex flex-col backdrop-blur-xl bg-zinc-900/95 lg:bg-zinc-900/40 border-r border-zinc-800/60 shadow-2xl transition-transform duration-300 lg:static lg:z-20 lg:max-w-none lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-[1300] w-64 max-w-[80vw] ${isCollapsed ? 'lg:w-20' : 'lg:w-64'} flex flex-col backdrop-blur-xl bg-zinc-900/95 lg:bg-zinc-900/40 border-r border-zinc-800/60 shadow-2xl transition-all duration-300 lg:static lg:z-20 lg:max-w-none lg:translate-x-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="absolute top-0 right-0 bottom-0 w-px bg-gradient-to-b from-transparent via-blue-500/20 to-transparent" />
 
         {/* Brand Header */}
-        <div className="p-6 flex items-center gap-3 border-b border-zinc-800/40">
-          <div className="w-10 h-10 shrink-0 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-            <Shield className="w-5 h-5 text-purple-400" />
+        <div className={`p-6 flex items-center gap-3 border-b border-zinc-800/40 ${isCollapsed ? 'lg:p-4 lg:justify-center' : ''}`}>
+          <div className="w-10 h-10 shrink-0 bg-[color:var(--cor-destaque-10)] rounded-xl flex items-center justify-center border border-[color:var(--cor-destaque-20)] shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+            <Shield className="w-5 h-5 text-[color:var(--cor-texto-destaque)]" />
           </div>
-          <div className="min-w-0">
+          <div className={`min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
             <h2 className="text-white font-bold tracking-tight">DATAPOLIRS</h2>
             <p className="text-[10px] text-zinc-400 uppercase tracking-widest font-semibold">Command Center</p>
           </div>
@@ -94,22 +131,28 @@ export default function DashboardLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 min-h-0 overflow-y-auto px-4 py-6 space-y-2">
-          {navItems.filter((item) => !item.adminOnly || user?.role === 'admin').map((item) => {
+        <nav className={`flex-1 min-h-0 overflow-y-auto px-4 ${isCollapsed ? 'lg:px-2' : ''} py-6 space-y-2`}>
+          {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.name}
                 href={item.href}
+                title={isCollapsed ? item.name : undefined}
                 onClick={() => setIsSidebarOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                style={isActive ? {
+                  color: 'var(--cor-primaria)',
+                  backgroundColor: 'color-mix(in srgb, var(--cor-primaria) 12%, transparent)',
+                  borderColor: 'color-mix(in srgb, var(--cor-primaria) 30%, transparent)',
+                } : undefined}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${isCollapsed ? 'lg:justify-center' : ''} ${
                   isActive 
-                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
+                    ? 'border shadow-[0_0_20px_rgba(59,130,246,0.1)]' 
                     : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50 border border-transparent'
                 }`}
               >
-                <item.icon className={`w-5 h-5 ${isActive ? 'text-purple-400' : 'text-zinc-500'}`} />
-                <span className="font-medium text-sm">{item.name}</span>
+                <item.icon className={`w-5 h-5 ${isActive ? 'text-[color:var(--cor-texto-destaque)]' : 'text-zinc-500'}`} />
+                <span className={`font-medium text-sm ${isCollapsed ? 'lg:hidden' : ''}`}>{item.name}</span>
               </Link>
             );
           })}
@@ -122,21 +165,34 @@ export default function DashboardLayout({
             href={process.env.NEXT_PUBLIC_PORTAL_URL || 'http://127.0.0.1:8000'}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/50 border border-transparent transition-all duration-300 mt-4"
+            title={isCollapsed ? 'Pesquisa Pública' : undefined}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/50 border border-transparent transition-all duration-300 mt-4 ${isCollapsed ? 'lg:justify-center' : ''}`}
           >
             <Globe className="w-5 h-5 text-zinc-500" />
-            <span className="font-medium text-sm">Pesquisa Pública</span>
+            <span className={`font-medium text-sm ${isCollapsed ? 'lg:hidden' : ''}`}>Pesquisa Pública</span>
           </a>
         </nav>
 
         {/* Footer / Logout */}
-        <div className="p-4 border-t border-zinc-800/40">
+        <div className={`p-4 border-t border-zinc-800/40 ${isCollapsed ? 'lg:px-2' : ''}`}>
+          {/* Recolher/expandir: só no desktop, porque no mobile a gaveta já fecha pelo X */}
+          <button
+            type="button"
+            onClick={() => setIsCollapsed((v) => !v)}
+            aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
+            title={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
+            className={`hidden lg:flex items-center gap-3 w-full px-4 py-3 mb-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/50 border border-transparent transition-all duration-300 ${isCollapsed ? 'lg:justify-center' : ''}`}
+          >
+            {isCollapsed ? <ChevronRight className="w-5 h-5 shrink-0" /> : <ChevronLeft className="w-5 h-5 shrink-0" />}
+            <span className={`font-medium text-sm ${isCollapsed ? 'lg:hidden' : ''}`}>Recolher menu</span>
+          </button>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all duration-300"
+            title={isCollapsed ? 'Desconectar' : undefined}
+            className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-zinc-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all duration-300 ${isCollapsed ? 'lg:justify-center' : ''}`}
           >
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium text-sm">Desconectar</span>
+            <LogOut className="w-5 h-5 shrink-0" />
+            <span className={`font-medium text-sm ${isCollapsed ? 'lg:hidden' : ''}`}>Desconectar</span>
           </button>
         </div>
       </aside>
@@ -154,14 +210,18 @@ export default function DashboardLayout({
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="w-8 h-8 shrink-0 bg-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20">
-            <Shield className="w-4 h-4 text-purple-400" />
+          <div className="w-8 h-8 shrink-0 bg-[color:var(--cor-destaque-10)] rounded-lg flex items-center justify-center border border-[color:var(--cor-destaque-20)]">
+            <Shield className="w-4 h-4 text-[color:var(--cor-texto-destaque)]" />
           </div>
           <span className="text-white font-bold tracking-tight text-sm">DATAPOLIRS</span>
         </header>
 
+        <CabecalhoSessao />
+        <TrocaSenhaObrigatoria />
+
         <main className="flex-1 min-h-0 relative overflow-hidden">
-          {children}
+          {/* Super-admin fora da própria área não monta a tela do gabinete: ela buscaria dados que ele não acessa. */}
+          {isSuperAdmin && !naAreaPlataforma ? null : children}
         </main>
       </div>
     </div>

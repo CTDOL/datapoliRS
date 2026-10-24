@@ -65,7 +65,7 @@ export default function DashboardPage() {
               onClick={() => setViewMode(value)}
               className={`flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
                 viewMode === value
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
+                  ? 'bg-[color:var(--cor-primaria)] text-on-accent shadow-md shadow-[0_4px_14px_0_var(--cor-destaque-25)]'
                   : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
               }`}
             >
@@ -84,7 +84,7 @@ export default function DashboardPage() {
         {mostrarBuscaCandidato && (
           <>
           {candidatoSelecionado ? (
-            <div className="flex items-center justify-between bg-zinc-900/60 border border-purple-500/30 rounded-xl px-4 py-2.5">
+            <div className="flex items-center justify-between bg-zinc-900/60 border border-[color:var(--cor-destaque-30)] rounded-xl px-4 py-2.5">
               <div>
                 <p className="text-sm font-semibold text-white">{candidatoSelecionado.nm_urna_candidato}</p>
                 <p className="text-xs text-zinc-400">
@@ -104,7 +104,7 @@ export default function DashboardPage() {
                   value={termoBusca}
                   onChange={(e) => alterarTermo(e.target.value)}
                   placeholder="Buscar candidato para ver a votação no mapa..."
-                  className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                  className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                 />
               </div>
               {(resultadosBusca.length > 0 || isBuscando) && (
@@ -142,13 +142,13 @@ export default function DashboardPage() {
                 value={filtroNome}
                 onChange={(e) => setFiltroNome(e.target.value)}
                 placeholder="Buscar liderança por nome..."
-                className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:ring-2 focus:ring-purple-500/50"
+                className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-xl pl-8 pr-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
               />
             </div>
             <select
               value={filtroCidade}
               onChange={(e) => setFiltroCidade(e.target.value)}
-              className="w-full sm:w-auto sm:flex-1 sm:min-w-[12rem] sm:max-w-xs bg-zinc-900/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+              className="w-full sm:w-auto sm:flex-1 sm:min-w-[12rem] sm:max-w-xs bg-zinc-900/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] appearance-none"
             >
               <option value="">Todos os municípios</option>
               {municipios.map((m) => (
@@ -158,7 +158,7 @@ export default function DashboardPage() {
             <select
               value={filtroTipo}
               onChange={(e) => setFiltroTipo(e.target.value)}
-              className="w-full sm:w-auto sm:min-w-[10rem] bg-zinc-900/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-purple-500/50 appearance-none"
+              className="w-full sm:w-auto sm:min-w-[10rem] bg-zinc-900/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)] appearance-none"
             >
               <option value="">Todos os tipos</option>
               {TIPOS_INFLUENCIA.map((t) => (

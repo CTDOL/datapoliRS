@@ -42,6 +42,18 @@ services:
           - redis
           - datapoli_redis_non_prod
 
+  geoipupdate:
+    image: maxmindinc/geoipupdate@sha256:51e70dd6f16cd3e4d845ac02d09940b10772a75b9d741427d235a78570923c1d
+    container_name: datapoli_geoipupdate_non_prod
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      - GEOIPUPDATE_EDITION_IDS=GeoLite2-City
+      - GEOIPUPDATE_FREQUENCY=24
+    volumes:
+      - datapolirs_geoip_data:/usr/share/GeoIP
+
   api:
     build:
       context: ./backend
@@ -57,11 +69,13 @@ services:
       - ./backend/tests:/app/tests
       - ./backend/alembic:/app/alembic
       - ./backend/alembic.ini:/app/alembic.ini
+      - datapolirs_geoip_data:/app/geoip:ro
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=8000
+      - GEOIP_DB_PATH=/app/geoip/GeoLite2-City.mmdb
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=${POSTGRES_USER:-datapoli_user}
@@ -106,6 +120,7 @@ services:
       - API_INTERNAL_URL=http://api:8000
       - WATCHPACK_POLLING=true
       - NEXT_PUBLIC_ENV_LABEL=DESENVOLVIMENTO
+      - NEXT_PUBLIC_DB_LABEL=datapoli_db
     depends_on:
       - api
     networks:
@@ -132,6 +147,7 @@ services:
       - datapoli_network_non_prod
 
 volumes:
+  datapolirs_geoip_data:
   datapolirs_postgres_non_prod_data:
   datapolirs_redis_non_prod_data:
   datapolirs_frontend_node_data:
