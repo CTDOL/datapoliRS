@@ -1,4 +1,0 @@
-# Labels de runners self-hosted usados pelos workflows deste repositório.
-self-hosted-runner:
-  labels:
-    - hml-local
