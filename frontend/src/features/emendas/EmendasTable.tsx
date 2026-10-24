@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Loader2, Edit2, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { Loader2, Edit2, Trash2, Search, ChevronLeft, ChevronRight, ListChecks } from 'lucide-react';
 import { Emenda } from './useEmendas';
 
 const SITUACAO_STYLES: Record<string, string> = {
@@ -121,6 +122,14 @@ export function EmendasTable({
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={`/tarefas?emenda=${e.id_emenda}`}
+                        title="Tarefas desta emenda"
+                        aria-label="Tarefas desta emenda"
+                        className="text-zinc-400 hover:text-[color:var(--cor-texto-destaque)] p-2 transition-colors"
+                      >
+                        <ListChecks className="w-4 h-4" />
+                      </Link>
                       {onEdit && (
                         <button onClick={() => onEdit(e)} className="text-zinc-400 hover:text-[color:var(--cor-texto-destaque)] p-2 transition-colors">
                           <Edit2 className="w-4 h-4" />

@@ -35,7 +35,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
 
   const [liderancas, setLiderancas] = useState<LiderancaOption[]>([]);
   const [observadorSelecionado, setObservadorSelecionado] = useState('');
-  const [novaTarefa, setNovaTarefa] = useState({ titulo: '', prazo: '', id_lideranca_responsavel: '' });
+  const [novaTarefa, setNovaTarefa] = useState({ titulo: '', prazo: '', ids_responsaveis: [] as string[] });
 
   useEffect(() => {
     if (!projetoLei) return;
@@ -43,7 +43,7 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
       .then((res) => setLiderancas(res.data.items))
       .catch((err) => console.error(err));
     const timer = setTimeout(() => {
-      setNovaTarefa({ titulo: '', prazo: '', id_lideranca_responsavel: '' });
+      setNovaTarefa({ titulo: '', prazo: '', ids_responsaveis: [] });
       setObservadorSelecionado('');
     }, 0);
     return () => clearTimeout(timer);
@@ -64,9 +64,9 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
     const ok = await createTarefa({
       titulo: novaTarefa.titulo.trim(),
       prazo: novaTarefa.prazo || undefined,
-      id_lideranca_responsavel: novaTarefa.id_lideranca_responsavel || undefined,
+      ids_responsaveis: novaTarefa.ids_responsaveis,
     });
-    if (ok) setNovaTarefa({ titulo: '', prazo: '', id_lideranca_responsavel: '' });
+    if (ok) setNovaTarefa({ titulo: '', prazo: '', ids_responsaveis: [] });
   };
 
   const cicloStatus = (atual: string) => {
@@ -191,16 +191,29 @@ export function ProjetoLeiDetailModal({ projetoLei, onClose }: ProjetoLeiDetailM
                     onChange={(e) => setNovaTarefa({ ...novaTarefa, prazo: e.target.value })}
                     className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
                   />
-                  <select
-                    value={novaTarefa.id_lideranca_responsavel}
-                    onChange={(e) => setNovaTarefa({ ...novaTarefa, id_lideranca_responsavel: e.target.value })}
-                    className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white outline-none appearance-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]"
-                  >
-                    <option value="">Sem responsável</option>
-                    {liderancas.map((l) => (
-                      <option key={l.id_lideranca} value={l.id_lideranca}>{l.nm_completo}</option>
-                    ))}
-                  </select>
+                  <details className="relative">
+                    <summary className="cursor-pointer list-none bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white">
+                      Responsáveis ({novaTarefa.ids_responsaveis.length})
+                    </summary>
+                    <div className="absolute z-10 mt-1 w-64 max-h-60 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 p-2 space-y-1 shadow-xl">
+                      {liderancas.length === 0 && <p className="text-xs text-zinc-500 px-1">Nenhuma liderança cadastrada.</p>}
+                      {liderancas.map((l) => (
+                        <label key={l.id_lideranca} className="flex items-center gap-2 px-1 py-1 text-sm text-zinc-200 hover:bg-zinc-800 rounded-lg cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={novaTarefa.ids_responsaveis.includes(l.id_lideranca)}
+                            onChange={(e) => setNovaTarefa({
+                              ...novaTarefa,
+                              ids_responsaveis: e.target.checked
+                                ? [...novaTarefa.ids_responsaveis, l.id_lideranca]
+                                : novaTarefa.ids_responsaveis.filter((id) => id !== l.id_lideranca),
+                            })}
+                          />
+                          {l.nm_completo}
+                        </label>
+                      ))}
+                    </div>
+                  </details>
                   <button
                     type="submit"
                     disabled={!novaTarefa.titulo.trim() || isSubmitting}

@@ -23,7 +23,7 @@ export interface NovaTarefa {
   titulo: string;
   descricao?: string;
   prazo?: string;
-  id_lideranca_responsavel?: string;
+  ids_responsaveis?: string[];
 }
 
 export function useProjetoLeiDetalhe(idProjetoLei: string | null) {

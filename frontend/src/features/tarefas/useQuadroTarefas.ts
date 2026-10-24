@@ -4,6 +4,19 @@ import { api } from '@/services/api';
 export const STATUS_QUADRO = ['Pendente', 'Em Andamento', 'Concluída'] as const;
 export type StatusTarefa = (typeof STATUS_QUADRO)[number];
 
+// Rótulos exibidos. O valor gravado continua o mesmo: "Pendente" aparece como "Aguardando início".
+export const ROTULO_STATUS: Record<StatusTarefa, string> = {
+  Pendente: 'Aguardando início',
+  'Em Andamento': 'Em andamento',
+  Concluída: 'Concluída',
+};
+
+export interface ResponsavelQuadro {
+  id_lideranca: string;
+  nm_completo: string;
+  ds_foto_url?: string | null;
+}
+
 export interface TarefaQuadro {
   id_tarefa: string;
   titulo: string;
@@ -12,7 +25,10 @@ export interface TarefaQuadro {
   tp_status: StatusTarefa;
   id_projeto_lei?: string | null;
   id_emenda?: string | null;
+  id_lideranca_responsavel?: string | null;
   nm_lideranca_responsavel?: string | null;
+  ds_foto_url_responsavel?: string | null;
+  responsaveis?: ResponsavelQuadro[];
 }
 
 export interface ComentarioTarefa {
@@ -20,6 +36,15 @@ export interface ComentarioTarefa {
   autor_email: string;
   texto: string;
   created_at: string;
+}
+
+/** Payload de criação. Sem id_projeto_lei nem id_emenda, a tarefa é solta. */
+export interface NovaTarefaQuadro {
+  titulo: string;
+  prazo?: string;
+  ids_responsaveis: string[];
+  id_emenda?: string;
+  id_projeto_lei?: string;
 }
 
 export function useQuadroTarefas() {
@@ -57,5 +82,16 @@ export function useQuadroTarefas() {
   const comentar = (idTarefa: string, texto: string) =>
     api.post<ComentarioTarefa>(`/api/v1/gabinete/tarefas/${idTarefa}/comentarios`, { texto }).then((res) => res.data);
 
-  return { tarefas, carregando, erro, mover, listarComentarios, comentar };
+  const criar = async (dados: NovaTarefaQuadro): Promise<boolean> => {
+    try {
+      await api.post('/api/v1/gabinete/tarefas', dados);
+      await buscar();
+      return true;
+    } catch {
+      setErro('Não foi possível criar a tarefa. Verifique os campos e tente de novo.');
+      return false;
+    }
+  };
+
+  return { tarefas, carregando, erro, mover, listarComentarios, comentar, criar, recarregar: buscar };
 }

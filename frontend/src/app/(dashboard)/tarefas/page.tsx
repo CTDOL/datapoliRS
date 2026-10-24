@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { QuadroTarefas } from '@/features/tarefas/QuadroTarefas';
 
 export default function TarefasPage() {
@@ -9,7 +10,10 @@ export default function TarefasPage() {
         <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Tarefas</h1>
         <p className="text-zinc-400 mt-1">Andamento das tarefas do gabinete. Admin e operador registram comentários de execução.</p>
       </div>
-      <QuadroTarefas />
+      {/* useSearchParams exige Suspense no App Router para o build estático */}
+      <Suspense fallback={null}>
+        <QuadroTarefas />
+      </Suspense>
     </div>
   );
 }
