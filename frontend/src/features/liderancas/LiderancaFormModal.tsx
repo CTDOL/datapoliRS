@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, UserPlus, MapPin, Phone, Camera, Search } from 'lucide-react';
+import { X, Loader2, UserPlus, MapPin, Phone, Mail, Camera, Search } from 'lucide-react';
 import { FormDataLideranca, Lideranca } from './useLiderancas';
 import { useMunicipios } from '@/features/geo/useMunicipios';
 
@@ -19,6 +19,7 @@ interface ModalProps {
 const EMPTY_FORM: FormDataLideranca = {
   nm_completo: '',
   nr_telefone: '',
+  ds_email: null,
   tp_influencia: 'Comunitária',
   municipios: [],
 };
@@ -36,6 +37,7 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
         setFormData({
           nm_completo: initialData.nm_completo || '',
           nr_telefone: initialData.nr_telefone || '',
+          ds_email: initialData.ds_email || null,
           tp_influencia: initialData.tp_influencia || 'Comunitária',
           municipios: initialData.municipios?.map((m) => m.cd_ibge_7) || [],
         });
@@ -75,7 +77,7 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const id = await onSubmit(formData);
+    const id = await onSubmit({ ...formData, ds_email: formData.ds_email?.trim() || null });
     if (!id) return; // onSubmit já loga o erro; mantém o modal aberto para o usuário corrigir
 
     if (fotoArquivo) {
@@ -141,6 +143,11 @@ export function LiderancaFormModal({ isOpen, onClose, onSubmit, onUploadFoto, is
           <div>
             <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1.5 flex items-center gap-1"><Phone className="w-3 h-3"/> Telefone</label>
             <input type="text" required value={formData.nr_telefone} onChange={(e) => setFormData({...formData, nr_telefone: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]" placeholder="(51) 99999-9999"/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1.5 flex items-center gap-1"><Mail className="w-3 h-3"/> E-mail</label>
+            <input type="email" maxLength={255} value={formData.ds_email ?? ''} onChange={(e) => setFormData({...formData, ds_email: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-[color:var(--cor-destaque-50)]" placeholder="nome@exemplo.com.br"/>
           </div>
 
           <div>

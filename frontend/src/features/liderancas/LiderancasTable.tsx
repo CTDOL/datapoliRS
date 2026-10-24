@@ -85,6 +85,7 @@ export function LiderancasTable({
             <tr className="bg-zinc-950/50 border-b border-zinc-800 text-zinc-400 text-xs uppercase tracking-wider">
               <th className="px-6 py-4 font-semibold">Nome Completo</th>
               <th className="px-6 py-4 font-semibold">Telefone</th>
+              <th className="px-6 py-4 font-semibold">E-mail</th>
               <th className="px-6 py-4 font-semibold">Municípios</th>
               <th className="px-6 py-4 font-semibold">Tipo</th>
               <th className="px-6 py-4 font-semibold">Status</th>
@@ -126,6 +127,13 @@ export function LiderancasTable({
                           </a>
                         )}
                       </div>
+                    ) : (
+                      'N/I'
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-zinc-300">
+                    {l.ds_email ? (
+                      <a href={`mailto:${l.ds_email}`} className="hover:text-white hover:underline break-all">{l.ds_email}</a>
                     ) : (
                       'N/I'
                     )}
