@@ -24,10 +24,11 @@ class CandidateRepository:
         params: List[Any] = []
         paramIndex = 1
 
-        if searchTerm and searchTerm.strip():
-            wildcard = f"%{searchTerm.strip()}%"
+        # Cada palavra precisa aparecer no nome de urna ou no nome civil, em qualquer ordem:
+        # "Luciano Zucco" acha LUCIANO LORENZINI ZUCCO, que não contém a frase contínua.
+        for palavra in (searchTerm or "").split():
             conditions.append(f"(unaccent(c.nm_urna_candidato) ILIKE unaccent(${paramIndex}) OR unaccent(c.nm_candidato) ILIKE unaccent(${paramIndex}))")
-            params.append(wildcard)
+            params.append(f"%{palavra}%")
             paramIndex += 1
 
         if cargoCode is not None:

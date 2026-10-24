@@ -1,8 +1,14 @@
 import asyncio
 import os
-import asyncpg
-import pytest
-from app.core.config import settings
+
+# Redis próprio dos testes, definido antes de carregar a configuração. O banco 0 é o do dev e
+# do hml: o cache "system:config:all" dos testes (lido do datapoli_test, ano 2022) vazava para
+# as telas do dev e do hml por até 60 s, e contadores do limitador se misturavam (2026-10-24).
+os.environ["REDIS_URL"] = os.environ.get("REDIS_URL_TESTES", "redis://localhost:6379/15")
+
+import asyncpg  # noqa: E402
+import pytest  # noqa: E402
+from app.core.config import settings  # noqa: E402
 
 
 def pytest_sessionstart(session):
