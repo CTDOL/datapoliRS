@@ -37,7 +37,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$DOCKER_CONFIG"
-          echo '{}' > "$DOCKER_CONFIG/config.json"
+          printf '{"cliPluginsExtraDirs":["%s/.docker/cli-plugins"]}\n' "$HOME" > "$DOCKER_CONFIG/config.json"
+          ln -sfn "$HOME/.docker/contexts" "$DOCKER_CONFIG/contexts"
 
       - name: Checkout dev
         uses: actions/checkout@v4
