@@ -17,7 +17,10 @@ COPY . .
 
 # Usuário sem privilégio para a API. O diretório de uploads precisa ser
 # gravável por ele: o main.py cria app/uploads/liderancas na inicialização.
-RUN useradd --system --uid 1000 --no-create-home app \
+# O diretório nasce aqui porque um volume nomeado novo herda o dono do caminho
+# da imagem. Sem ele, o volume sai como root e a API não sobe (2026-10-24).
+RUN mkdir -p app/uploads/liderancas \
+    && useradd --system --uid 1000 --no-create-home app \
     && chown -R app:app /app
 USER app
 
