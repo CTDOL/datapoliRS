@@ -17,6 +17,16 @@ class RateLimitExceededException(DomainException):
         )
 
 
+class RateLimitIndisponivelException(DomainException):
+    """Só para rotas com falhaFechada: sem Redis não há como contar, então a requisição é recusada."""
+    def __init__(self):
+        super().__init__(
+            detail="Serviço temporariamente indisponível. Tente novamente em instantes.",
+            status_code=503,
+            title="Service Unavailable"
+        )
+
+
 class RateLimiter:
     """Implementa Rate Limiting com Fixed Window no Redis.
 
@@ -27,22 +37,32 @@ class RateLimiter:
     continuam valendo como fallback caso a configuração ainda não exista/aqueça.
     """
 
-    def __init__(self, times: int = 20, seconds: int = 1, configKey: Optional[str] = None):
+    def __init__(self, times: int = 20, seconds: int = 1, configKey: Optional[str] = None, falhaFechada: bool = False):
         self.times = times
         self.seconds = seconds
         self.configKey = configKey
+        # Rotas públicas que gravam dado (portal do Balcão) recusam com 503 se o Redis cair, em vez de
+        # ficar sem limite. As demais rotas seguem fail-open, como sempre.
+        self.falhaFechada = falhaFechada
 
     async def __call__(self, request: Request):
         from app.core.redis_client import redisClientInstance
 
         if redisClientInstance is None:
+            if self.falhaFechada:
+                raise RateLimitIndisponivelException()
             return  # Fail-open se o Redis estiver indisponível
 
         times, seconds = self.times, self.seconds
         if self.configKey:
             from app.services.system_config_service import SystemConfigService
-            times = await SystemConfigService.getIntFromCacheOnly(f"rate_limit.{self.configKey}.times", self.times)
-            seconds = await SystemConfigService.getIntFromCacheOnly(f"rate_limit.{self.configKey}.seconds", self.seconds)
+            try:
+                times = await SystemConfigService.getIntFromCacheOnly(f"rate_limit.{self.configKey}.times", self.times)
+                seconds = await SystemConfigService.getIntFromCacheOnly(f"rate_limit.{self.configKey}.seconds", self.seconds)
+            except Exception:
+                if self.falhaFechada:
+                    raise RateLimitIndisponivelException()
+                raise
 
         # O IP é o do cliente real quando a API confia no proxy (FORWARDED_ALLOW_IPS no compose).
         # Nada que o cliente escolha entra na chave: um header como X-Tenant-ID zeraria o limite.
@@ -68,6 +88,9 @@ class RateLimiter:
         except RateLimitExceededException:
             raise
         except Exception as e:
+            if self.falhaFechada:
+                logger.warning(f"Falha no Rate Limiter com falha fechada (recusando a requisição): {e}")
+                raise RateLimitIndisponivelException()
             logger.warning(f"Falha de resiliência no Rate Limiter (liberando tráfego): {e}")
 
 

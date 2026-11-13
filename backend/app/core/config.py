@@ -56,6 +56,11 @@ class AppSettings(BaseSettings):
     # Base GeoLite2-City (MaxMind) para localizar IPs suspeitos. Vazio = sem localização (ADR 040).
     GEOIP_DB_PATH: str = ""
 
+    # Balcão Inteligente. A chave do HMAC do CPF vem só do ambiente (nunca do código) e sem ela o CPF
+    # não é extraído nem gravado. Provedor de IA vazio = IA desligada; nenhum provedor real é embutido.
+    BALCAO_CPF_HMAC_KEY: str = ""
+    BALCAO_IA_PROVIDER: str = ""
+
     # CORS - lista separada por vírgula das origens do frontend
     ALLOWED_ORIGINS: str = "http://localhost:3000"
 

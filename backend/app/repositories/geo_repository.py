@@ -9,6 +9,14 @@ logger = logging.getLogger("GeoRepository")
 class GeoRepository:
 
     @staticmethod
+    async def listarNomesDeMunicipios(connection: asyncpg.Connection) -> list:
+        """Código e nome de cada município do RS, para a triagem do Balcão achar município no texto."""
+        rows = await connection.fetch(
+            "SELECT cd_ibge_7, nm_municipio FROM tb_municipios WHERE sg_uf = 'RS' ORDER BY nm_municipio"
+        )
+        return [dict(r) for r in rows]
+
+    @staticmethod
     async def getMunicipiosList(connection: asyncpg.Connection) -> list:
         query = """
             SELECT cd_ibge_7, nm_municipio, 

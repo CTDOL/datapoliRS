@@ -37,6 +37,8 @@ from app.routers.manutencao import router as manutencao_router
 from app.routers.preferencias import router as preferencias_router
 from app.routers.email import router as email_router
 from app.routers.fotos import router as fotos_router
+from app.routers.balcao import router as balcao_router
+from app.routers.balcao_portal import router as balcao_portal_router
 
 # Configuração de Logging Estruturado
 logging.basicConfig(
@@ -131,6 +133,8 @@ app.include_router(preferencias_router)
 app.include_router(produtividade_router)
 app.include_router(email_router)
 app.include_router(fotos_router)
+app.include_router(balcao_router)
+app.include_router(balcao_portal_router)
 
 
 
