@@ -1,13 +1,13 @@
 import uuid
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from app.core.dependencies import bloquear_super_admin, get_current_user, getDbConnection, require_role
 from app.core.rate_limit import RateLimiter
-from app.repositories.produtividade_repository import ProdutividadeRepository
-from app.schemas.produtividade import ComentarioCreate, ComentarioResponse, ProdutividadeResponse, TotaisTarefas, CargaResponsavel
+from app.schemas.produtividade import ComentarioCreate, ComentarioResponse, ProdutividadeResponse
 from app.schemas.user import UserInDB
+from app.services.produtividade_service import ProdutividadeService
 
 router = APIRouter(
     prefix="/api/v1/gabinete",
@@ -26,10 +26,7 @@ async def listar_comentarios(
     current_user: UserInDB = Depends(get_current_user),
     connection: asyncpg.Connection = Depends(getDbConnection),
 ) -> list[ComentarioResponse]:
-    if not await ProdutividadeRepository.tarefaDoTenant(connection, current_user.tenant_id, id_tarefa):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarefa não encontrada para este gabinete.")
-    registros = await ProdutividadeRepository.listarComentarios(connection, current_user.tenant_id, id_tarefa)
-    return [ComentarioResponse(**r) for r in registros]
+    return await ProdutividadeService.listarComentarios(connection, current_user.tenant_id, id_tarefa)
 
 
 @router.post(
@@ -44,12 +41,9 @@ async def criar_comentario(
     current_user: UserInDB = Depends(require_role(["admin", "operador"])),
     connection: asyncpg.Connection = Depends(getDbConnection),
 ) -> ComentarioResponse:
-    if not await ProdutividadeRepository.tarefaDoTenant(connection, current_user.tenant_id, id_tarefa):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarefa não encontrada para este gabinete.")
-    registro = await ProdutividadeRepository.criarComentario(
-        connection, current_user.tenant_id, id_tarefa, current_user.email, payload.texto.strip(),
+    return await ProdutividadeService.criarComentario(
+        connection, current_user.tenant_id, id_tarefa, current_user.email, payload.texto
     )
-    return ComentarioResponse(**registro)
 
 
 @router.get(
@@ -61,13 +55,4 @@ async def painel_produtividade(
     current_user: UserInDB = Depends(require_role(["admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection),
 ) -> ProdutividadeResponse:
-    tenant = current_user.tenant_id
-    totais = await ProdutividadeRepository.totaisTarefas(connection, tenant)
-    carga = await ProdutividadeRepository.cargaPorResponsavel(connection, tenant)
-    return ProdutividadeResponse(
-        tarefas=TotaisTarefas(**totais),
-        por_responsavel=[CargaResponsavel(**c) for c in carga],
-        comentarios_ultimos_7_dias=await ProdutividadeRepository.comentariosRecentes(connection, tenant),
-        projetos_lei=await ProdutividadeRepository.contar(connection, tenant, "tb_gabinete_projetos_lei"),
-        emendas=await ProdutividadeRepository.contar(connection, tenant, "tb_gabinete_emendas"),
-    )
+    return await ProdutividadeService.painelProdutividade(connection, current_user.tenant_id)

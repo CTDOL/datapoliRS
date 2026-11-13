@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 import asyncpg
 from app.core.dependencies import getDbConnection, bloquear_super_admin
 from app.core.rate_limit import RateLimiter
-from app.repositories.cabinet_repository import CabinetRepository
+from app.services.cabinet_service import CabinetService
 from app.routers.cabinet import UPLOADS_DIR
 from app.schemas.user import UserInDB
 
@@ -36,7 +36,7 @@ async def obter_foto_lideranca(
     if not nome:
         raise FOTO_NAO_ENCONTRADA
     # Outro gabinete recebe 404, como nas demais rotas: não revela que a liderança existe.
-    if not await CabinetRepository.pertenceAoGabinete(connection, current_user.tenant_id, uuid.UUID(nome["id"])):
+    if not await CabinetService.pertenceAoGabinete(connection, current_user.tenant_id, uuid.UUID(nome["id"])):
         raise FOTO_NAO_ENCONTRADA
     caminho = os.path.join(UPLOADS_DIR, arquivo)
     if not os.path.isfile(caminho):

@@ -96,3 +96,14 @@ class BalcaoAnexoService:
             raise naoEncontrado
         extensao = absoluto.rsplit(".", 1)[-1]
         return absoluto, registro["mime_type"], f"anexo-{registro['id']}.{extensao}"
+
+    @staticmethod
+    def removerArquivos(caminhosRelativos: list[str]) -> None:
+        base = os.path.realpath(_pastaBase())
+        for relativo in caminhosRelativos:
+            absoluto = os.path.realpath(os.path.join(base, relativo))
+            if absoluto.startswith(base + os.sep) and os.path.isfile(absoluto):
+                try:
+                    os.remove(absoluto)
+                except OSError:
+                    logger.warning("Não foi possível remover o anexo descartado: %s", relativo)

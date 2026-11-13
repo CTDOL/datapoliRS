@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 import asyncpg
 from app.core.dependencies import bloquear_super_admin, get_current_user, getDbConnection, require_role
@@ -11,6 +11,7 @@ from app.schemas.balcao import (
     PortalRevogadoResposta, ResolverRequest, ResolverResponse,
 )
 from app.schemas.user import UserInDB
+from app.services import observabilidade_service
 from app.services.balcao_anexo_service import BalcaoAnexoService
 from app.services.balcao_caixa_service import BalcaoCaixaService
 from app.services.balcao_grafo_service import BalcaoGrafoService
@@ -51,20 +52,30 @@ async def obter_entrada(
 async def efetivar_entrada(
     id_entrada: uuid.UUID,
     payload: EfetivarRequest,
+    request: Request,
     current_user: UserInDB = Depends(require_role(PAPEIS_DE_ESCRITA)),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ):
-    return await BalcaoCaixaService.efetivar(connection, current_user, id_entrada, payload)
+    resultado = await BalcaoCaixaService.efetivar(connection, current_user, id_entrada, payload)
+    await observabilidade_service.registrar_operacao(
+        connection, "balcao_efetivado", request, current_user, status.HTTP_201_CREATED
+    )
+    return resultado
 
 
 @router.post("/entradas/{id_entrada}/descartar", response_model=DescartarResponse, summary="Descarta a entrada")
 async def descartar_entrada(
     id_entrada: uuid.UUID,
     payload: DescartarRequest,
+    request: Request,
     current_user: UserInDB = Depends(require_role(PAPEIS_DE_ESCRITA)),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ):
-    return await BalcaoCaixaService.descartar(connection, current_user, id_entrada, payload)
+    resultado = await BalcaoCaixaService.descartar(connection, current_user, id_entrada, payload)
+    await observabilidade_service.registrar_operacao(
+        connection, "balcao_descartado", request, current_user, status.HTTP_200_OK
+    )
+    return resultado
 
 
 @router.get("/atendidos/{id_atendido}/timeline", response_model=List[EventoTimeline],
@@ -80,11 +91,15 @@ async def timeline_do_atendido(
 @router.get("/anexos/{id_anexo}", summary="Baixa o anexo (sempre como download, nunca inline)")
 async def baixar_anexo(
     id_anexo: uuid.UUID,
+    request: Request,
     current_user: UserInDB = Depends(get_current_user),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ) -> FileResponse:
     caminho, mime, nomeParaDownload = await BalcaoCaixaService.anexoParaDownload(
         connection, current_user.tenant_id, id_anexo
+    )
+    await observabilidade_service.registrar_operacao(
+        connection, "balcao_anexo_baixado", request, current_user, status.HTTP_200_OK
     )
     return FileResponse(
         caminho, media_type=mime, filename=nomeParaDownload, content_disposition_type="attachment",
@@ -127,10 +142,15 @@ async def anexar_ao_atendimento(
 async def resolver_atendimento(
     id_atendimento: uuid.UUID,
     payload: ResolverRequest,
+    request: Request,
     current_user: UserInDB = Depends(require_role(PAPEIS_DE_ESCRITA)),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ):
-    return await BalcaoResolucaoService.resolver(connection, current_user, id_atendimento, payload)
+    resultado = await BalcaoResolucaoService.resolver(connection, current_user, id_atendimento, payload)
+    await observabilidade_service.registrar_operacao(
+        connection, "balcao_resolvido", request, current_user, status.HTTP_201_CREATED
+    )
+    return resultado
 
 
 @router.get("/grafo", response_model=GrafoResposta, summary="Grafo de correlações do gabinete")

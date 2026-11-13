@@ -146,11 +146,13 @@ class BalcaoCaixaService:
                 raise _naoEncontrado("Entrada")
             if entrada["status"] != "PENDENTE":
                 raise DomainException("A entrada já foi tratada.", status.HTTP_409_CONFLICT, "Conflito")
+            caminhosDescartados = await BalcaoRepository.excluirAnexosDaEntrada(connection, tenantId, entradaId)
             await BalcaoRepository.descartarEntrada(connection, tenantId, entradaId, {
                 "motivo": motivo,
                 "por_user_id": str(usuario.id),
                 "em": datetime.now(timezone.utc).isoformat(),
             })
+        BalcaoAnexoService.removerArquivos(caminhosDescartados)
         return {"id": entradaId, "status": "DESCARTADA"}
 
     @staticmethod

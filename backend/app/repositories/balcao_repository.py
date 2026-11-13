@@ -185,6 +185,17 @@ class BalcaoRepository:
         )
         return [dict(r) for r in registros]
 
+    @staticmethod
+    async def excluirAnexosDaEntrada(connection: asyncpg.Connection, tenantId: uuid.UUID,
+                                     entradaId: uuid.UUID) -> List[str]:
+        registros = await connection.fetch(
+            """DELETE FROM tb_balcao_anexos
+                WHERE tenant_id = $1 AND entrada_id = $2 AND atendimento_id IS NULL
+                RETURNING caminho_arquivo""",
+            tenantId, entradaId,
+        )
+        return [r["caminho_arquivo"] for r in registros]
+
     # --- Atendidos e atendimentos ------------------------------------------------------------
 
     @staticmethod

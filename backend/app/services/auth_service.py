@@ -3,7 +3,9 @@ from typing import Optional
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from fastapi import HTTPException, status
+import asyncpg
 from app.core.config import settings
+from app.repositories.user_repository import UserRepository
 import uuid
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -58,3 +60,15 @@ class AuthService:
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+    @staticmethod
+    async def getAuthByEmail(connection: asyncpg.Connection, email: str):
+        return await UserRepository.getAuthByEmail(connection, email)
+
+    @staticmethod
+    async def getHashedPasswordById(connection: asyncpg.Connection, userId: uuid.UUID) -> Optional[str]:
+        return await UserRepository.getHashedPasswordById(connection, userId)
+
+    @staticmethod
+    async def updatePassword(connection: asyncpg.Connection, userId: uuid.UUID, hashedPassword: str) -> None:
+        await UserRepository.updatePassword(connection, userId, hashedPassword)

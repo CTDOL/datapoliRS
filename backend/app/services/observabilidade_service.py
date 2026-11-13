@@ -9,7 +9,15 @@ from app.core import redis_client
 from app.core.config import settings
 
 # Operações sobre dados pessoais entram na mesma trilha (revisão de 2026-10-24, M5).
-EVENTOS_DADOS = ("exportacao_dados", "lideranca_excluida", "usuario_alterado")
+EVENTOS_DADOS = (
+    "exportacao_dados",
+    "lideranca_excluida",
+    "usuario_alterado",
+    "balcao_efetivado",
+    "balcao_descartado",
+    "balcao_resolvido",
+    "balcao_anexo_baixado",
+)
 EVENTOS = ("login_ok", "login_falha", "acesso_negado_403") + EVENTOS_DADOS
 JANELA_ALERTA_MINUTOS = 60
 LIMITE_FALHAS_LOGIN = 5

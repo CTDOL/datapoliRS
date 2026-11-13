@@ -6,7 +6,6 @@ from app.services.auth_service import AuthService
 from app.core.dependencies import AUTH_COOKIE_NAME, get_current_user, getDbConnection
 from app.core.rate_limit import RateLimiter, LimitePorConta
 from app.services import observabilidade_service, preferencias_service
-from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserInDB, PasswordChangeRequest
 from datetime import timedelta
 
@@ -33,7 +32,7 @@ async def login(
 ):
     ip = request.client.host if request.client else None
     await limitePorConta.verificar(form_data.username)
-    row = await UserRepository.getAuthByEmail(connection, form_data.username)
+    row = await AuthService.getAuthByEmail(connection, form_data.username)
     if row is None or not row["is_active"] or not AuthService.verify_password(form_data.password, row["hashed_password"]):
         # Registra a falha sem dizer se o e-mail existe: o log guarda o e-mail tentado (ADR 040).
         await observabilidade_service.registrar(connection, "login_falha", form_data.username, None,
@@ -97,7 +96,7 @@ async def trocar_senha(
     current_user: UserInDB = Depends(get_current_user),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ):
-    hashedAtual = await UserRepository.getHashedPasswordById(connection, current_user.id)
+    hashedAtual = await AuthService.getHashedPasswordById(connection, current_user.id)
     if hashedAtual is None or not AuthService.verify_password(payload.senha_atual, hashedAtual):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -105,5 +104,5 @@ async def trocar_senha(
         )
 
     newHashedPassword = AuthService.get_password_hash(payload.nova_senha)
-    await UserRepository.updatePassword(connection, current_user.id, newHashedPassword)
+    await AuthService.updatePassword(connection, current_user.id, newHashedPassword)
     return {"message": "Senha alterada com sucesso"}

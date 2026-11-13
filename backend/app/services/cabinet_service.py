@@ -128,3 +128,11 @@ class CabinetService:
                 detail="Falha ao remover a liderança solicitada."
             )
         logger.info(f"Liderança {leadershipId} removida com sucesso do gabinete {tenantId}.")
+
+    @staticmethod
+    async def pertenceAoGabinete(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+        leadershipId: uuid.UUID,
+    ) -> bool:
+        return await CabinetRepository.pertenceAoGabinete(connection, tenantId, leadershipId)
