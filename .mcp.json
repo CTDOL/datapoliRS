@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "cofre-ctdol": {
+      "command": "/usr/local/bin/python3",
+      "args": [
+        "/Users/cpinfo/Documents/COFRE_CTDOL_2026/MCP_COFRE_CTDOL_2026/server.py"
+      ]
+    }
+  }
+}
