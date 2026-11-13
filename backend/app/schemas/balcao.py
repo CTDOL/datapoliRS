@@ -115,3 +115,17 @@ class GrafoAresta(BaseModel):
 class GrafoResposta(BaseModel):
     nos: List[GrafoNo]
     arestas: List[GrafoAresta]
+
+
+class IaConfigResposta(BaseModel):
+    provider: str
+    model: str = ""
+    base_url: str = ""
+    api_key_configurada: bool
+    provedores_suportados: List[str]
+
+
+class IaConfigAtualizarRequest(BaseModel):
+    provider: str
+    model: str = ""
+    base_url: str = ""

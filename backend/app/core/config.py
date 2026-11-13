@@ -60,6 +60,9 @@ class AppSettings(BaseSettings):
     # não é extraído nem gravado. Provedor de IA vazio = IA desligada; nenhum provedor real é embutido.
     BALCAO_CPF_HMAC_KEY: str = ""
     BALCAO_IA_PROVIDER: str = ""
+    BALCAO_IA_MODEL: str = ""
+    BALCAO_IA_API_KEY: str = ""
+    BALCAO_IA_BASE_URL: str = ""
 
     # CORS - lista separada por vírgula das origens do frontend
     ALLOWED_ORIGINS: str = "http://localhost:3000"

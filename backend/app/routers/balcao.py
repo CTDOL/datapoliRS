@@ -7,14 +7,15 @@ from app.core.dependencies import bloquear_super_admin, get_current_user, getDbC
 from app.core.rate_limit import RateLimiter
 from app.schemas.balcao import (
     AnexoCriadoResposta, DescartarRequest, DescartarResponse, EfetivarRequest, EfetivarResponse,
-    EntradaDetalhe, EntradaResumo, EventoTimeline, GrafoResposta, PortalCriadoResposta,
-    PortalRevogadoResposta, ResolverRequest, ResolverResponse,
+    EntradaDetalhe, EntradaResumo, EventoTimeline, GrafoResposta, IaConfigAtualizarRequest,
+    IaConfigResposta, PortalCriadoResposta, PortalRevogadoResposta, ResolverRequest, ResolverResponse,
 )
 from app.schemas.user import UserInDB
 from app.services import observabilidade_service
 from app.services.balcao_anexo_service import BalcaoAnexoService
 from app.services.balcao_caixa_service import BalcaoCaixaService
 from app.services.balcao_grafo_service import BalcaoGrafoService
+from app.services.balcao_ia_service import BalcaoIaService
 from app.services.balcao_portal_service import BalcaoPortalService
 from app.services.balcao_resolucao_service import BalcaoResolucaoService
 
@@ -159,3 +160,22 @@ async def grafo(
     connection: asyncpg.Connection = Depends(getDbConnection)
 ):
     return await BalcaoGrafoService.montar(connection, current_user.tenant_id)
+
+
+@router.get("/ia-config", response_model=IaConfigResposta, summary="Consulta o motor IA/Regex do Balcão")
+async def obter_ia_config(
+    current_user: UserInDB = Depends(require_role(["admin"])),
+    connection: asyncpg.Connection = Depends(getDbConnection),
+):
+    return await BalcaoIaService.obterConfiguracao(connection)
+
+
+@router.put("/ia-config", response_model=IaConfigResposta, summary="Comuta o motor IA/Regex do Balcão em runtime")
+async def atualizar_ia_config(
+    payload: IaConfigAtualizarRequest,
+    current_user: UserInDB = Depends(require_role(["admin"])),
+    connection: asyncpg.Connection = Depends(getDbConnection),
+):
+    return await BalcaoIaService.atualizarConfiguracao(
+        connection, payload.provider, payload.model, payload.base_url
+    )

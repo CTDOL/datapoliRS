@@ -9,6 +9,7 @@ import type {
   EntradaResumo,
   EventoTimeline,
   GrafoResposta,
+  IaConfigResposta,
   PortalCriadoResposta,
   PortalEntradaResposta,
   PortalRevogadoResposta,
@@ -117,6 +118,20 @@ export const balcaoService = {
 
   async obterGrafo(): Promise<GrafoResposta> {
     const res = await api.get<GrafoResposta>('/api/v1/balcao/grafo');
+    return res.data;
+  },
+
+  async obterIaConfig(): Promise<IaConfigResposta> {
+    const res = await api.get<IaConfigResposta>('/api/v1/balcao/ia-config');
+    return res.data;
+  },
+
+  async atualizarIaConfig(payload: {
+    provider: string;
+    model: string;
+    base_url: string;
+  }): Promise<IaConfigResposta> {
+    const res = await api.put<IaConfigResposta>('/api/v1/balcao/ia-config', payload);
     return res.data;
   },
 };

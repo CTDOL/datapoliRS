@@ -38,7 +38,7 @@ export default defineConfig({
     },
     {
       name: 'chromium-autenticado',
-      testMatch: /(dashboard|modulos|settings)\.spec\.ts/,
+      testMatch: /(dashboard|modulos|settings|balcao)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/user.json' },
       dependencies: ['setup'],
     },

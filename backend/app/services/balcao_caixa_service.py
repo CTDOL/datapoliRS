@@ -121,7 +121,10 @@ class BalcaoCaixaService:
 
         vazios = [c for c, chave in (("nome", "nome"), ("municipio", "municipio_id")) if not campos[chave]]
         if vazios:
-            sugeridos = await BalcaoIaService.complementar(entrada["texto_original"], vazios)
+            configIa = await BalcaoIaService.obterConfiguracao(connection)
+            sugeridos = await BalcaoIaService.complementar(
+                entrada["texto_original"], vazios, configRuntime=configIa
+            )
             if "nome" in sugeridos and not campos["nome"]:
                 campos["nome"] = sugeridos["nome"]
             if "municipio" in sugeridos and not campos["municipio_id"]:

@@ -103,6 +103,20 @@ export interface ResolverResponse {
   resolvido_em: string;
 }
 
+export interface IaConfigResposta {
+  provider: string;
+  model: string;
+  base_url: string;
+  api_key_configurada: boolean;
+  provedores_suportados: string[];
+}
+
+export interface IaConfigAtualizarRequest {
+  provider: string;
+  model: string;
+  base_url: string;
+}
+
 export interface GrafoNo {
   id: string;
   tipo: 'ATENDIDO' | 'ATENDIMENTO' | 'MUNICIPIO' | string;

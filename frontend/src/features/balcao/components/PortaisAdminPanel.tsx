@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { Copy, KeyRound, Link2, ShieldOff, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Copy, KeyRound, Link2, ShieldOff, AlertTriangle, CheckCircle2, Cpu } from 'lucide-react';
 import { balcaoService } from '../services/balcaoService';
-import { extrairMensagemErroApi, type PortalCriadoResposta } from '../types';
+import { extrairMensagemErroApi, type IaConfigResposta, type PortalCriadoResposta } from '../types';
 
 export function PortaisAdminPanel() {
   const [portalCriado, setPortalCriado] = useState<PortalCriadoResposta | null>(null);
@@ -12,6 +12,31 @@ export function PortaisAdminPanel() {
   const [erro, setErro] = useState<string | null>(null);
   const [mensagemStatus, setMensagemStatus] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+
+  const [iaConfig, setIaConfig] = useState<IaConfigResposta | null>(null);
+  const [iaProvider, setIaProvider] = useState('regex');
+  const [iaModel, setIaModel] = useState('');
+  const [iaBaseUrl, setIaBaseUrl] = useState('');
+  const [salvandoIa, setSalvandoIa] = useState(false);
+
+  useEffect(() => {
+    let ativo = true;
+    balcaoService
+      .obterIaConfig?.()
+      ?.then((cfg) => {
+        if (!ativo || !cfg) return;
+        setIaConfig(cfg);
+        setIaProvider(cfg.provider || 'regex');
+        setIaModel(cfg.model || '');
+        setIaBaseUrl(cfg.base_url || '');
+      })
+      .catch(() => {
+        // Silencioso para não bloquear criação/revogação de portais se usuário não tiver permissão
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   const handleCriarPortal = async () => {
     setCarregando(true);
@@ -62,6 +87,29 @@ export function PortaisAdminPanel() {
     if (!linkCompleto || !navigator?.clipboard) return;
     await navigator.clipboard.writeText(linkCompleto);
     setCopiado(true);
+  };
+
+  const handleSalvarIa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSalvandoIa(true);
+    setErro(null);
+    setMensagemStatus(null);
+    try {
+      const atualizado = await balcaoService.atualizarIaConfig({
+        provider: iaProvider,
+        model: iaModel,
+        base_url: iaBaseUrl,
+      });
+      setIaConfig(atualizado);
+      setIaProvider(atualizado.provider);
+      setIaModel(atualizado.model);
+      setIaBaseUrl(atualizado.base_url);
+      setMensagemStatus(`Motor de extração atualizado para "${atualizado.provider}".`);
+    } catch (err) {
+      setErro(extrairMensagemErroApi(err, 'Não foi possível atualizar o motor de extração.'));
+    } finally {
+      setSalvandoIa(false);
+    }
   };
 
   return (
@@ -154,6 +202,78 @@ export function PortaisAdminPanel() {
           >
             Revogar Portal
           </button>
+        </form>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-semibold text-white">
+              <Cpu className="h-4 w-4 text-purple-400" />
+              <span>Motor de Extração (IA ↔ Regex)</span>
+            </h2>
+            <p className="mt-1 text-xs text-zinc-400">
+              Comutação em runtime com fallback automático silencioso para Regex Python.
+              {iaConfig?.api_key_configurada ? ' Chave de API configurada no ambiente.' : ''}
+            </p>
+          </div>
+        </div>
+        <form onSubmit={handleSalvarIa} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <label htmlFor="balcao-ia-provider" className="mb-1 block text-xs text-zinc-400">
+              Motor / Provedor
+            </label>
+            <select
+              id="balcao-ia-provider"
+              aria-label="Motor de extração"
+              value={iaProvider}
+              onChange={(e) => setIaProvider(e.target.value)}
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+            >
+              <option value="regex">Regex Python (Determinístico)</option>
+              <option value="openai">OpenAI</option>
+              <option value="ollama">Ollama (Local)</option>
+              <option value="gemini">Google Gemini</option>
+              <option value="anthropic">Anthropic Claude</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="balcao-ia-model" className="mb-1 block text-xs text-zinc-400">
+              Modelo (opcional)
+            </label>
+            <input
+              id="balcao-ia-model"
+              type="text"
+              aria-label="Modelo de IA"
+              value={iaModel}
+              onChange={(e) => setIaModel(e.target.value)}
+              placeholder="Ex.: gpt-4o-mini, gemini-2.0-flash"
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-purple-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="balcao-ia-baseurl" className="mb-1 block text-xs text-zinc-400">
+              Base URL (opcional)
+            </label>
+            <input
+              id="balcao-ia-baseurl"
+              type="text"
+              aria-label="Base URL de IA"
+              value={iaBaseUrl}
+              onChange={(e) => setIaBaseUrl(e.target.value)}
+              placeholder="Ex.: http://127.0.0.1:11434/v1"
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-purple-500 focus:outline-none"
+            />
+          </div>
+          <div className="sm:col-span-3 flex justify-end">
+            <button
+              type="submit"
+              disabled={salvandoIa}
+              className="rounded-xl bg-purple-600 px-4 py-2 text-xs font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
+            >
+              {salvandoIa ? 'Salvando...' : 'Aplicar Motor'}
+            </button>
+          </div>
         </form>
       </section>
     </div>

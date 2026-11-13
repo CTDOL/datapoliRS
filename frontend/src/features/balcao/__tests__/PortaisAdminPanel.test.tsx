@@ -11,6 +11,20 @@ vi.mock('../services/balcaoService', async (importOriginal) => {
       ...original.balcaoService,
       criarPortal: vi.fn(),
       revogarPortal: vi.fn(),
+      obterIaConfig: vi.fn().mockResolvedValue({
+        provider: 'regex',
+        model: '',
+        base_url: '',
+        api_key_configurada: false,
+        provedores_suportados: ['regex', 'openai', 'ollama', 'gemini', 'anthropic'],
+      }),
+      atualizarIaConfig: vi.fn().mockResolvedValue({
+        provider: 'ollama',
+        model: 'llama3.2',
+        base_url: 'http://127.0.0.1:11434/v1',
+        api_key_configurada: false,
+        provedores_suportados: ['regex', 'openai', 'ollama', 'gemini', 'anthropic'],
+      }),
     },
   };
 });
@@ -47,6 +61,27 @@ describe('PortaisAdminPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('status').textContent).toMatch(/portal-uuid-1 revogado/i);
+    });
+  });
+
+  it('comuta o motor de extração IA/Regex em runtime', async () => {
+    render(<PortaisAdminPanel />);
+
+    fireEvent.change(screen.getByLabelText(/Motor de extração/i), {
+      target: { value: 'ollama' },
+    });
+    fireEvent.change(screen.getByLabelText(/Modelo de IA/i), {
+      target: { value: 'llama3.2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Aplicar Motor/i }));
+
+    await waitFor(() => {
+      expect(balcaoService.atualizarIaConfig).toHaveBeenCalledWith({
+        provider: 'ollama',
+        model: 'llama3.2',
+        base_url: '',
+      });
+      expect(screen.getByRole('status').textContent).toMatch(/ollama/i);
     });
   });
 });
