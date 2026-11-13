@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/services/api';
 import { CabecalhoSessao } from '@/components/layout/CabecalhoSessao';
 import { TrocaSenhaObrigatoria } from '@/components/layout/TrocaSenhaObrigatoria';
-import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X, Database, ChevronLeft, ChevronRight, Cpu, Landmark as Mandato, Activity, ListChecks, LayoutDashboard } from 'lucide-react';
+import { Map, Users, FileText, Landmark, Settings, LogOut, Shield, Globe, Menu, X, Database, ChevronLeft, ChevronRight, Cpu, Landmark as Mandato, Activity, ListChecks, LayoutDashboard, Inbox } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -82,6 +82,7 @@ export default function DashboardLayout({
     { name: 'Lideranças', href: '/liderancas', icon: Users },
     { name: 'Projetos de Lei', href: '/projetos-lei', icon: Landmark },
     { name: 'Tarefas', href: '/tarefas', icon: ListChecks },
+    { name: 'Balcão', href: '/balcao', icon: Inbox },
     ...(user?.role === 'admin' ? [{ name: 'Visão geral', href: '/produtividade', icon: LayoutDashboard }] : []),
     { name: 'Emendas', href: '/emendas', icon: FileText },
     { name: 'Configurações', href: '/settings', icon: Settings },
