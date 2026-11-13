@@ -36,3 +36,7 @@ backend/geoip/
 CLAUDE.md.sugerida
 GEMINI.md.sugerida
 PROMPT_MENTORIA_EXTERNA.md
+
+# Piloto Understand Anything (ONDA 2): artefatos locais, nunca versionados
+.understand-anything/
+.ua/
