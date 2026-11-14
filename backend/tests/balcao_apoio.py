@@ -50,9 +50,12 @@ def rotaRegistrada(metodo: str, caminho: str) -> bool:
     def forma(c):
         return re.sub(r"\{[^}]+\}", "{}", c or "")
 
+    alvo = forma(caminho)
+    metodo_lower = metodo.lower()
+    paths = app.openapi().get("paths", {})
     return any(
-        forma(getattr(r, "path", None)) == forma(caminho) and metodo in (getattr(r, "methods", None) or ())
-        for r in app.routes
+        forma(rota) == alvo and metodo_lower in ops
+        for rota, ops in paths.items()
     )
 
 
