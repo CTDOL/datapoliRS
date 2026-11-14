@@ -137,3 +137,31 @@ class IaConfigAtualizarRequest(BaseModel):
     base_url: str = ""
     api_key: Optional[str] = None
     limpar_api_key: bool = False
+
+
+class IaConfigTestarRequest(BaseModel):
+    provider: Optional[str] = None
+    model: str = ""
+    base_url: str = ""
+    api_key: Optional[str] = None
+
+
+class IaConfigTesteResposta(BaseModel):
+    ok: bool
+    provider: str
+    model: str = ""
+    latencia_ms: int = 0
+    detalhe: str
+    resultado: Dict[str, str] = {}
+
+
+class PedidoMapaItem(BaseModel):
+    id: uuid.UUID
+    tipo: str
+    resumo: str
+    nome_atendido: Optional[str] = None
+    municipio_id: str
+    municipio_nome: str
+    latitude: float
+    longitude: float
+    criado_em: datetime

@@ -7,6 +7,8 @@ import {
   extrairMensagemErroApi,
   type IaConfigAtualizarRequest,
   type IaConfigResposta,
+  type IaConfigTestarRequest,
+  type IaConfigTesteResposta,
   type PortalCriadoResposta,
   type PortalResumo,
 } from '../types';
@@ -26,6 +28,8 @@ export function PortaisAdminPanel() {
   const [iaBaseUrl, setIaBaseUrl] = useState('');
   const [iaApiKey, setIaApiKey] = useState('');
   const [salvandoIa, setSalvandoIa] = useState(false);
+  const [testandoIa, setTestandoIa] = useState(false);
+  const [resultadoTesteIa, setResultadoTesteIa] = useState<IaConfigTesteResposta | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -143,6 +147,7 @@ export function PortaisAdminPanel() {
     setSalvandoIa(true);
     setErro(null);
     setMensagemStatus(null);
+    setResultadoTesteIa(null);
     try {
       const atualizado = await balcaoService.atualizarIaConfig({
         provider: iaProvider,
@@ -157,6 +162,28 @@ export function PortaisAdminPanel() {
       setErro(extrairMensagemErroApi(err, 'Não foi possível remover a chave de API.'));
     } finally {
       setSalvandoIa(false);
+    }
+  };
+
+  const handleTestarIa = async () => {
+    setTestandoIa(true);
+    setErro(null);
+    setResultadoTesteIa(null);
+    try {
+      const payload: IaConfigTestarRequest = {
+        provider: iaProvider,
+        model: iaModel,
+        base_url: iaBaseUrl,
+      };
+      if (iaApiKey.trim()) {
+        payload.api_key = iaApiKey.trim();
+      }
+      const res = await balcaoService.testarIaConfig(payload);
+      setResultadoTesteIa(res);
+    } catch (err) {
+      setErro(extrairMensagemErroApi(err, 'Não foi possível testar a API de IA.'));
+    } finally {
+      setTestandoIa(false);
     }
   };
 
@@ -369,7 +396,7 @@ export function PortaisAdminPanel() {
             {iaConfig?.api_key_configurada && (
               <button
                 type="button"
-                disabled={salvandoIa}
+                disabled={salvandoIa || testandoIa}
                 onClick={handleRemoverApiKey}
                 className="rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60"
               >
@@ -377,14 +404,44 @@ export function PortaisAdminPanel() {
               </button>
             )}
             <button
+              type="button"
+              disabled={salvandoIa || testandoIa}
+              onClick={handleTestarIa}
+              className="rounded-xl border border-purple-600 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-900 hover:bg-purple-100 disabled:opacity-60"
+            >
+              {testandoIa ? 'Testando...' : 'Testar API'}
+            </button>
+            <button
               type="submit"
-              disabled={salvandoIa}
+              disabled={salvandoIa || testandoIa}
               className="rounded-xl bg-purple-600 px-4 py-2 text-xs font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
             >
               {salvandoIa ? 'Salvando...' : 'Aplicar Motor'}
             </button>
           </div>
         </form>
+        {resultadoTesteIa && (
+          <div
+            role="status"
+            className={`rounded-xl border p-3 text-xs ${
+              resultadoTesteIa.ok
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
+                : 'border-rose-300 bg-rose-50 text-rose-900'
+            }`}
+          >
+            <p className="font-semibold">
+              {resultadoTesteIa.ok ? 'Teste OK' : 'Falha no teste'} ({resultadoTesteIa.provider}
+              {resultadoTesteIa.model ? ` · ${resultadoTesteIa.model}` : ''}
+              {resultadoTesteIa.latencia_ms > 0 ? ` · ${resultadoTesteIa.latencia_ms} ms` : ''})
+            </p>
+            <p className="mt-1">{resultadoTesteIa.detalhe}</p>
+            {Object.keys(resultadoTesteIa.resultado).length > 0 && (
+              <p className="mt-1 font-mono text-[11px]">
+                Extração de teste: {JSON.stringify(resultadoTesteIa.resultado)}
+              </p>
+            )}
+          </div>
+        )}
       </section>
     </div>
   );

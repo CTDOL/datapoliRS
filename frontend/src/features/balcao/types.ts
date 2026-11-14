@@ -43,6 +43,9 @@ export interface DadosExtraidosBalcao {
   municipio_id?: string | null;
   municipio_nome?: string | null;
   cpf_presente?: boolean;
+  ia_complementou?: boolean;
+  municipios_candidatos?: string[];
+  municipios_candidatos_opcoes?: Array<{ id: string; nome: string }>;
   [key: string]: unknown;
 }
 
@@ -123,6 +126,34 @@ export interface IaConfigAtualizarRequest {
   base_url: string;
   api_key?: string;
   limpar_api_key?: boolean;
+}
+
+export interface IaConfigTestarRequest {
+  provider?: string;
+  model?: string;
+  base_url?: string;
+  api_key?: string;
+}
+
+export interface IaConfigTesteResposta {
+  ok: boolean;
+  provider: string;
+  model: string;
+  latencia_ms: number;
+  detalhe: string;
+  resultado: Record<string, string>;
+}
+
+export interface PedidoMapaItem {
+  id: string;
+  tipo: 'PENDENTE' | 'EM_ANDAMENTO' | string;
+  resumo: string;
+  nome_atendido?: string | null;
+  municipio_id: string;
+  municipio_nome: string;
+  latitude: number;
+  longitude: number;
+  criado_em: string;
 }
 
 export interface GrafoNo {

@@ -41,6 +41,10 @@ class BalcaoCaixaService:
         return await BalcaoRepository.listarEntradas(connection, tenantId, filtro)
 
     @staticmethod
+    async def listarPedidosMapa(connection: asyncpg.Connection, tenantId: uuid.UUID) -> List[Dict[str, Any]]:
+        return await BalcaoRepository.listarPedidosMapa(connection, tenantId)
+
+    @staticmethod
     async def obterEntrada(connection: asyncpg.Connection, tenantId: uuid.UUID,
                            entradaId: uuid.UUID) -> Dict[str, Any]:
         entrada = await BalcaoRepository.obterEntrada(connection, tenantId, entradaId)
@@ -64,8 +68,8 @@ class BalcaoCaixaService:
         municipios = await BalcaoTriagemService.listarMunicipios(connection)
         dados = extrairDados(entrada["texto_original"], municipios)
         vazios = [c for c, chave in (("nome", "nome"), ("municipio", "municipio_id")) if not dados.get(chave)]
+        configIa = await BalcaoIaService.obterConfiguracao(connection)
         if vazios:
-            configIa = await BalcaoIaService.obterConfiguracao(connection)
             sugeridos = await BalcaoIaService.complementar(
                 entrada["texto_original"], vazios, configRuntime=configIa, connection=connection
             )
@@ -77,6 +81,25 @@ class BalcaoCaixaService:
                 if munId:
                     dados["municipio_id"] = munId
                     dados["ia_complementou"] = True
+
+        if configIa.get("provider") not in ("", "regex"):
+            candidatos = await BalcaoRepository.listarAtendimentosAbertosResumo(connection, tenantId)
+            semelhante = await BalcaoIaService.detectarSemelhancaSemantica(
+                entrada["texto_original"], candidatos, configIa, connection=connection
+            )
+            if semelhante:
+                existentes = await BalcaoRepository.listarSugestoes(connection, tenantId, entradaId)
+                jaVinculado = {str(s.get("atendimento_relacionado_id")) for s in existentes if s.get("atendimento_relacionado_id")}
+                if semelhante["atendimento_id"] not in jaVinculado:
+                    await BalcaoRepository.gravarSugestao(
+                        connection,
+                        tenantId,
+                        entradaId,
+                        None,
+                        uuid.UUID(semelhante["atendimento_id"]),
+                        0.9,
+                        f"SEMELHANCA_IA: {semelhante['motivo']}",
+                    )
 
         await BalcaoRepository.gravarDadosExtraidos(connection, tenantId, entradaId, dados)
         return await BalcaoCaixaService.obterEntrada(connection, tenantId, entradaId)

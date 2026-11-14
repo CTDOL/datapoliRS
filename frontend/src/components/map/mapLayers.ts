@@ -1,5 +1,6 @@
 import L from 'leaflet';
 import { buildWhatsappLink } from '@/utils/whatsapp';
+import type { PedidoMapaItem } from '@/features/balcao/types';
 import type { LiderancaPoint, MapViewMode, MunicipioAtuacaoPoint } from './ElectionMap';
 
 export type MapTheme = 'dark' | 'light' | 'topo' | 'satelite' | 'osm';
@@ -241,6 +242,80 @@ export function popupLideranca(l: LiderancaPoint, mun: MunicipioAtuacaoPoint): s
       <span style="color:#64748b; font-size:11px;">${escaparHtml(mun.nm_municipio || '')}</span>
       ${telefoneHtml}
       ${linhaTarefas(l)}
+    </div>
+  `;
+}
+
+export interface GrupoPedidosMunicipio {
+  municipio_id: string;
+  municipio_nome: string;
+  latitude: number;
+  longitude: number;
+  pedidos: PedidoMapaItem[];
+}
+
+export function agruparPedidosPorMunicipio(pedidos: PedidoMapaItem[]): GrupoPedidosMunicipio[] {
+  const grupos = new Map<string, GrupoPedidosMunicipio>();
+  for (const p of pedidos) {
+    if (!p.latitude || !p.longitude) continue;
+    const grupo = grupos.get(p.municipio_id);
+    if (!grupo) {
+      grupos.set(p.municipio_id, {
+        municipio_id: p.municipio_id,
+        municipio_nome: p.municipio_nome,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        pedidos: [p],
+      });
+    } else {
+      grupo.pedidos.push(p);
+    }
+  }
+  return [...grupos.values()];
+}
+
+export function iconePedido(quantidade = 1): L.DivIcon {
+  const contador = quantidade > 1
+    ? `<span class="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-amber-700 text-[10px] font-bold flex items-center justify-center shadow">${quantidade}</span>`
+    : '';
+  return L.divIcon({
+    className: '',
+    html: `
+      <div class="pedido-marker relative w-4 h-4 cursor-pointer">
+        <div class="w-full h-full bg-amber-500 border-2 border-white rounded-full shadow-[0_0_10px_rgba(245,158,11,0.8)] hover:scale-125 transition-transform"></div>
+        ${contador}
+      </div>
+    `,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
+}
+
+export function popupPedidoMunicipio(grupo: GrupoPedidosMunicipio): string {
+  const itens = grupo.pedidos
+    .map((p) => {
+      const emAndamento = p.tipo === 'EM_ANDAMENTO';
+      const rotulo = emAndamento ? 'Em andamento' : 'Registrado';
+      const corBadge = emAndamento ? 'background:#ede9fe; color:#5b21b6;' : 'background:#fef3c7; color:#92400e;';
+      const nome = p.nome_atendido ? `<strong style="font-size:12px; color:#0f172a;">${escaparHtml(p.nome_atendido)}</strong><br/>` : '';
+      return `
+        <div style="padding:6px 0; border-top:1px solid #e2e8f0;">
+          <span style="display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:4px; ${corBadge}">${rotulo}</span><br/>
+          ${nome}
+          <span style="font-size:12px; color:#334155;">${escaparHtml(p.resumo)}</span>
+        </div>`;
+    })
+    .join('');
+
+  return `
+    <div style="color:#0f172a; padding:4px; font-family:sans-serif; min-width:220px; max-width:280px;">
+      <div style="font-size:12px; color:#64748b; margin-bottom:4px;">
+        ${escaparHtml(grupo.municipio_nome)} · ${grupo.pedidos.length} ${grupo.pedidos.length === 1 ? 'pedido' : 'pedidos'}
+      </div>
+      ${itens}
+      <div style="margin-top:6px; padding-top:6px; border-top:1px solid #e2e8f0; font-size:12px;">
+        <a href="/balcao" style="color:#7c3aed; font-weight:600; text-decoration:none;">Abrir no Balcão →</a>
+      </div>
     </div>
   `;
 }

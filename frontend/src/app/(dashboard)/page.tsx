@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Map as MapIcon, Users, Vote, Layers, Search, X } from 'lucide-react';
 
@@ -17,6 +18,8 @@ import { useMunicipios } from '@/features/geo/useMunicipios';
 import { useBuscaCandidato } from '@/features/mapaTatico/useBuscaCandidato';
 import { useLiderancasDoMapa } from '@/features/mapaTatico/useLiderancasDoMapa';
 import { useModoMapa } from '@/features/mapaTatico/useModoMapa';
+import { balcaoService } from '@/features/balcao/services/balcaoService';
+import type { PedidoMapaItem } from '@/features/balcao/types';
 
 const TIPOS_INFLUENCIA = ['Comunitária', 'Religiosa', 'Empresarial', 'Política'];
 
@@ -48,6 +51,27 @@ export default function DashboardPage() {
     setFiltroTipo,
   } = useLiderancasDoMapa();
   const { municipios } = useMunicipios();
+  const [pedidos, setPedidos] = useState<PedidoMapaItem[]>([]);
+
+  useEffect(() => {
+    let ativo = true;
+    balcaoService
+      .listarPedidosMapa()
+      .then((lista) => {
+        if (ativo && Array.isArray(lista)) setPedidos(lista);
+      })
+      .catch(() => {
+        // Silencioso para não bloquear o mapa se o usuário não tiver acesso ao Balcão
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  const pedidosFiltrados = useMemo(
+    () => (filtroCidade ? pedidos.filter((p) => p.municipio_id === filtroCidade) : pedidos),
+    [pedidos, filtroCidade]
+  );
 
   return (
     <div className="w-full h-full p-4 sm:p-8 space-y-6 overflow-y-auto">
@@ -171,6 +195,7 @@ export default function DashboardPage() {
 
       <ElectionMap
         liderancas={liderancas}
+        pedidos={pedidosFiltrados}
         viewMode={viewMode}
         votosPorMunicipio={votosPorMunicipio}
       />

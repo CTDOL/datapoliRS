@@ -8,7 +8,8 @@ from app.core.rate_limit import RateLimiter
 from app.schemas.balcao import (
     AnexoCriadoResposta, DescartarRequest, DescartarResponse, EfetivarRequest, EfetivarResponse,
     EntradaDetalhe, EntradaResumo, EventoTimeline, GrafoResposta, IaConfigAtualizarRequest,
-    IaConfigResposta, PortalCriadoResposta, PortalResumo, PortalRevogadoResposta, ResolverRequest, ResolverResponse,
+    IaConfigResposta, IaConfigTestarRequest, IaConfigTesteResposta, PedidoMapaItem, PortalCriadoResposta,
+    PortalResumo, PortalRevogadoResposta, ResolverRequest, ResolverResponse,
 )
 from app.schemas.user import UserInDB
 from app.services import observabilidade_service
@@ -173,6 +174,14 @@ async def resolver_atendimento(
     return resultado
 
 
+@router.get("/mapa-pedidos", response_model=List[PedidoMapaItem], summary="Pedidos registrados e em andamento para o mapa tático")
+async def listar_pedidos_mapa(
+    current_user: UserInDB = Depends(get_current_user),
+    connection: asyncpg.Connection = Depends(getDbConnection),
+):
+    return await BalcaoCaixaService.listarPedidosMapa(connection, current_user.tenant_id)
+
+
 @router.get("/grafo", response_model=GrafoResposta, summary="Grafo de correlações do gabinete")
 async def grafo(
     current_user: UserInDB = Depends(get_current_user),
@@ -202,4 +211,19 @@ async def atualizar_ia_config(
         payload.base_url,
         apiKey=payload.api_key,
         limparApiKey=payload.limpar_api_key,
+    )
+
+
+@router.post("/ia-config/testar", response_model=IaConfigTesteResposta, summary="Testa conectividade do motor de IA do Balcão")
+async def testar_ia_config(
+    payload: IaConfigTestarRequest,
+    current_user: UserInDB = Depends(require_role(["admin"])),
+    connection: asyncpg.Connection = Depends(getDbConnection),
+):
+    return await BalcaoIaService.testarConexao(
+        connection,
+        provider=payload.provider,
+        model=payload.model,
+        baseUrl=payload.base_url,
+        apiKey=payload.api_key,
     )

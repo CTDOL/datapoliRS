@@ -407,3 +407,73 @@ class BalcaoRepository:
             tenantId, atendidoIds,
         )
         return [dict(r) for r in registros]
+
+    @staticmethod
+    async def listarPedidosMapa(connection: asyncpg.Connection, tenantId: uuid.UUID) -> List[Dict[str, Any]]:
+        pendentes = await connection.fetch(
+            """SELECT e.id,
+                      'PENDENTE'::text AS tipo,
+                      LEFT(e.texto_original, 140) AS resumo,
+                      e.dados_extraidos_json->>'nome' AS nome_atendido,
+                      m.cd_ibge_7 AS municipio_id,
+                      m.nm_municipio AS municipio_nome,
+                      ST_Y(ST_Centroid(m.geometria))::float AS latitude,
+                      ST_X(ST_Centroid(m.geometria))::float AS longitude,
+                      e.criado_em
+                 FROM tb_balcao_entradas e
+                 JOIN tb_municipios m ON m.cd_ibge_7 = e.dados_extraidos_json->>'municipio_id'
+                WHERE e.tenant_id = $1
+                  AND e.status = 'PENDENTE'
+                  AND m.geometria IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM tb_balcao_sugestoes s
+                       WHERE s.tenant_id = e.tenant_id
+                         AND s.entrada_id = e.id
+                         AND s.atendimento_relacionado_id IS NOT NULL
+                  )
+                ORDER BY e.criado_em DESC""",
+            tenantId,
+        )
+        emAndamento = await connection.fetch(
+            """SELECT t.id,
+                      'EM_ANDAMENTO'::text AS tipo,
+                      LEFT(t.resumo, 140) AS resumo,
+                      a.nome AS nome_atendido,
+                      m.cd_ibge_7 AS municipio_id,
+                      m.nm_municipio AS municipio_nome,
+                      ST_Y(ST_Centroid(m.geometria))::float AS latitude,
+                      ST_X(ST_Centroid(m.geometria))::float AS longitude,
+                      t.criado_em
+                 FROM tb_atendimentos t
+                 JOIN tb_atendidos a ON a.tenant_id = t.tenant_id AND a.id = t.atendido_id
+                 JOIN tb_municipios m ON m.cd_ibge_7 = a.municipio_id
+                WHERE t.tenant_id = $1
+                  AND NOT EXISTS (
+                      SELECT 1 FROM tb_balcao_resolucoes r
+                       WHERE r.tenant_id = t.tenant_id AND r.atendimento_id = t.id
+                  )
+                  AND m.geometria IS NOT NULL
+                ORDER BY t.criado_em DESC""",
+            tenantId,
+        )
+        itens = [dict(r) for r in pendentes] + [dict(r) for r in emAndamento]
+        itens.sort(key=lambda item: item["criado_em"], reverse=True)
+        return itens
+
+    @staticmethod
+    async def listarAtendimentosAbertosResumo(
+        connection: asyncpg.Connection, tenantId: uuid.UUID, limite: int = 15
+    ) -> List[Dict[str, Any]]:
+        registros = await connection.fetch(
+            """SELECT t.id, LEFT(t.resumo, 200) AS resumo
+                 FROM tb_atendimentos t
+                WHERE t.tenant_id = $1
+                  AND NOT EXISTS (
+                      SELECT 1 FROM tb_balcao_resolucoes r
+                       WHERE r.tenant_id = t.tenant_id AND r.atendimento_id = t.id
+                  )
+                ORDER BY t.criado_em DESC
+                LIMIT $2""",
+            tenantId, limite,
+        )
+        return [dict(r) for r in registros]

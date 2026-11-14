@@ -219,3 +219,35 @@ def test_chave_api_ia_gravada_cifrada_e_removida_pelo_endpoint(client):
     )
     assert removido.status_code == 200
     assert removido.json()["api_key_configurada"] is False
+
+
+def test_endpoint_testar_api_ia_valida_regex_e_provedor_mockado(client):
+    gab = novoGabinete(client)
+    headersAdmin = gab["headers"]
+
+    resRegex = client.post(
+        "/api/v1/balcao/ia-config/testar",
+        headers=headersAdmin,
+        json={"provider": "regex"},
+    )
+    assert resRegex.status_code == 200
+    assert resRegex.json()["ok"] is True
+    assert resRegex.json()["provider"] == "regex"
+
+    class ProvedorFakeTeste:
+        model = "command-a-03-2025"
+
+        async def complementar(self, pedido):
+            return {"nome": "Maria Silva", "municipio": "Porto Alegre"}
+
+    from unittest.mock import patch
+
+    with patch("app.services.balcao_ia_service.BalcaoIaService._construirProvedor", return_value=ProvedorFakeTeste()):
+        resCohere = client.post(
+            "/api/v1/balcao/ia-config/testar",
+            headers=headersAdmin,
+            json={"provider": "cohere", "api_key": "cohere-teste"},
+        )
+    assert resCohere.status_code == 200
+    assert resCohere.json()["ok"] is True
+    assert resCohere.json()["resultado"] == {"nome": "Maria Silva", "municipio": "Porto Alegre"}

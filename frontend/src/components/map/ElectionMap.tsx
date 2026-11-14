@@ -10,13 +10,17 @@ import {
   aplicarEstiloCoropletico,
   ajustarVisibilidadeCoropletica,
   agruparPorMunicipio,
+  agruparPedidosPorMunicipio,
   iconeLideranca,
+  iconePedido,
   pontosDasLiderancas,
   popupLideranca,
   popupMunicipio,
+  popupPedidoMunicipio,
 } from './mapLayers';
 import { useMunicipiosGeoJson } from './useMunicipiosGeoJson';
 import { useAuthStore } from '@/stores/useAuthStore';
+import type { PedidoMapaItem } from '@/features/balcao/types';
 
 export interface MunicipioAtuacaoPoint {
   cd_ibge_7: string;
@@ -41,6 +45,7 @@ export type MapViewMode = 'liderancas' | 'votacao' | 'cruzada';
 
 interface ElectionMapProps {
   liderancas?: LiderancaPoint[];
+  pedidos?: PedidoMapaItem[];
   viewMode?: MapViewMode;
   /** cd_ibge_7 -> quantidade de votos nominais do candidato selecionado */
   votosPorMunicipio?: Record<string, number>;
@@ -48,6 +53,7 @@ interface ElectionMapProps {
 
 // Constantes de módulo: um default `= []` criaria array novo a cada render.
 const SEM_LIDERANCAS: LiderancaPoint[] = [];
+const SEM_PEDIDOS: PedidoMapaItem[] = [];
 const SEM_VOTOS: Record<string, number> = {};
 
 // Mesma abordagem (Leaflet + L.geoJson) já comprovadamente funcional no
@@ -57,12 +63,14 @@ const SEM_VOTOS: Record<string, number> = {};
 // mesmo navegador.
 export default function ElectionMap({
   liderancas = SEM_LIDERANCAS,
+  pedidos = SEM_PEDIDOS,
   viewMode = 'liderancas',
   votosPorMunicipio = SEM_VOTOS,
 }: ElectionMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const pedidoMarkersRef = useRef<L.Marker[]>([]);
   const tpTema = useAuthStore((estado) => estado.user?.tp_tema);
   const [mapTheme, setMapTheme] = useState<MapTheme>(tpTema === 'claro' ? 'light' : 'dark');
 
@@ -167,6 +175,26 @@ export default function ElectionMap({
     const bounds = L.latLngBounds(pontos.map(({ mun }) => [Number(mun.latitude), Number(mun.longitude)] as [number, number]));
     m.fitBounds(bounds, { padding: [60, 60], maxZoom: 12 });
   }, [liderancasEstaveis]);
+
+  // 7. Marcadores dos pedidos registrados e em andamento (Balcão)
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+
+    pedidoMarkersRef.current.forEach((marker) => m.removeLayer(marker));
+    pedidoMarkersRef.current = [];
+
+    if (viewMode === 'votacao') return;
+
+    agruparPedidosPorMunicipio(pedidos).forEach((grupo) => {
+      const marker = L.marker([Number(grupo.latitude) + 0.012, Number(grupo.longitude) + 0.015], {
+        icon: iconePedido(grupo.pedidos.length),
+        keyboard: false,
+      }).addTo(m);
+      marker.bindPopup(popupPedidoMunicipio(grupo));
+      pedidoMarkersRef.current.push(marker);
+    });
+  }, [pedidos, viewMode]);
 
   return (
     <div className="w-full h-[420px] min-h-[420px] sm:h-[600px] sm:min-h-[600px] rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 bg-zinc-950 relative">

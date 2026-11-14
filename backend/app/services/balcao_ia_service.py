@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import secrets
+import time
 from typing import Any, Callable, Dict, List, Optional, Protocol
 
 import asyncpg
@@ -392,3 +393,142 @@ class BalcaoIaService:
             if valor:
                 saida[campo] = valor
         return saida
+
+    @staticmethod
+    async def testarConexao(
+        connection: asyncpg.Connection,
+        provider: Optional[str] = None,
+        model: str = "",
+        baseUrl: str = "",
+        apiKey: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        configAtual = await BalcaoIaService.obterConfiguracao(connection)
+        providerAlvo = (provider if provider is not None else configAtual["provider"]).strip().lower()
+        if providerAlvo not in PROVEDORES_SUPORTADOS:
+            raise DomainException(
+                "Provedor de IA inválido. Escolha regex, openai, cohere, ollama, gemini ou anthropic.",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Dados inválidos",
+            )
+        if not providerAlvo or providerAlvo == "regex":
+            return {
+                "ok": True,
+                "provider": "regex",
+                "model": "",
+                "latencia_ms": 0,
+                "detalhe": "Motor determinístico Regex Python ativo (sem chamada externa).",
+                "resultado": {},
+            }
+        baseUrlLimpa = (baseUrl or configAtual.get("base_url", "")).strip().rstrip("/")
+        if baseUrlLimpa and not (baseUrlLimpa.startswith("https://") or baseUrlLimpa.startswith("http://")):
+            raise DomainException(
+                "Base URL deve começar com http:// ou https://.",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Dados inválidos",
+            )
+        modelAlvo = (model or configAtual.get("model", "")).strip()
+        chaveAlvo = (apiKey or "").strip() or await BalcaoIaService._resolverApiKey(connection) or None
+        provedor = BalcaoIaService._construirProvedor(
+            providerAlvo, model=modelAlvo, baseUrl=baseUrlLimpa, apiKey=chaveAlvo
+        )
+        if provedor is None:
+            return {
+                "ok": False,
+                "provider": providerAlvo,
+                "model": modelAlvo,
+                "latencia_ms": 0,
+                "detalhe": "Provedor não pôde ser inicializado.",
+                "resultado": {},
+            }
+        pedido = {
+            "instrucao": "Extraia apenas os campos pedidos do texto. Responda somente em JSON.",
+            "campos": ["nome", "municipio"],
+            "texto_nao_confiavel": "Meu nome é Maria Silva e moro em Porto Alegre.",
+        }
+        inicio = time.monotonic()
+        try:
+            resposta = await asyncio.wait_for(provedor.complementar(pedido), timeout=TIMEOUT_SEGUNDOS)
+        except httpx.HTTPStatusError as erro:
+            latencia = int((time.monotonic() - inicio) * 1000)
+            return {
+                "ok": False,
+                "provider": providerAlvo,
+                "model": getattr(provedor, "model", modelAlvo),
+                "latencia_ms": latencia,
+                "detalhe": f"Provedor respondeu HTTP {erro.response.status_code}. Verifique chave, modelo e Base URL.",
+                "resultado": {},
+            }
+        except Exception as erro:  # noqa: BLE001
+            latencia = int((time.monotonic() - inicio) * 1000)
+            return {
+                "ok": False,
+                "provider": providerAlvo,
+                "model": getattr(provedor, "model", modelAlvo),
+                "latencia_ms": latencia,
+                "detalhe": f"Falha ao conectar ({type(erro).__name__}): {str(erro)[:160]}",
+                "resultado": {},
+            }
+        latencia = int((time.monotonic() - inicio) * 1000)
+        limpo = {}
+        if isinstance(resposta, dict):
+            for campo in ("nome", "municipio"):
+                valor = _limpar(resposta.get(campo))
+                if valor:
+                    limpo[campo] = valor
+        return {
+            "ok": True,
+            "provider": providerAlvo,
+            "model": getattr(provedor, "model", modelAlvo),
+            "latencia_ms": latencia,
+            "detalhe": "Conexão validada com sucesso.",
+            "resultado": limpo,
+        }
+
+    @staticmethod
+    async def detectarSemelhancaSemantica(
+        texto: str,
+        candidatos: List[Dict[str, Any]],
+        configRuntime: Dict[str, Any],
+        connection: Optional[asyncpg.Connection] = None,
+    ) -> Optional[Dict[str, str]]:
+        """Compara semanticamente uma entrada com atendimentos abertos; retorna {atendimento_id, motivo} ou None."""
+        providerNome = str(configRuntime.get("provider", "")).strip().lower()
+        if not candidatos or not providerNome or providerNome == "regex":
+            return None
+        apiKeyRuntime: Optional[str] = None
+        if connection is not None:
+            apiKeyRuntime = await BalcaoIaService._resolverApiKey(connection) or None
+        provedor = BalcaoIaService._construirProvedor(
+            providerNome,
+            model=str(configRuntime.get("model", "")),
+            baseUrl=str(configRuntime.get("base_url", "")),
+            apiKey=apiKeyRuntime,
+        )
+        if provedor is None:
+            return None
+        idsValidos = {str(c["id"]): str(c["id"]) for c in candidatos}
+        listaFormatada = "\n".join(
+            f"- ID: {c['id']} | Resumo: {mascararDadosPessoais(str(c.get('resumo', '')))}"
+            for c in candidatos[:15]
+        )
+        pedido = {
+            "instrucao": (
+                "Compare o PEDIDO NOVO com os ATENDIMENTOS EXISTENTES. "
+                "Se algum atendimento tratar do mesmo assunto/demanda (semelhança semântica ou reforço), "
+                "retorne JSON com 'atendimento_id' (exatamente um dos IDs listados, ou '' se nenhum) e 'motivo' curto."
+            ),
+            "campos": ["atendimento_id", "motivo"],
+            "texto_nao_confiavel": f"PEDIDO NOVO:\n{mascararDadosPessoais(texto)}\n\nATENDIMENTOS EXISTENTES:\n{listaFormatada}",
+        }
+        try:
+            resposta = await asyncio.wait_for(provedor.complementar(pedido), timeout=TIMEOUT_SEGUNDOS)
+        except Exception as erro:  # noqa: BLE001 - fallback silencioso; nunca bloqueia triagem
+            logger.warning(f"Falha na detecção semântica por IA: {type(erro).__name__}")
+            return None
+        if not isinstance(resposta, dict):
+            return None
+        atendimentoId = _limpar(resposta.get("atendimento_id"))
+        if not atendimentoId or atendimentoId not in idsValidos:
+            return None
+        motivo = _limpar(resposta.get("motivo")) or "Demanda semanticamente semelhante identificada pela IA."
+        return {"atendimento_id": atendimentoId, "motivo": motivo}

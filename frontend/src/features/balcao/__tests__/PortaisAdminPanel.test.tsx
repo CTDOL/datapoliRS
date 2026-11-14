@@ -25,6 +25,14 @@ vi.mock('../services/balcaoService', async (importOriginal) => {
         api_key_configurada: false,
         provedores_suportados: ['regex', 'openai', 'ollama', 'gemini', 'anthropic'],
       }),
+      testarIaConfig: vi.fn().mockResolvedValue({
+        ok: true,
+        provider: 'cohere',
+        model: 'command-a-03-2025',
+        latencia_ms: 120,
+        detalhe: 'Conexão validada com sucesso.',
+        resultado: { nome: 'Maria Silva', municipio: 'Porto Alegre' },
+      }),
     },
   };
 });
@@ -103,6 +111,29 @@ describe('PortaisAdminPanel', () => {
         base_url: '',
         api_key: 'cohere-key-xyz',
       });
+    });
+  });
+
+  it('testa a API de IA pelo botão Testar API', async () => {
+    render(<PortaisAdminPanel />);
+
+    fireEvent.change(screen.getByLabelText(/Motor de extração/i), {
+      target: { value: 'cohere' },
+    });
+    fireEvent.change(screen.getByLabelText(/Chave de API de IA/i), {
+      target: { value: 'cohere-key-xyz' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Testar API/i }));
+
+    await waitFor(() => {
+      expect(balcaoService.testarIaConfig).toHaveBeenCalledWith({
+        provider: 'cohere',
+        model: '',
+        base_url: '',
+        api_key: 'cohere-key-xyz',
+      });
+      expect(screen.getByText(/Teste OK/i)).toBeTruthy();
+      expect(screen.getByText(/Conexão validada com sucesso/i)).toBeTruthy();
     });
   });
 });

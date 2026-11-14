@@ -11,6 +11,9 @@ import type {
   GrafoResposta,
   IaConfigAtualizarRequest,
   IaConfigResposta,
+  IaConfigTestarRequest,
+  IaConfigTesteResposta,
+  PedidoMapaItem,
   PortalCriadoResposta,
   PortalEntradaResposta,
   PortalResumo,
@@ -140,6 +143,16 @@ export const balcaoService = {
 
   async atualizarIaConfig(payload: IaConfigAtualizarRequest): Promise<IaConfigResposta> {
     const res = await api.put<IaConfigResposta>('/api/v1/balcao/ia-config', payload);
+    return res.data;
+  },
+
+  async testarIaConfig(payload: IaConfigTestarRequest): Promise<IaConfigTesteResposta> {
+    const res = await api.post<IaConfigTesteResposta>('/api/v1/balcao/ia-config/testar', payload);
+    return res.data;
+  },
+
+  async listarPedidosMapa(): Promise<PedidoMapaItem[]> {
+    const res = await api.get<PedidoMapaItem[]>('/api/v1/balcao/mapa-pedidos');
     return res.data;
   },
 };

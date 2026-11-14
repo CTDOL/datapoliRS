@@ -10,6 +10,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { balcaoService } from '../services/balcaoService';
+import { useMunicipios } from '@/features/geo/useMunicipios';
 import type {
   AnexoCriadoResposta,
   DescartarRequest,
@@ -64,6 +65,12 @@ export function TriagemDetalhe({
   const [motivoDescarte, setMotivoDescarte] = useState('');
 
   const pendente = entrada.status === 'PENDENTE';
+  const { municipios } = useMunicipios(pendente);
+  const municipioNome =
+    municipios.find((m) => m.cd_ibge_7 === municipioId.trim())?.nm_municipio ||
+    extraidos.municipios_candidatos_opcoes?.find((o) => o.id === municipioId.trim())?.nome ||
+    (municipioId.trim() === extraidos.municipio_id ? extraidos.municipio_nome : null) ||
+    null;
   const sugestaoResolvida = entrada.sugestoes.find((s) =>
     s.motivo.toLowerCase().includes('resolv')
   );
@@ -132,10 +139,26 @@ export function TriagemDetalhe({
             <Sparkles className="h-3.5 w-3.5 text-sky-600" />
             <span>Sugestões de vínculo ({entrada.sugestoes.length})</span>
           </p>
-          <ul className="mt-1.5 space-y-1 text-sky-900">
+          <ul className="mt-1.5 space-y-1.5 text-sky-900">
             {entrada.sugestoes.map((sug) => (
-              <li key={sug.id}>
-                {sug.motivo} ({Math.round(sug.score_similaridade * 100)}%)
+              <li key={sug.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {sug.motivo} ({Math.round(sug.score_similaridade * 100)}%)
+                </span>
+                {pendente && podeEscrever && sug.atendimento_relacionado_id && (
+                  <button
+                    type="button"
+                    disabled={processando}
+                    onClick={() =>
+                      onDescartar(entrada.id, {
+                        motivo: `Agrupado ao atendimento existente (${sug.motivo})`,
+                      })
+                    }
+                    className="rounded-md border border-sky-400 bg-white px-2.5 py-1 text-[11px] font-semibold text-sky-900 hover:bg-sky-100 disabled:opacity-60"
+                  >
+                    Agrupar no atendimento
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -191,12 +214,36 @@ export function TriagemDetalhe({
             )}
           </div>
 
+          {extraidos.ia_complementou && (
+            <p className="rounded-lg border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs text-purple-900">
+              Análise por IA aplicada para complementar campos em aberto.
+            </p>
+          )}
+
           {Array.isArray(extraidos.municipios_candidatos) &&
-            extraidos.municipios_candidatos.length > 1 && (
-              <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950">
-                Múltiplos municípios citados ({extraidos.municipios_candidatos.join(', ')}):
-                escolha o correto ou acione a análise com IA.
-              </p>
+            extraidos.municipios_candidatos.length > 1 &&
+            !municipioId.trim() && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950 space-y-2">
+                <p>
+                  Múltiplos municípios citados ({extraidos.municipios_candidatos.join(', ')}):
+                  escolha o correto ou acione a análise com IA.
+                </p>
+                {Array.isArray(extraidos.municipios_candidatos_opcoes) &&
+                  extraidos.municipios_candidatos_opcoes.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {extraidos.municipios_candidatos_opcoes.map((opcao) => (
+                        <button
+                          key={opcao.id}
+                          type="button"
+                          onClick={() => setMunicipioId(opcao.id)}
+                          className="rounded-md border border-amber-400 bg-white px-2.5 py-1 text-xs font-semibold text-amber-950 hover:bg-amber-100"
+                        >
+                          Usar {opcao.nome} ({opcao.id})
+                        </button>
+                      ))}
+                    </div>
+                  )}
+              </div>
             )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -237,16 +284,30 @@ export function TriagemDetalhe({
               />
             </div>
             <div>
-              <label htmlFor="triagem-municipio" className="mb-1 block text-xs text-zinc-300">
-                Código IBGE do município
+              <label htmlFor="triagem-municipio" className="mb-1 flex items-center justify-between gap-2 text-xs text-zinc-300">
+                <span>Código IBGE do município</span>
+                {municipioNome && (
+                  <span className="font-semibold text-purple-700">{municipioNome}</span>
+                )}
               </label>
               <input
                 id="triagem-municipio"
                 type="text"
+                list="balcao-municipios-lista"
                 value={municipioId}
                 onChange={(e) => setMunicipioId(e.target.value)}
+                placeholder="Digite o código IBGE ou escolha pelo nome"
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
               />
+              {municipios.length > 0 && (
+                <datalist id="balcao-municipios-lista">
+                  {municipios.map((m) => (
+                    <option key={m.cd_ibge_7} value={m.cd_ibge_7}>
+                      {m.nm_municipio} ({m.cd_ibge_7})
+                    </option>
+                  ))}
+                </datalist>
+              )}
             </div>
           </div>
 

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { agruparPorMunicipio, popupLideranca, popupMunicipio, pontosDasLiderancas } from './mapLayers';
+import {
+  agruparPedidosPorMunicipio,
+  agruparPorMunicipio,
+  popupLideranca,
+  popupMunicipio,
+  popupPedidoMunicipio,
+  pontosDasLiderancas,
+} from './mapLayers';
 import type { LiderancaPoint } from './ElectionMap';
 
 const PORTO_ALEGRE = { cd_ibge_7: '4314902', nm_municipio: 'Porto Alegre', latitude: -30.03, longitude: -51.23 };
@@ -75,5 +82,43 @@ describe('popupMunicipio', () => {
     expect(html).toContain('Jonas');
     expect(html).not.toContain('<img src=x');
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+  });
+});
+
+describe('agruparPedidosPorMunicipio e popupPedidoMunicipio', () => {
+  it('agrupa pedidos registrados e em andamento por município e escapa HTML', () => {
+    const grupos = agruparPedidosPorMunicipio([
+      {
+        id: 'p1',
+        tipo: 'PENDENTE',
+        resumo: 'Transporte escolar <script>x</script>',
+        nome_atendido: 'João',
+        municipio_id: '4316907',
+        municipio_nome: 'Santa Maria',
+        latitude: -29.68,
+        longitude: -53.8,
+        criado_em: '2026-11-13T23:00:00Z',
+      },
+      {
+        id: 'p2',
+        tipo: 'EM_ANDAMENTO',
+        resumo: 'Iluminação pública',
+        nome_atendido: 'Maria',
+        municipio_id: '4316907',
+        municipio_nome: 'Santa Maria',
+        latitude: -29.68,
+        longitude: -53.8,
+        criado_em: '2026-11-13T23:05:00Z',
+      },
+    ]);
+
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0].pedidos).toHaveLength(2);
+    const html = popupPedidoMunicipio(grupos[0]);
+    expect(html).toContain('Santa Maria · 2 pedidos');
+    expect(html).toContain('Registrado');
+    expect(html).toContain('Em andamento');
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;x&lt;/script&gt;');
   });
 });

@@ -113,7 +113,11 @@ def extrairDados(texto: str, municipios: List[Dict[str, Any]]) -> Dict[str, Any]
     achados = acharMunicipios(texto, municipios)
     dados["municipio_id"] = achados[0]["cd_ibge_7"] if len(achados) == 1 else None
     if len(achados) > 1:
-        dados["municipios_candidatos"] = sorted(m["nm_municipio"] for m in achados)
+        ordenados = sorted(achados, key=lambda m: m["nm_municipio"])
+        dados["municipios_candidatos"] = [m["nm_municipio"] for m in ordenados]
+        dados["municipios_candidatos_opcoes"] = [
+            {"id": m["cd_ibge_7"], "nome": m["nm_municipio"]} for m in ordenados
+        ]
     return dados
 
 
