@@ -21,6 +21,60 @@ _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 _TELEFONE = re.compile(r"(?<!\d)(?:\+?55[\s.-]?)?\(?([1-9][1-9])\)?[\s.-]?(9?\d{4})[\s.-]?(\d{4})(?!\d)")
 MUNICIPIOS_HOMONIMOS_TITULO = {"capitao"}
 
+# Siglas e abreviações recorrentes de municípios do RS (normalizadas, sem acento).
+SIGLAS_MUNICIPIOS_RS: Dict[str, str] = {
+    "poa": "porto alegre",
+    "nh": "novo hamburgo",
+    "sl": "sao leopoldo",
+    "pf": "passo fundo",
+    "sm": "santa maria",
+    "cxs": "caxias do sul",
+    "caxias": "caxias do sul",
+    "livramento": "santana do livramento",
+    "santa cruz": "santa cruz do sul",
+    "bento": "bento goncalves",
+    "rg": "rio grande",
+}
+
+_STOPWORDS_NOME = {
+    "pedido", "solicitacao", "vaga", "preciso", "quero", "ola", "oi", "bom", "boa",
+    "urgente", "favor", "obrigado", "obrigada", "atendimento", "demanda", "assunto",
+    "cpf", "rg", "tel", "telefone", "celular", "email", "cidade", "municipio",
+}
+
+_REGRAS_CATEGORIA_BASE: Dict[str, List[str]] = {
+    "Emprego e Renda": ["vaga", "emprego", "trabalho", "curriculo", "estagio", "sine"],
+    "Saúde": ["saude", "consulta", "exame", "cirurgia", "remedio", "medicamento", "ubs", "hospital", "leito"],
+    "Educação": ["escola", "creche", "vaga escolar", "universidade", "bolsa", "merenda", "transporte escolar"],
+    "Infraestrutura": ["asfalto", "buraco", "iluminacao", "poste", "agua", "esgoto", "calcada", "ponte", "estrada"],
+    "Assistência Social": ["cesta basica", "bolsa familia", "cadunico", "aluguel social", "abrigo", "vulnerabilidade"],
+    "Segurança": ["seguranca", "policiamento", "viatura", "roubo", "furto", "ocorrencia"],
+}
+
+
+def slugificarCategoria(nome: str) -> str:
+    limpo = normalizar(nome)
+    slug = re.sub(r"[^a-z0-9]+", "-", limpo).strip("-")
+    return slug[:80] or "outros"
+
+
+def classificarCategoriaRegex(texto: str, categoriasExistentes: List[Dict[str, Any]]) -> Optional[str]:
+    """Classifica por palavras-chave aprendidas nas categorias do gabinete e regras base."""
+    alvo = normalizar(texto)
+    if not alvo:
+        return None
+    for cat in categoriasExistentes:
+        termos = cat.get("palavras_chave_json") or []
+        for termo in termos:
+            termoNorm = normalizar(str(termo))
+            if termoNorm and re.search(rf"(?<![a-z0-9]){re.escape(termoNorm)}(?![a-z0-9])", alvo):
+                return str(cat["nome"])
+    for nomeCat, termos in _REGRAS_CATEGORIA_BASE.items():
+        for termo in termos:
+            if re.search(rf"(?<![a-z0-9]){re.escape(termo)}(?![a-z0-9])", alvo):
+                return nomeCat
+    return None
+
 
 def cpfValido(digitos: str) -> bool:
     if len(digitos) != 11 or digitos == digitos[0] * 11:
@@ -54,11 +108,49 @@ def mascararDadosPessoais(texto: str) -> str:
     return _TELEFONE.sub("[TELEFONE]", texto)
 
 
+def _expandirSiglasMunicipiosRS(textoNormalizado: str) -> str:
+    """Remove sufixo /RS ou -RS e expande siglas/apelidos comuns do RS mantendo fronteiras de palavra."""
+    alvo = re.sub(r"\s*[-/,]\s*rs(?![a-z0-9])", "", textoNormalizado)
+    for sigla, oficial in SIGLAS_MUNICIPIOS_RS.items():
+        if re.search(rf"(?<![a-z0-9]){re.escape(oficial)}(?![a-z0-9])", alvo):
+            continue
+        alvo = re.sub(rf"(?<![a-z0-9]){re.escape(sigla)}(?![a-z0-9])", oficial, alvo)
+    return alvo
+
+
+def _extrairNomeRegex(texto: str) -> Optional[str]:
+    """Extrai nome apenas com marcador explícito ou linha inicial 'Nome + contato/CPF'."""
+    rotulado = re.search(
+        r"(?im)^(?:nome(?:\s+completo)?|atendido|solicitante)\s*[:\-]\s*([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,4})\b",
+        texto,
+    )
+    if rotulado:
+        candidato = rotulado.group(1).strip()
+        if normalizar(candidato).split()[0] not in _STOPWORDS_NOME:
+            return candidato
+
+    for linha in texto.splitlines():
+        limpa = linha.strip()
+        if not limpa:
+            continue
+        estruturado = re.match(
+            r"^([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,3})\s*[-,:|]?\s*(?:\d{3}\.?\d{3}\.?\d{3}-?\d{2}|(?:\+?55[\s.-]?)?\(?\d{2}\)?[\s.-]?\d{4,5}[\s.-]?\d{4}|[A-Za-z0-9._%+-]+@)",
+            limpa,
+        )
+        if estruturado:
+            candidato = estruturado.group(1).strip()
+            palavras = normalizar(candidato).split()
+            if palavras and not any(p in _STOPWORDS_NOME for p in palavras):
+                return candidato
+        break
+    return None
+
+
 def acharMunicipios(texto: str, municipios: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Municípios citados no texto, por nome sem acento e com fronteira de palavra. Um nome contido em
     outro mais longo que também aparece na mesma posição (Santa Maria x Santa Maria do Herval) não conta.
     Municípios homônimos de patente/título (ex.: Capitão) só contam após preposição locativa ou antes de /RS ou -RS."""
-    alvo = normalizar(texto)
+    alvo = _expandirSiglasMunicipiosRS(normalizar(texto))
     ocorrencias = []
     for municipio in municipios:
         nome = normalizar(municipio["nm_municipio"])
@@ -96,10 +188,13 @@ def extrairDados(texto: str, municipios: List[Dict[str, Any]]) -> Dict[str, Any]
     if cpf:
         digitos = "".join(cpf.groups())
         if cpfValido(digitos):
+            dados["cpf_presente"] = True
             hashCpf = hmacDoCpf(digitos)
             if hashCpf:
                 dados["cpf_hash"] = hashCpf
             restante = restante[:cpf.start()] + " " + restante[cpf.end():]
+        elif not _TELEFONE.fullmatch(cpf.group(0)):
+            dados["cpf_invalido"] = True
 
     email = _EMAIL.search(restante)
     if email:
@@ -109,6 +204,10 @@ def extrairDados(texto: str, municipios: List[Dict[str, Any]]) -> Dict[str, Any]
     telefone = _TELEFONE.search(restante)
     if telefone:
         dados["telefone"] = "".join(telefone.groups())
+
+    nomeRegex = _extrairNomeRegex(texto)
+    if nomeRegex:
+        dados["nome"] = nomeRegex
 
     achados = acharMunicipios(texto, municipios)
     dados["municipio_id"] = achados[0]["cd_ibge_7"] if len(achados) == 1 else None

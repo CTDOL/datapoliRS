@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PortalEntradaResposta(BaseModel):
@@ -9,9 +9,14 @@ class PortalEntradaResposta(BaseModel):
     mensagem: str
 
 
+class PortalCriarRequest(BaseModel):
+    rotulo: Optional[str] = Field(default=None, max_length=80)
+
+
 class PortalCriadoResposta(BaseModel):
     id: uuid.UUID
-    token: str  # em claro só nesta resposta; o banco guarda apenas o SHA-256
+    rotulo: Optional[str] = None
+    token: str
     ativo: bool
     criado_em: datetime
 
@@ -23,8 +28,10 @@ class PortalRevogadoResposta(BaseModel):
 
 class PortalResumo(BaseModel):
     id: uuid.UUID
+    rotulo: Optional[str] = None
     ativo: bool
     criado_em: datetime
+    token: Optional[str] = None
 
 
 class AnexoResumo(BaseModel):
@@ -63,6 +70,9 @@ class EfetivarRequest(BaseModel):
     email: Optional[str] = None
     municipio_id: Optional[str] = None
     resumo: Optional[str] = None
+    lideranca_ponto_focal_id: Optional[uuid.UUID] = None
+    categoria: Optional[str] = None
+    intencao: Optional[str] = None
 
 
 class EfetivarResponse(BaseModel):
@@ -108,8 +118,9 @@ class ResolverResponse(BaseModel):
 
 class GrafoNo(BaseModel):
     id: str
-    tipo: str  # ATENDIDO, ATENDIMENTO ou MUNICIPIO
+    tipo: str  # ATENDIDO, ATENDIMENTO, MUNICIPIO, LIDERANCA ou CATEGORIA
     rotulo: str
+    subtitulo: Optional[str] = None
 
 
 class GrafoAresta(BaseModel):
@@ -121,6 +132,40 @@ class GrafoAresta(BaseModel):
 class GrafoResposta(BaseModel):
     nos: List[GrafoNo]
     arestas: List[GrafoAresta]
+
+
+class MotorAtivoResposta(BaseModel):
+    provider: str
+    model: str = ""
+
+
+class LiderancaSugeridaItem(BaseModel):
+    id_lideranca: uuid.UUID
+    nm_completo: str
+    ds_cargo: Optional[str] = None
+    vinculada_municipio: bool = False
+
+
+class LiderancasSugeridasResposta(BaseModel):
+    no_municipio: List[LiderancaSugeridaItem]
+    outras_do_gabinete: List[LiderancaSugeridaItem]
+
+
+class CategoriaResumo(BaseModel):
+    id: uuid.UUID
+    nome: str
+    slug: str
+    uso_count: int = 1
+
+
+class PontoFocalAtualizarRequest(BaseModel):
+    lideranca_ponto_focal_id: Optional[uuid.UUID] = None
+
+
+class PontoFocalAtualizarResposta(BaseModel):
+    atendimento_id: uuid.UUID
+    lideranca_ponto_focal_id: Optional[uuid.UUID] = None
+    lideranca_nome: Optional[str] = None
 
 
 class IaConfigResposta(BaseModel):

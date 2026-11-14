@@ -1,15 +1,18 @@
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 import asyncpg
 from app.core.dependencies import bloquear_super_admin, get_current_user, getDbConnection, require_role
 from app.core.rate_limit import RateLimiter
+from app.repositories.balcao_repository import BalcaoRepository
 from app.schemas.balcao import (
-    AnexoCriadoResposta, DescartarRequest, DescartarResponse, EfetivarRequest, EfetivarResponse,
+    AnexoCriadoResposta, CategoriaResumo, DescartarRequest, DescartarResponse, EfetivarRequest, EfetivarResponse,
     EntradaDetalhe, EntradaResumo, EventoTimeline, GrafoResposta, IaConfigAtualizarRequest,
-    IaConfigResposta, IaConfigTestarRequest, IaConfigTesteResposta, PedidoMapaItem, PortalCriadoResposta,
-    PortalResumo, PortalRevogadoResposta, ResolverRequest, ResolverResponse,
+    IaConfigResposta, IaConfigTestarRequest, IaConfigTesteResposta, LiderancasSugeridasResposta,
+    MotorAtivoResposta, PedidoMapaItem, PontoFocalAtualizarRequest, PontoFocalAtualizarResposta,
+    PortalCriadoResposta, PortalCriarRequest, PortalResumo, PortalRevogadoResposta,
+    ResolverRequest, ResolverResponse,
 )
 from app.schemas.user import UserInDB
 from app.services import observabilidade_service
@@ -129,12 +132,15 @@ async def listar_portais(
 
 
 @router.post("/portais", response_model=PortalCriadoResposta, status_code=status.HTTP_201_CREATED,
-             summary="Cria um portal; o token em claro só aparece nesta resposta")
+             summary="Cria um portal público para o gabinete")
 async def criar_portal(
+    payload: Optional[PortalCriarRequest] = Body(default=None),
     current_user: UserInDB = Depends(require_role(["admin"])),
     connection: asyncpg.Connection = Depends(getDbConnection)
 ):
-    return await BalcaoPortalService.criarPortal(connection, current_user.tenant_id)
+    return await BalcaoPortalService.criarPortal(
+        connection, current_user.tenant_id, payload.rotulo if payload else None
+    )
 
 
 @router.post("/portais/{id_portal}/revogar", response_model=PortalRevogadoResposta, summary="Revoga um portal")
@@ -182,12 +188,69 @@ async def listar_pedidos_mapa(
     return await BalcaoCaixaService.listarPedidosMapa(connection, current_user.tenant_id)
 
 
+@router.patch("/atendimentos/{id_atendimento}/ponto-focal", response_model=PontoFocalAtualizarResposta,
+               summary="Altera a liderança ponto-focal (1:1) do atendimento sem encerrá-lo")
+async def atualizar_ponto_focal(
+    id_atendimento: uuid.UUID,
+    payload: PontoFocalAtualizarRequest,
+    current_user: UserInDB = Depends(require_role(PAPEIS_DE_ESCRITA)),
+    connection: asyncpg.Connection = Depends(getDbConnection),
+):
+    return await BalcaoCaixaService.atualizarPontoFocal(
+        connection, current_user, id_atendimento, payload.lideranca_ponto_focal_id
+    )
+
+
+@router.get("/motor-ativo", response_model=MotorAtivoResposta,
+            summary="Informa ao operador qual motor (Regex ou IA) está ativo no momento")
+async def obter_motor_ativo(
+    current_user: UserInDB = Depends(get_current_user),
+    connection: asyncpg.Connection = Depends(getDbConnection),
+):
+    config = await BalcaoIaService.obterConfiguracao(connection)
+    return {"provider": config["provider"], "model": config["model"]}
+
+
+@router.get("/liderancas-sugeridas", response_model=LiderancasSugeridasResposta,
+            summary="Lista lideranças do gabinete priorizando as vinculadas ao município")
+async def listar_liderancas_sugeridas(
+    municipio_id: Optional[str] = Query(None),
+    current_user: UserInDB = Depends(get_current_user),
+    connection: asyncpg.Connection = Depends(getDbConnection),
+):
+    todas = await BalcaoRepository.listarLiderancasParaBalcao(
+        connection, current_user.tenant_id, municipio_id.strip() if municipio_id else None
+    )
+    return {
+        "no_municipio": [l for l in todas if l["vinculada_municipio"]],
+        "outras_do_gabinete": [l for l in todas if not l["vinculada_municipio"]],
+    }
+
+
+@router.get("/categorias", response_model=List[CategoriaResumo],
+            summary="Lista categorias orgânicas de atendimento do gabinete")
+async def listar_categorias(
+    current_user: UserInDB = Depends(get_current_user),
+    connection: asyncpg.Connection = Depends(getDbConnection),
+):
+    return await BalcaoRepository.listarCategorias(connection, current_user.tenant_id)
+
+
 @router.get("/grafo", response_model=GrafoResposta, summary="Grafo de correlações do gabinete")
 async def grafo(
+    incluir_resolvidos: bool = Query(False),
+    municipio_id: Optional[str] = Query(None),
+    categoria_id: Optional[uuid.UUID] = Query(None),
     current_user: UserInDB = Depends(get_current_user),
-    connection: asyncpg.Connection = Depends(getDbConnection)
+    connection: asyncpg.Connection = Depends(getDbConnection),
 ):
-    return await BalcaoGrafoService.montar(connection, current_user.tenant_id)
+    return await BalcaoGrafoService.montar(
+        connection,
+        current_user.tenant_id,
+        incluirResolvidos=incluir_resolvidos,
+        municipioId=municipio_id.strip() if municipio_id else None,
+        categoriaId=categoria_id,
+    )
 
 
 @router.get("/ia-config", response_model=IaConfigResposta, summary="Consulta o motor IA/Regex do Balcão")

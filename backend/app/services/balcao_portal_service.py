@@ -7,6 +7,7 @@ from fastapi import status
 from app.core.exceptions import DomainException
 from app.repositories.balcao_repository import BalcaoRepository
 from app.services.balcao_anexo_service import BalcaoAnexoService
+from app.services.balcao_ia_service import cifrarSegredo, decifrarSegredo
 from app.services.balcao_triagem_service import BalcaoTriagemService
 
 TEXTO_MAXIMO = 10000
@@ -48,14 +49,25 @@ class BalcaoPortalService:
         return MENSAGEM_DE_RECEBIMENTO
 
     @staticmethod
-    async def criarPortal(connection: asyncpg.Connection, tenantId: uuid.UUID) -> Dict[str, Any]:
+    async def criarPortal(
+        connection: asyncpg.Connection, tenantId: uuid.UUID, rotulo: Optional[str] = None
+    ) -> Dict[str, Any]:
         token = secrets.token_urlsafe(32)
-        portal = await BalcaoRepository.criarPortal(connection, tenantId, hashDoToken(token))
+        rotuloLimpo = (rotulo or "").strip()[:80] or None
+        portal = await BalcaoRepository.criarPortal(
+            connection, tenantId, hashDoToken(token), rotuloLimpo, cifrarSegredo(token)
+        )
         return {**portal, "token": token}
 
     @staticmethod
     async def listarPortais(connection: asyncpg.Connection, tenantId: uuid.UUID) -> List[Dict[str, Any]]:
-        return await BalcaoRepository.listarPortais(connection, tenantId)
+        registros = await BalcaoRepository.listarPortais(connection, tenantId)
+        resultado: List[Dict[str, Any]] = []
+        for r in registros:
+            cifrado = r.pop("token_cifrado", None)
+            token = decifrarSegredo(cifrado) if (r.get("ativo") and cifrado) else None
+            resultado.append({**r, "token": token or None})
+        return resultado
 
     @staticmethod
     async def revogarPortal(connection: asyncpg.Connection, tenantId: uuid.UUID,

@@ -346,6 +346,27 @@ def test_portal_revogado_deixa_de_receber_entradas(client, gab):
     assert client.post(url(PORTAL, token=criado["token"]), data={"texto": texto()}).status_code == 404
 
 
+def test_portal_ativo_permite_copiar_link_e_rotulo_sem_expor_claro_no_banco(client, gab):
+    criado = client.post(PORTAIS, headers=gab["headers"], json={"rotulo": "WhatsApp Gabinete"})
+    assert criado.status_code == 201, criado.text
+    dados = criado.json()
+    assert dados["rotulo"] == "WhatsApp Gabinete"
+
+    linha = consultar("SELECT rotulo, token_cifrado FROM tb_balcao_portais WHERE id = $1", uuid.UUID(dados["id"]))[0]
+    assert linha["rotulo"] == "WhatsApp Gabinete"
+    assert linha["token_cifrado"] and dados["token"] not in linha["token_cifrado"]
+
+    lista = client.get(PORTAIS, headers=gab["headers"]).json()
+    encontrado = next(p for p in lista if p["id"] == dados["id"])
+    assert encontrado["rotulo"] == "WhatsApp Gabinete"
+    assert encontrado["token"] == dados["token"]
+
+    client.post(url(REVOGAR, id=dados["id"]), headers=gab["headers"])
+    listaPosRevogacao = client.get(PORTAIS, headers=gab["headers"]).json()
+    revogado = next(p for p in listaPosRevogacao if p["id"] == dados["id"])
+    assert revogado["ativo"] is False and revogado["token"] is None
+
+
 # --- Anexos do atendimento -------------------------------------------------------------------
 
 @pytest.fixture()
@@ -548,3 +569,90 @@ def test_falha_da_ia_nao_bloqueia_a_efetivacao(client, gab, iaMock, falha):
     resposta = efetivar(client, gab, enviarEntrada(client, gab, texto("Pedido sem municipio")), nome="Maria")
     assert resposta.status_code == 201, resposta.text
     assert len(iaMock.pedidos) == 1
+
+
+def test_regex_reconhece_sigla_poa_nome_estruturado_e_status_cpf():
+    from app.services.balcao_triagem_service import extrairDados
+
+    municipios = [
+        {"cd_ibge_7": "4314902", "nm_municipio": "Porto Alegre"},
+        {"cd_ibge_7": "4313409", "nm_municipio": "Novo Hamburgo"},
+    ]
+    valido_poa = extrairDados("Jonas 00866396098\n\nVaga para DEv em POA", municipios)
+    assert valido_poa["nome"] == "Jonas"
+    assert valido_poa["municipio_id"] == "4314902"
+    assert valido_poa.get("cpf_presente") is True
+    assert valido_poa.get("cpf_hash")
+
+    invalido = extrairDados("Maria Silva 11122233344\nSolicitação em NH/RS", municipios)
+    assert invalido["nome"] == "Maria Silva"
+    assert invalido["municipio_id"] == "4313409"
+    assert invalido.get("cpf_invalido") is True
+    assert "cpf_hash" not in invalido
+
+
+def test_motor_ativo_liderancas_categoria_organica_troca_ponto_focal_e_grafo(client, gab):
+    from tests.balcao_apoio import executar, usuarioDoGabinete
+
+    # 1. Operador comum consegue consultar o motor ativo
+    op_headers = usuarioDoGabinete(gab, "operador")
+    motor = client.get("/api/v1/balcao/motor-ativo", headers=op_headers)
+    assert motor.status_code == 200, motor.text
+    assert motor.json()["provider"] in ("regex", "openai", "cohere", "ollama", "gemini", "anthropic")
+
+    # 2. Cria duas lideranças no gabinete, uma vinculada a Porto Alegre
+    lid_poa = uuid.uuid4()
+    lid_outra = uuid.uuid4()
+    executar(
+        """INSERT INTO tb_gabinete_liderancas (id_lideranca, tenant_id, nm_completo, tp_influencia)
+           VALUES ($1, $2, 'Lider POA', 'MEDIA'), ($3, $2, 'Lider Outra', 'BAIXA')""",
+        lid_poa, gab["tenant"], lid_outra,
+    )
+    executar(
+        "INSERT INTO tb_gabinete_lideranca_municipios (id_lideranca, cd_ibge_7) VALUES ($1, $2)",
+        lid_poa, PORTO_ALEGRE,
+    )
+
+    sug = client.get(f"/api/v1/balcao/liderancas-sugeridas?municipio_id={PORTO_ALEGRE}", headers=op_headers)
+    assert sug.status_code == 200, sug.text
+    assert [l["id_lideranca"] for l in sug.json()["no_municipio"]] == [str(lid_poa)]
+    assert str(lid_outra) in [l["id_lideranca"] for l in sug.json()["outras_do_gabinete"]]
+
+    # 3. Efetiva com ponto-focal, categoria orgânica e intenção
+    entrada = enviarEntrada(client, gab, texto("Jonas 00866396098\nVaga para Dev em POA"))
+    ef = client.post(
+        url(EFETIVAR, id=entrada),
+        headers=op_headers,
+        json={
+            "nome": "Jonas",
+            "municipio_id": PORTO_ALEGRE,
+            "resumo": "Busca vaga de desenvolvedor em Porto Alegre",
+            "lideranca_ponto_focal_id": str(lid_poa),
+            "categoria": "Emprego e Renda",
+            "intencao": "Solicitação de vaga",
+        },
+    )
+    assert ef.status_code == 201, ef.text
+    atendimento_id = ef.json()["atendimento_id"]
+
+    cats = client.get("/api/v1/balcao/categorias", headers=op_headers)
+    assert cats.status_code == 200
+    assert any(c["nome"] == "Emprego e Renda" for c in cats.json())
+
+    # 4. Grafo exibe LIDERANCA e CATEGORIA com arestas PONTO_FOCAL, ATUA_EM e PERTENCE_A
+    grafo = client.get("/api/v1/balcao/grafo", headers=op_headers)
+    assert grafo.status_code == 200, grafo.text
+    tipos_no = {n["tipo"] for n in grafo.json()["nos"]}
+    tipos_aresta = {a["tipo"] for a in grafo.json()["arestas"]}
+    assert {"ATENDIDO", "ATENDIMENTO", "MUNICIPIO", "LIDERANCA", "CATEGORIA"} <= tipos_no
+    assert {"PONTO_FOCAL", "ATUA_EM", "PERTENCE_A"} <= tipos_aresta
+
+    # 5. Troca ponto-focal sem encerrar o assunto
+    troca = client.patch(
+        f"/api/v1/balcao/atendimentos/{atendimento_id}/ponto-focal",
+        headers=op_headers,
+        json={"lideranca_ponto_focal_id": str(lid_outra)},
+    )
+    assert troca.status_code == 200, troca.text
+    assert troca.json()["lideranca_ponto_focal_id"] == str(lid_outra)
+    assert troca.json()["lideranca_nome"] == "Lider Outra"

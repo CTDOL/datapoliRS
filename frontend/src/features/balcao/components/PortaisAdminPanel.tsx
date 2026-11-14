@@ -16,11 +16,13 @@ import {
 export function PortaisAdminPanel() {
   const [portais, setPortais] = useState<PortalResumo[]>([]);
   const [portalCriado, setPortalCriado] = useState<PortalCriadoResposta | null>(null);
-  const [portalIdRevogar, setPortalIdRevogar] = useState('');
+  const [rotuloNovoPortal, setRotuloNovoPortal] = useState('');
+  const [portalConfirmarRevogacao, setPortalConfirmarRevogacao] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [mensagemStatus, setMensagemStatus] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [copiadoId, setCopiadoId] = useState<string | null>(null);
 
   const [iaConfig, setIaConfig] = useState<IaConfigResposta | null>(null);
   const [iaProvider, setIaProvider] = useState('regex');
@@ -64,9 +66,13 @@ export function PortaisAdminPanel() {
     setMensagemStatus(null);
     setCopiado(false);
     try {
-      const criado = await balcaoService.criarPortal();
+      const criado = await balcaoService.criarPortal(rotuloNovoPortal);
       setPortalCriado(criado);
-      setPortais((prev) => [{ id: criado.id, ativo: criado.ativo, criado_em: criado.criado_em }, ...prev]);
+      setRotuloNovoPortal('');
+      setPortais((prev) => [
+        { id: criado.id, rotulo: criado.rotulo ?? null, ativo: criado.ativo, criado_em: criado.criado_em, token: criado.token },
+        ...prev,
+      ]);
     } catch (err) {
       setErro(extrairMensagemErroApi(err, 'Não foi possível gerar um novo portal público.'));
     } finally {
@@ -81,9 +87,9 @@ export function PortaisAdminPanel() {
     try {
       const res = await balcaoService.revogarPortal(id);
       if (!res.ativo) {
-        setMensagemStatus(`Portal ${res.id} revogado com sucesso.`);
-        setPortalIdRevogar('');
-        setPortais((prev) => prev.map((p) => (p.id === res.id ? { ...p, ativo: false } : p)));
+        setMensagemStatus(`Link revogado permanentemente.`);
+        setPortalConfirmarRevogacao(null);
+        setPortais((prev) => prev.map((p) => (p.id === res.id ? { ...p, ativo: false, token: null } : p)));
       }
     } catch (err) {
       setErro(extrairMensagemErroApi(err, 'Não foi possível revogar o portal informado.'));
@@ -92,27 +98,42 @@ export function PortaisAdminPanel() {
     }
   };
 
-  const handleRevogar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const id = portalIdRevogar.trim();
-    if (!id) {
-      setErro('Informe o ID do portal para revogar.');
-      return;
+  const substituirLegado = async (portal: PortalResumo) => {
+    setCarregando(true);
+    setErro(null);
+    setMensagemStatus(null);
+    try {
+      const criado = await balcaoService.criarPortal(portal.rotulo ?? undefined);
+      await balcaoService.revogarPortal(portal.id);
+      setPortalCriado(criado);
+      setPortais((prev) => [
+        { id: criado.id, rotulo: criado.rotulo ?? null, ativo: criado.ativo, criado_em: criado.criado_em, token: criado.token },
+        ...prev.map((p) => (p.id === portal.id ? { ...p, ativo: false, token: null } : p)),
+      ]);
+      setMensagemStatus('Link antigo substituído por um novo link copiável.');
+    } catch (err) {
+      setErro(extrairMensagemErroApi(err, 'Não foi possível substituir o link legado.'));
+    } finally {
+      setCarregando(false);
     }
-    await revogarPorId(id);
   };
 
-  const linkCompleto =
-    portalCriado && typeof window !== 'undefined'
-      ? `${window.location.origin}/portal/${portalCriado.token}`
-      : portalCriado
-        ? `/portal/${portalCriado.token}`
-        : '';
+  const montarLink = (token: string) =>
+    typeof window !== 'undefined' ? `${window.location.origin}/portal/${token}` : `/portal/${token}`;
+
+  const linkCompleto = portalCriado ? montarLink(portalCriado.token) : '';
 
   const handleCopiar = async () => {
     if (!linkCompleto || !navigator?.clipboard) return;
     await navigator.clipboard.writeText(linkCompleto);
     setCopiado(true);
+  };
+
+  const handleCopiarPortal = async (portal: PortalResumo) => {
+    if (!portal.token || !navigator?.clipboard) return;
+    await navigator.clipboard.writeText(montarLink(portal.token));
+    setCopiadoId(portal.id);
+    setTimeout(() => setCopiadoId((atual) => (atual === portal.id ? null : atual)), 2500);
   };
 
   const handleSalvarIa = async (e: React.FormEvent) => {
@@ -214,102 +235,159 @@ export function PortaisAdminPanel() {
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold text-white">
               <Link2 className="h-4 w-4 text-purple-400" />
-              <span>Gerar Link de Portal Público</span>
+              <span>Portais Públicos (Links de Divulgação)</span>
             </h2>
             <p className="mt-1 text-xs text-zinc-400">
-              O token em claro é exibido apenas uma vez no momento da criação.
+              Gere e mantenha múltiplos links ativos (WhatsApp, QR Code, bio) com cópia e revogação a qualquer momento.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleCriarPortal}
-            disabled={carregando}
-            className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-xs font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
-          >
-            <KeyRound className="h-4 w-4" />
-            <span>{carregando ? 'Gerando...' : 'Gerar Novo Portal'}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              aria-label="Rótulo opcional do novo portal"
+              maxLength={80}
+              value={rotuloNovoPortal}
+              onChange={(e) => setRotuloNovoPortal(e.target.value)}
+              placeholder="Rótulo opcional (ex.: WhatsApp)"
+              className="w-56 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-purple-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleCriarPortal}
+              disabled={carregando}
+              className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-xs font-semibold text-white hover:bg-purple-500 disabled:opacity-60"
+            >
+              <KeyRound className="h-4 w-4" />
+              <span>{carregando ? 'Gerando...' : 'Gerar Novo Portal'}</span>
+            </button>
+          </div>
         </div>
 
         {portalCriado && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-2">
-            <p className="text-xs font-semibold text-amber-900">
-              Copie e guarde este link agora. Ele não será exibido novamente.
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <code className="flex-1 break-all rounded-lg bg-zinc-950 px-3 py-2 text-xs text-zinc-100">
-                {linkCompleto}
-              </code>
-              <button
-                type="button"
-                onClick={handleCopiar}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-medium text-white hover:bg-zinc-700"
-              >
-                <Copy className="h-3.5 w-3.5" />
-                <span>{copiado ? 'Copiado' : 'Copiar'}</span>
-              </button>
-            </div>
-            <p className="text-[11px] text-zinc-400">
-              ID do portal: <span className="font-mono text-zinc-200">{portalCriado.id}</span>
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs">
+            <span className="font-medium text-emerald-200">
+              Novo link criado e adicionado à lista abaixo!
+            </span>
+            <button
+              type="button"
+              onClick={handleCopiar}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-600/20 px-3 py-1 text-xs font-semibold text-emerald-100 hover:bg-emerald-600/30"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              <span>{copiado ? 'Copiado!' : 'Copiar Novo Link'}</span>
+            </button>
           </div>
         )}
-      </section>
 
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 space-y-3">
-        <h2 className="flex items-center gap-2 text-base font-semibold text-white">
-          <ShieldOff className="h-4 w-4 text-rose-400" />
-          <span>Revogar Portal Existente</span>
-        </h2>
-        <form onSubmit={handleRevogar} className="flex flex-wrap items-center gap-3">
-          <input
-            type="text"
-            aria-label="ID do portal para revogar"
-            value={portalIdRevogar}
-            onChange={(e) => setPortalIdRevogar(e.target.value)}
-            placeholder="UUID do portal (ex.: 550e8400-e29b-41d4-...)"
-            className="min-w-[260px] flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white placeholder-zinc-500 focus:border-purple-500 focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={carregando}
-            className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60"
-          >
-            Revogar Portal
-          </button>
-        </form>
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            Links Ativos ({portais.filter((p) => p.ativo).length})
+          </h3>
+          {portais.filter((p) => p.ativo).length === 0 ? (
+            <p className="rounded-xl border border-zinc-800 bg-zinc-950/40 px-4 py-3 text-xs text-zinc-400">
+              Nenhum link ativo no momento. Clique em <strong>Gerar Novo Portal</strong> acima para criar um link.
+            </p>
+          ) : (
+            <ul className="divide-y divide-zinc-800 rounded-xl border border-zinc-800 bg-zinc-950/40">
+              {portais
+                .filter((p) => p.ativo)
+                .map((portal) => {
+                  const confirmando = portalConfirmarRevogacao === portal.id;
+                  return (
+                    <li key={portal.id} className="space-y-2.5 px-3.5 py-3 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {portal.rotulo && (
+                              <span className="rounded-md border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[11px] font-semibold text-purple-200">
+                                {portal.rotulo}
+                              </span>
+                            )}
+                            <span className="rounded-md border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                              Ativo
+                            </span>
+                            <span className="text-[11px] text-zinc-500">
+                              {new Date(portal.criado_em).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
+                          {portal.token ? (
+                            <code className="block truncate rounded-lg bg-zinc-950 px-2.5 py-1.5 text-[11px] text-zinc-200">
+                              {montarLink(portal.token)}
+                            </code>
+                          ) : (
+                            <span className="block font-mono text-[11px] text-zinc-400">
+                              Link antigo sem cópia salva — clique em Substituir Link para gerar um copiável
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {portal.token ? (
+                            <button
+                              type="button"
+                              onClick={() => handleCopiarPortal(portal)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-600/20 px-3 py-1.5 text-xs font-semibold text-purple-100 hover:bg-purple-600/30"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              <span>{copiadoId === portal.id ? 'Copiado!' : 'Copiar Link'}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={carregando}
+                              onClick={() => substituirLegado(portal)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-600/20 px-3 py-1.5 text-xs font-semibold text-purple-100 hover:bg-purple-600/30 disabled:opacity-60"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              <span>Substituir Link</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={carregando || confirmando}
+                            onClick={() => setPortalConfirmarRevogacao(portal.id)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-50"
+                          >
+                            <ShieldOff className="h-3.5 w-3.5" />
+                            <span>Revogar Link</span>
+                          </button>
+                        </div>
+                      </div>
 
-        {portais.length > 0 && (
-          <ul className="divide-y divide-zinc-800 rounded-xl border border-zinc-800 bg-zinc-950/40">
-            {portais.map((portal) => (
-              <li key={portal.id} className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 text-xs">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-zinc-300">{portal.id}</span>
-                  <span
-                    className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                      portal.ativo ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'bg-zinc-800 text-zinc-400'
-                    }`}
-                  >
-                    {portal.ativo ? 'Ativo' : 'Revogado'}
-                  </span>
-                  <span className="text-[11px] text-zinc-500">
-                    {new Date(portal.criado_em).toLocaleString('pt-BR')}
-                  </span>
-                </div>
-                {portal.ativo && (
-                  <button
-                    type="button"
-                    disabled={carregando}
-                    onClick={() => revogarPorId(portal.id)}
-                    className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1 text-[11px] font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60"
-                  >
-                    Revogar
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
+                      {confirmando && (
+                        <div
+                          role="alert"
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-rose-500/40 bg-rose-950/50 px-3 py-2 text-xs text-rose-200"
+                        >
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+                            <span>Atenção: esta revogação é irrevogável! O link deixará de funcionar imediatamente.</span>
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={carregando}
+                              onClick={() => setPortalConfirmarRevogacao(null)}
+                              className="rounded-md border border-zinc-600 bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-200 hover:bg-zinc-700"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              disabled={carregando}
+                              onClick={() => revogarPorId(portal.id)}
+                              className="rounded-md bg-rose-600 px-3 py-1 text-[11px] font-semibold text-white hover:bg-rose-500 disabled:opacity-60"
+                            >
+                              Confirmar Revogação
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+            </ul>
+          )}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 space-y-3">

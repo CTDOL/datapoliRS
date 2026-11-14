@@ -9,6 +9,7 @@ vi.mock('../services/balcaoService', async (importOriginal) => {
     ...original,
     balcaoService: {
       ...original.balcaoService,
+      listarPortais: vi.fn().mockResolvedValue([]),
       criarPortal: vi.fn(),
       revogarPortal: vi.fn(),
       obterIaConfig: vi.fn().mockResolvedValue({
@@ -59,16 +60,22 @@ describe('PortaisAdminPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Gerar Novo Portal/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/\/portal\/token-secreto-abc/)).toBeTruthy();
+      expect(screen.getAllByText(/\/portal\/token-secreto-abc/).length).toBeGreaterThan(0);
     });
 
-    fireEvent.change(screen.getByLabelText(/ID do portal para revogar/i), {
-      target: { value: 'portal-uuid-1' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /Revogar Portal/i }));
+    const revogarBtn = screen.getByRole('button', { name: /Revogar Link/i });
+    fireEvent.click(revogarBtn);
+
+    expect(screen.getByRole('alert').textContent).toMatch(/irrevogável/i);
+    fireEvent.click(screen.getByRole('button', { name: /Cancelar/i }));
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Revogar Link/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Confirmar Revogação/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('status').textContent).toMatch(/portal-uuid-1 revogado/i);
+      expect(balcaoService.revogarPortal).toHaveBeenCalledWith('portal-uuid-1');
+      expect(screen.getByRole('status').textContent).toMatch(/Link revogado permanentemente/i);
     });
   });
 
@@ -134,6 +141,49 @@ describe('PortaisAdminPanel', () => {
       });
       expect(screen.getByText(/Teste OK/i)).toBeTruthy();
       expect(screen.getByText(/Conexão validada com sucesso/i)).toBeTruthy();
+    });
+  });
+
+  it('lista portais ativos com rótulo e permite copiar o link completo a qualquer momento', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    vi.mocked(balcaoService.listarPortais).mockResolvedValue([
+      {
+        id: 'portal-ativo-1',
+        rotulo: 'WhatsApp',
+        ativo: true,
+        criado_em: '2026-11-14T09:00:00Z',
+        token: 'tok-ativo-123',
+      },
+    ]);
+    vi.mocked(balcaoService.criarPortal).mockResolvedValue({
+      id: 'portal-novo-2',
+      rotulo: 'QR Evento',
+      token: 'tok-novo-456',
+      ativo: true,
+      criado_em: '2026-11-14T09:05:00Z',
+    });
+
+    render(<PortaisAdminPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('WhatsApp')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Copiar Link/i }));
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/portal/tok-ativo-123`);
+
+    fireEvent.change(screen.getByLabelText(/Rótulo opcional do novo portal/i), {
+      target: { value: 'QR Evento' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Gerar Novo Portal/i }));
+
+    await waitFor(() => {
+      expect(balcaoService.criarPortal).toHaveBeenCalledWith('QR Evento');
+      expect(screen.getByText('QR Evento')).toBeTruthy();
     });
   });
 });

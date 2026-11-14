@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Inbox, KeyRound, Network, AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Inbox, KeyRound, Network, AlertTriangle, Cpu } from 'lucide-react';
 import { usePermissoes } from '@/stores/usePermissoes';
 import { useBalcaoCaixa, type FiltroStatus } from '../hooks/useBalcaoCaixa';
+import { balcaoService } from '../services/balcaoService';
+import type { MotorAtivoResposta } from '../types';
 import { BalcaoGrafoPanel } from './BalcaoGrafoPanel';
 import { PortaisAdminPanel } from './PortaisAdminPanel';
 import { TriagemDetalhe } from './TriagemDetalhe';
@@ -19,7 +21,24 @@ const FILTROS: Array<{ valor: FiltroStatus; rotulo: string }> = [
 
 export function BalcaoCaixa() {
   const [aba, setAba] = useState<AbaBalcao>('caixa');
+  const [motorAtivo, setMotorAtivo] = useState<MotorAtivoResposta | null>(null);
   const { podeEscrever, podeExcluir } = usePermissoes();
+
+  useEffect(() => {
+    let cancelado = false;
+    if (typeof balcaoService.obterMotorAtivo !== 'function') return;
+    balcaoService
+      .obterMotorAtivo()
+      .then((res) => {
+        if (!cancelado) setMotorAtivo(res);
+      })
+      .catch(() => {
+        // Silencioso: fallback visual caso endpoint não esteja disponível
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [aba]);
   const {
     filtroStatus,
     setFiltroStatus,
@@ -81,6 +100,24 @@ export function BalcaoCaixa() {
             <KeyRound className="h-4 w-4" />
             <span>Portais Públicos</span>
           </button>
+        )}
+
+        {motorAtivo && (
+          <div
+            data-testid="balcao-motor-ativo"
+            className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium ${
+              motorAtivo.provider && motorAtivo.provider !== 'regex'
+                ? 'border-purple-500/40 bg-purple-500/10 text-purple-200'
+                : 'border-zinc-700 bg-zinc-900 text-zinc-300'
+            }`}
+          >
+            <Cpu className="h-3.5 w-3.5" />
+            <span>
+              {motorAtivo.provider && motorAtivo.provider !== 'regex'
+                ? `Motor ativo: IA (${motorAtivo.provider}${motorAtivo.model ? ` · ${motorAtivo.model}` : ''})`
+                : 'Motor ativo: Regex (determinístico)'}
+            </span>
+          </div>
         )}
       </div>
 

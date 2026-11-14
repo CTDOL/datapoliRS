@@ -1,6 +1,7 @@
 import { api } from '@/services/api';
 import type {
   AnexoCriadoResposta,
+  CategoriaResumo,
   DescartarRequest,
   DescartarResponse,
   EfetivarRequest,
@@ -13,7 +14,10 @@ import type {
   IaConfigResposta,
   IaConfigTestarRequest,
   IaConfigTesteResposta,
+  LiderancasSugeridasResposta,
+  MotorAtivoResposta,
   PedidoMapaItem,
+  PontoFocalAtualizarResposta,
   PortalCriadoResposta,
   PortalEntradaResposta,
   PortalResumo,
@@ -119,8 +123,10 @@ export const balcaoService = {
     return res.data;
   },
 
-  async criarPortal(): Promise<PortalCriadoResposta> {
-    const res = await api.post<PortalCriadoResposta>('/api/v1/balcao/portais');
+  async criarPortal(rotulo?: string): Promise<PortalCriadoResposta> {
+    const res = await api.post<PortalCriadoResposta>('/api/v1/balcao/portais', {
+      rotulo: rotulo?.trim() || null,
+    });
     return res.data;
   },
 
@@ -131,8 +137,40 @@ export const balcaoService = {
     return res.data;
   },
 
-  async obterGrafo(): Promise<GrafoResposta> {
-    const res = await api.get<GrafoResposta>('/api/v1/balcao/grafo');
+  async obterGrafo(opcoes?: {
+    incluir_resolvidos?: boolean;
+    municipio_id?: string;
+    categoria_id?: string;
+  }): Promise<GrafoResposta> {
+    const res = await api.get<GrafoResposta>('/api/v1/balcao/grafo', { params: opcoes });
+    return res.data;
+  },
+
+  async obterMotorAtivo(): Promise<MotorAtivoResposta> {
+    const res = await api.get<MotorAtivoResposta>('/api/v1/balcao/motor-ativo');
+    return res.data;
+  },
+
+  async listarLiderancasSugeridas(municipioId?: string): Promise<LiderancasSugeridasResposta> {
+    const res = await api.get<LiderancasSugeridasResposta>('/api/v1/balcao/liderancas-sugeridas', {
+      params: municipioId ? { municipio_id: municipioId } : undefined,
+    });
+    return res.data;
+  },
+
+  async listarCategorias(): Promise<CategoriaResumo[]> {
+    const res = await api.get<CategoriaResumo[]>('/api/v1/balcao/categorias');
+    return res.data;
+  },
+
+  async atualizarPontoFocal(
+    atendimentoId: string,
+    liderancaId: string | null
+  ): Promise<PontoFocalAtualizarResposta> {
+    const res = await api.patch<PontoFocalAtualizarResposta>(
+      `/api/v1/balcao/atendimentos/${atendimentoId}/ponto-focal`,
+      { lideranca_ponto_focal_id: liderancaId }
+    );
     return res.data;
   },
 

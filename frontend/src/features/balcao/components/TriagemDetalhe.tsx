@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -8,16 +8,19 @@ import {
   FileText,
   Sparkles,
   Trash2,
+  UserCheck,
 } from 'lucide-react';
 import { balcaoService } from '../services/balcaoService';
 import { useMunicipios } from '@/features/geo/useMunicipios';
 import type {
   AnexoCriadoResposta,
+  CategoriaResumo,
   DescartarRequest,
   EfetivarRequest,
   EfetivarResponse,
   EntradaDetalhe,
   EventoTimeline,
+  LiderancasSugeridasResposta,
   ResolverRequest,
   ResolverResponse,
 } from '../types';
@@ -61,11 +64,53 @@ export function TriagemDetalhe({
   const [municipioId, setMunicipioId] = useState(
     typeof extraidos.municipio_id === 'string' ? extraidos.municipio_id : ''
   );
-  const [resumo, setResumo] = useState(entrada.texto_original || '');
+  const [resumo, setResumo] = useState(
+    typeof extraidos.resumo_sugerido === 'string' && extraidos.resumo_sugerido.trim()
+      ? extraidos.resumo_sugerido
+      : entrada.texto_original || ''
+  );
+  const [categoria, setCategoria] = useState(
+    typeof extraidos.categoria === 'string' ? extraidos.categoria : ''
+  );
+  const [intencao, setIntencao] = useState(
+    typeof extraidos.intencao === 'string' ? extraidos.intencao : ''
+  );
+  const [liderancaId, setLiderancaId] = useState('');
+  const [liderancas, setLiderancas] = useState<LiderancasSugeridasResposta | null>(null);
+  const [categorias, setCategorias] = useState<CategoriaResumo[]>([]);
+  const [pontoFocalSalvoMsg, setPontoFocalSalvoMsg] = useState<string | null>(null);
   const [motivoDescarte, setMotivoDescarte] = useState('');
 
   const pendente = entrada.status === 'PENDENTE';
   const { municipios } = useMunicipios(pendente);
+
+  useEffect(() => {
+    let cancelado = false;
+    if (typeof balcaoService.listarLiderancasSugeridas !== 'function') return;
+    balcaoService
+      .listarLiderancasSugeridas(municipioId.trim() || undefined)
+      .then((res) => {
+        if (!cancelado) setLiderancas(res);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [municipioId]);
+
+  useEffect(() => {
+    let cancelado = false;
+    if (!pendente || typeof balcaoService.listarCategorias !== 'function') return;
+    balcaoService
+      .listarCategorias()
+      .then((res) => {
+        if (!cancelado) setCategorias(res);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [pendente]);
   const municipioNome =
     municipios.find((m) => m.cd_ibge_7 === municipioId.trim())?.nm_municipio ||
     extraidos.municipios_candidatos_opcoes?.find((o) => o.id === municipioId.trim())?.nome ||
@@ -83,6 +128,9 @@ export function TriagemDetalhe({
       email: email.trim() || null,
       municipio_id: municipioId.trim() || null,
       resumo: resumo.trim() || null,
+      lideranca_ponto_focal_id: liderancaId.trim() || null,
+      categoria: categoria.trim() || null,
+      intencao: intencao.trim() || null,
     });
   };
 
@@ -95,6 +143,29 @@ export function TriagemDetalhe({
     if (typeof novos.telefone === 'string') setTelefone(novos.telefone);
     if (typeof novos.email === 'string') setEmail(novos.email);
     if (typeof novos.municipio_id === 'string') setMunicipioId(novos.municipio_id);
+    if (typeof novos.categoria === 'string') setCategoria(novos.categoria);
+    if (typeof novos.intencao === 'string') setIntencao(novos.intencao);
+    if (typeof novos.resumo_sugerido === 'string' && novos.resumo_sugerido.trim()) {
+      setResumo(novos.resumo_sugerido);
+    }
+  };
+
+  const handleTrocarPontoFocal = async (novoId: string) => {
+    setLiderancaId(novoId);
+    if (!efetivacaoRecente || typeof balcaoService.atualizarPontoFocal !== 'function') return;
+    try {
+      const res = await balcaoService.atualizarPontoFocal(
+        efetivacaoRecente.atendimento_id,
+        novoId || null
+      );
+      setPontoFocalSalvoMsg(
+        res.lideranca_nome
+          ? `Ponto-focal atualizado para ${res.lideranca_nome}.`
+          : 'Ponto-focal removido (atendimento segue aberto).'
+      );
+    } catch {
+      setPontoFocalSalvoMsg('Não foi possível atualizar o ponto-focal.');
+    }
   };
 
   const handleDescartar = async () => {
@@ -220,6 +291,20 @@ export function TriagemDetalhe({
             </p>
           )}
 
+          {(extraidos.cpf_presente || extraidos.cpf_invalido) && (
+            <p
+              className={
+                extraidos.cpf_presente
+                  ? 'rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200'
+                  : 'rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200'
+              }
+            >
+              {extraidos.cpf_presente
+                ? 'CPF válido identificado (protegido por hash LGPD).'
+                : 'Sequência de 11 dígitos detectada, mas o CPF possui dígito verificador inválido.'}
+            </p>
+          )}
+
           {Array.isArray(extraidos.municipios_candidatos) &&
             extraidos.municipios_candidatos.length > 1 &&
             !municipioId.trim() && (
@@ -309,6 +394,78 @@ export function TriagemDetalhe({
                 </datalist>
               )}
             </div>
+            <div>
+              <label htmlFor="triagem-categoria" className="mb-1 block text-xs text-zinc-300">
+                Categoria (orgânica)
+              </label>
+              <input
+                id="triagem-categoria"
+                type="text"
+                list="balcao-categorias-lista"
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
+                placeholder="Ex.: Emprego e Renda, Saúde..."
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+              />
+              {categorias.length > 0 && (
+                <datalist id="balcao-categorias-lista">
+                  {categorias.map((c) => (
+                    <option key={c.id} value={c.nome} />
+                  ))}
+                </datalist>
+              )}
+            </div>
+            <div>
+              <label htmlFor="triagem-intencao" className="mb-1 block text-xs text-zinc-300">
+                Intenção / Contexto
+              </label>
+              <input
+                id="triagem-intencao"
+                type="text"
+                value={intencao}
+                onChange={(e) => setIntencao(e.target.value)}
+                placeholder="Ex.: Solicitação de vaga de emprego"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="triagem-lideranca" className="mb-1 flex items-center gap-1.5 text-xs text-zinc-300">
+              <UserCheck className="h-3.5 w-3.5 text-purple-400" />
+              <span>Liderança Ponto-Focal (1:1)</span>
+              {liderancas && liderancas.no_municipio.length > 0 && (
+                <span className="ml-auto text-[11px] text-emerald-300">
+                  {liderancas.no_municipio.length} vinculada(s) ao município
+                </span>
+              )}
+            </label>
+            <select
+              id="triagem-lideranca"
+              value={liderancaId}
+              onChange={(e) => setLiderancaId(e.target.value)}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white focus:border-purple-500 focus:outline-none"
+            >
+              <option value="">Sem liderança ponto-focal definida</option>
+              {liderancas && liderancas.no_municipio.length > 0 && (
+                <optgroup label="Sugeridas no município">
+                  {liderancas.no_municipio.map((l) => (
+                    <option key={l.id_lideranca} value={l.id_lideranca}>
+                      {l.nm_completo}{l.ds_cargo ? ` · ${l.ds_cargo}` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {liderancas && liderancas.outras_do_gabinete.length > 0 && (
+                <optgroup label="Outras lideranças do gabinete">
+                  {liderancas.outras_do_gabinete.map((l) => (
+                    <option key={l.id_lideranca} value={l.id_lideranca}>
+                      {l.nm_completo}{l.ds_cargo ? ` · ${l.ds_cargo}` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
           </div>
 
           <div>
@@ -358,16 +515,47 @@ export function TriagemDetalhe({
       )}
 
       {(efetivacaoRecente || timeline.length > 0) && (
-        <AtendimentoTimelinePanel
-          atendimentoId={efetivacaoRecente?.atendimento_id ?? null}
-          atendidoId={efetivacaoRecente?.atendido_id ?? null}
-          protocolo={efetivacaoRecente?.protocolo ?? null}
-          timeline={timeline}
-          podeEscrever={podeEscrever}
-          processando={processando}
-          onAnexar={onAnexar}
-          onResolver={onResolver}
-        />
+        <div className="space-y-4">
+          {efetivacaoRecente && podeEscrever && (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 space-y-2">
+              <label htmlFor="pos-efetivacao-lideranca" className="flex items-center gap-1.5 text-xs font-medium text-zinc-200">
+                <UserCheck className="h-3.5 w-3.5 text-purple-400" />
+                <span>Alterar Liderança Ponto-Focal (sem encerrar o atendimento)</span>
+              </label>
+              <select
+                id="pos-efetivacao-lideranca"
+                value={liderancaId}
+                onChange={(e) => handleTrocarPontoFocal(e.target.value)}
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs text-white focus:border-purple-500 focus:outline-none"
+              >
+                <option value="">Sem liderança ponto-focal</option>
+                {liderancas?.no_municipio.map((l) => (
+                  <option key={l.id_lideranca} value={l.id_lideranca}>
+                    [Município] {l.nm_completo}{l.ds_cargo ? ` · ${l.ds_cargo}` : ''}
+                  </option>
+                ))}
+                {liderancas?.outras_do_gabinete.map((l) => (
+                  <option key={l.id_lideranca} value={l.id_lideranca}>
+                    {l.nm_completo}{l.ds_cargo ? ` · ${l.ds_cargo}` : ''}
+                  </option>
+                ))}
+              </select>
+              {pontoFocalSalvoMsg && (
+                <p className="text-[11px] text-emerald-300">{pontoFocalSalvoMsg}</p>
+              )}
+            </div>
+          )}
+          <AtendimentoTimelinePanel
+            atendimentoId={efetivacaoRecente?.atendimento_id ?? null}
+            atendidoId={efetivacaoRecente?.atendido_id ?? null}
+            protocolo={efetivacaoRecente?.protocolo ?? null}
+            timeline={timeline}
+            podeEscrever={podeEscrever}
+            processando={processando}
+            onAnexar={onAnexar}
+            onResolver={onResolver}
+          />
+        </div>
       )}
     </div>
   );

@@ -9,7 +9,13 @@ from app.schemas.balcao import DescartarRequest, EfetivarRequest
 from app.schemas.user import UserInDB
 from app.services.balcao_anexo_service import BalcaoAnexoService
 from app.services.balcao_ia_service import BalcaoIaService
-from app.services.balcao_triagem_service import BalcaoTriagemService, extrairDados, municipioUnico
+from app.services.balcao_triagem_service import (
+    BalcaoTriagemService,
+    classificarCategoriaRegex,
+    extrairDados,
+    municipioUnico,
+    slugificarCategoria,
+)
 
 STATUS_VALIDOS = ("PENDENTE", "EFETIVADA", "DESCARTADA")
 RESUMO_MAXIMO = 5000
@@ -66,12 +72,34 @@ class BalcaoCaixaService:
             raise DomainException("A entrada já foi tratada.", status.HTTP_409_CONFLICT, "Conflito")
 
         municipios = await BalcaoTriagemService.listarMunicipios(connection)
+        categoriasExistentes = await BalcaoRepository.listarCategorias(connection, tenantId)
         dados = extrairDados(entrada["texto_original"], municipios)
-        vazios = [c for c, chave in (("nome", "nome"), ("municipio", "municipio_id")) if not dados.get(chave)]
+        catRegex = classificarCategoriaRegex(entrada["texto_original"], categoriasExistentes)
+        if catRegex:
+            dados["categoria"] = catRegex
+
         configIa = await BalcaoIaService.obterConfiguracao(connection)
-        if vazios:
+        dados["motor_usado"] = configIa.get("provider") or "regex"
+        dados["motor_modelo"] = configIa.get("model") or ""
+
+        vazios = [
+            c
+            for c, chave in (
+                ("nome", "nome"),
+                ("municipio", "municipio_id"),
+                ("resumo_sugerido", "resumo_sugerido"),
+                ("categoria", "categoria"),
+                ("intencao", "intencao"),
+            )
+            if not dados.get(chave)
+        ]
+        if vazios and configIa.get("provider") not in ("", "regex"):
             sugeridos = await BalcaoIaService.complementar(
-                entrada["texto_original"], vazios, configRuntime=configIa, connection=connection
+                entrada["texto_original"],
+                vazios,
+                configRuntime=configIa,
+                connection=connection,
+                categoriasExistentes=[c["nome"] for c in categoriasExistentes],
             )
             if "nome" in sugeridos and not dados.get("nome"):
                 dados["nome"] = sugeridos["nome"]
@@ -81,6 +109,15 @@ class BalcaoCaixaService:
                 if munId:
                     dados["municipio_id"] = munId
                     dados["ia_complementou"] = True
+            if "resumo_sugerido" in sugeridos and not dados.get("resumo_sugerido"):
+                dados["resumo_sugerido"] = sugeridos["resumo_sugerido"]
+                dados["ia_complementou"] = True
+            if "categoria" in sugeridos and not dados.get("categoria"):
+                dados["categoria"] = sugeridos["categoria"]
+                dados["ia_complementou"] = True
+            if "intencao" in sugeridos and not dados.get("intencao"):
+                dados["intencao"] = sugeridos["intencao"]
+                dados["ia_complementou"] = True
 
         if configIa.get("provider") not in ("", "regex"):
             candidatos = await BalcaoRepository.listarAtendimentosAbertosResumo(connection, tenantId)
@@ -118,9 +155,20 @@ class BalcaoCaixaService:
         if entrada["status"] != "PENDENTE":
             raise DomainException("A entrada já foi tratada.", status.HTTP_409_CONFLICT, "Conflito")
 
+        if dados.lideranca_ponto_focal_id is not None:
+            lideranca = await BalcaoRepository.liderancaPertenceAoTenant(
+                connection, tenantId, dados.lideranca_ponto_focal_id
+            )
+            if lideranca is None:
+                raise _invalido("Liderança ponto-focal não encontrada neste gabinete.")
+
         campos = None
         if dados.atendido_id is None:
             campos = await BalcaoCaixaService._camposDoAtendido(connection, entrada, dados)
+
+        extraidos = entrada["dados_extraidos_json"] or {}
+        categoriaNome = _limpo(dados.categoria) or _limpo(extraidos.get("categoria"))
+        intencaoTexto = _limpo(dados.intencao) or _limpo(extraidos.get("intencao"))
 
         async with connection.transaction():
             # Relê com trava: duas efetivações da mesma entrada não passam juntas.
@@ -142,18 +190,69 @@ class BalcaoCaixaService:
                         campos["email"], campos["municipio_id"],
                     )
 
+            categoriaId = None
+            if categoriaNome:
+                palavras = [p for p in resumo.lower().split() if len(p) >= 4][:8]
+                cat = await BalcaoRepository.garantirCategoria(
+                    connection,
+                    tenantId,
+                    categoriaNome[:100],
+                    slugificarCategoria(categoriaNome),
+                    palavrasChave=palavras,
+                    criadaPorIa=bool(extraidos.get("ia_complementou")),
+                )
+                categoriaId = cat["id"]
+
             protocolo = await BalcaoRepository.proximoProtocolo(connection, tenantId)
             atendimento = await BalcaoRepository.criarAtendimento(
-                connection, tenantId, atendido["id"], protocolo, "EFETIVACAO", resumo, usuario.id
+                connection,
+                tenantId,
+                atendido["id"],
+                protocolo,
+                "EFETIVACAO",
+                resumo,
+                usuario.id,
+                liderancaPontoFocalId=dados.lideranca_ponto_focal_id,
+                categoriaId=categoriaId,
+                intencao=intencaoTexto[:200] if intencaoTexto else None,
             )
             await BalcaoRepository.efetivarEntrada(connection, tenantId, entradaId, resumo, {
                 "atendimento_id": str(atendimento["id"]),
                 "atendido_id": str(atendido["id"]),
                 "protocolo": protocolo,
+                "lideranca_ponto_focal_id": str(dados.lideranca_ponto_focal_id) if dados.lideranca_ponto_focal_id else None,
+                "categoria_id": str(categoriaId) if categoriaId else None,
+                "intencao": intencaoTexto,
                 "por_user_id": str(usuario.id),
                 "em": datetime.now(timezone.utc).isoformat(),
             })
         return {"atendimento_id": atendimento["id"], "atendido_id": atendido["id"], "protocolo": protocolo}
+
+    @staticmethod
+    async def atualizarPontoFocal(
+        connection: asyncpg.Connection,
+        usuario: UserInDB,
+        atendimentoId: uuid.UUID,
+        liderancaId: Optional[uuid.UUID],
+    ) -> Dict[str, Any]:
+        tenantId = usuario.tenant_id
+        atendimento = await BalcaoRepository.obterAtendimento(connection, tenantId, atendimentoId)
+        if atendimento is None:
+            raise _naoEncontrado("Atendimento")
+        liderancaNome = None
+        if liderancaId is not None:
+            lideranca = await BalcaoRepository.liderancaPertenceAoTenant(connection, tenantId, liderancaId)
+            if lideranca is None:
+                raise _invalido("Liderança ponto-focal não encontrada neste gabinete.")
+            liderancaNome = lideranca["nm_completo"]
+        novoEvento = await BalcaoRepository.atualizarPontoFocalAtendimento(
+            connection, tenantId, atendimento, liderancaId, liderancaNome, usuario.id
+        )
+        return {
+            "atendimento_id": novoEvento["id"],
+            "lideranca_ponto_focal_id": liderancaId,
+            "lideranca_nome": liderancaNome,
+        }
 
     @staticmethod
     async def _camposDoAtendido(connection: asyncpg.Connection, entrada: Dict[str, Any],

@@ -77,6 +77,18 @@ export function useBalcaoCaixa(statusInicial: FiltroStatus = 'PENDENTE') {
     try {
       const detalhe = await balcaoService.obterEntrada(idEntrada);
       setEntradaSelecionada(detalhe);
+      const ef = detalhe.dados_extraidos?.efetivacao as
+        | { atendimento_id?: string; atendido_id?: string; protocolo?: string }
+        | undefined;
+      if (detalhe.status === 'EFETIVADA' && ef?.atendimento_id && ef?.atendido_id && ef?.protocolo) {
+        setEfetivacaoRecente({
+          atendimento_id: ef.atendimento_id,
+          atendido_id: ef.atendido_id,
+          protocolo: ef.protocolo,
+        });
+        const eventos = await balcaoService.obterTimelineAtendido(ef.atendido_id);
+        setTimeline(eventos);
+      }
     } catch (err) {
       setErro(extrairMensagemErroApi(err, 'Não foi possível carregar os detalhes da entrada.'));
     } finally {

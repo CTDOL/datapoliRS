@@ -6,6 +6,7 @@ export interface PortalEntradaResposta {
 
 export interface PortalCriadoResposta {
   id: string;
+  rotulo?: string | null;
   token: string;
   ativo: boolean;
   criado_em: string;
@@ -18,8 +19,10 @@ export interface PortalRevogadoResposta {
 
 export interface PortalResumo {
   id: string;
+  rotulo?: string | null;
   ativo: boolean;
   criado_em: string;
+  token?: string | null;
 }
 
 export interface AnexoResumo {
@@ -43,6 +46,12 @@ export interface DadosExtraidosBalcao {
   municipio_id?: string | null;
   municipio_nome?: string | null;
   cpf_presente?: boolean;
+  cpf_invalido?: boolean;
+  resumo_sugerido?: string | null;
+  categoria?: string | null;
+  intencao?: string | null;
+  motor_usado?: string | null;
+  motor_modelo?: string | null;
   ia_complementou?: boolean;
   municipios_candidatos?: string[];
   municipios_candidatos_opcoes?: Array<{ id: string; nome: string }>;
@@ -69,6 +78,9 @@ export interface EfetivarRequest {
   email?: string | null;
   municipio_id?: string | null;
   resumo?: string | null;
+  lideranca_ponto_focal_id?: string | null;
+  categoria?: string | null;
+  intencao?: string | null;
 }
 
 export interface EfetivarResponse {
@@ -158,8 +170,39 @@ export interface PedidoMapaItem {
 
 export interface GrafoNo {
   id: string;
-  tipo: 'ATENDIDO' | 'ATENDIMENTO' | 'MUNICIPIO' | string;
+  tipo: 'ATENDIDO' | 'ATENDIMENTO' | 'MUNICIPIO' | 'LIDERANCA' | 'CATEGORIA' | string;
   rotulo: string;
+  subtitulo?: string | null;
+}
+
+export interface MotorAtivoResposta {
+  provider: string;
+  model: string;
+}
+
+export interface LiderancaSugeridaItem {
+  id_lideranca: string;
+  nm_completo: string;
+  ds_cargo?: string | null;
+  vinculada_municipio: boolean;
+}
+
+export interface LiderancasSugeridasResposta {
+  no_municipio: LiderancaSugeridaItem[];
+  outras_do_gabinete: LiderancaSugeridaItem[];
+}
+
+export interface CategoriaResumo {
+  id: string;
+  nome: string;
+  slug: string;
+  uso_count: number;
+}
+
+export interface PontoFocalAtualizarResposta {
+  atendimento_id: string;
+  lideranca_ponto_focal_id?: string | null;
+  lideranca_nome?: string | null;
 }
 
 export interface GrafoAresta {

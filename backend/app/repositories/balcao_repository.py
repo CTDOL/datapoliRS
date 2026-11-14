@@ -35,18 +35,28 @@ class BalcaoRepository:
         return dict(registro) if registro else None
 
     @staticmethod
-    async def criarPortal(connection: asyncpg.Connection, tenantId: uuid.UUID, tokenHash: str) -> Dict[str, Any]:
+    async def criarPortal(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+        tokenHash: str,
+        rotulo: Optional[str] = None,
+        tokenCifrado: Optional[str] = None,
+    ) -> Dict[str, Any]:
         registro = await connection.fetchrow(
-            """INSERT INTO tb_balcao_portais (tenant_id, token_hash) VALUES ($1, $2)
-               RETURNING id, ativo, criado_em""",
-            tenantId, tokenHash,
+            """INSERT INTO tb_balcao_portais (tenant_id, token_hash, rotulo, token_cifrado)
+               VALUES ($1, $2, $3, $4)
+               RETURNING id, rotulo, ativo, criado_em""",
+            tenantId, tokenHash, rotulo, tokenCifrado,
         )
         return dict(registro)
 
     @staticmethod
     async def listarPortais(connection: asyncpg.Connection, tenantId: uuid.UUID) -> List[Dict[str, Any]]:
         registros = await connection.fetch(
-            "SELECT id, ativo, criado_em FROM tb_balcao_portais WHERE tenant_id = $1 ORDER BY criado_em DESC",
+            """SELECT id, rotulo, ativo, criado_em, token_cifrado
+               FROM tb_balcao_portais
+               WHERE tenant_id = $1
+               ORDER BY criado_em DESC""",
             tenantId,
         )
         return [dict(r) for r in registros]
@@ -279,12 +289,19 @@ class BalcaoRepository:
     @staticmethod
     async def criarAtendimento(connection: asyncpg.Connection, tenantId: uuid.UUID, atendidoId: uuid.UUID,
                                protocolo: str, tipoEvento: str, resumo: str,
-                               userId: Optional[uuid.UUID]) -> Dict[str, Any]:
+                               userId: Optional[uuid.UUID],
+                               liderancaPontoFocalId: Optional[uuid.UUID] = None,
+                               categoriaId: Optional[uuid.UUID] = None,
+                               intencao: Optional[str] = None) -> Dict[str, Any]:
         registro = await connection.fetchrow(
-            """INSERT INTO tb_atendimentos (tenant_id, atendido_id, protocolo, tipo_evento, resumo, criado_por_user_id)
-               VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING id, atendido_id, protocolo""",
+            """INSERT INTO tb_atendimentos (
+                   tenant_id, atendido_id, protocolo, tipo_evento, resumo, criado_por_user_id,
+                   lideranca_ponto_focal_id, categoria_id, intencao
+               )
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               RETURNING id, atendido_id, protocolo, lideranca_ponto_focal_id, categoria_id, intencao""",
             tenantId, atendidoId, protocolo, tipoEvento, resumo, userId,
+            liderancaPontoFocalId, categoriaId, intencao,
         )
         return dict(registro)
 
@@ -292,10 +309,108 @@ class BalcaoRepository:
     async def obterAtendimento(connection: asyncpg.Connection, tenantId: uuid.UUID,
                                atendimentoId: uuid.UUID) -> Optional[Dict[str, Any]]:
         registro = await connection.fetchrow(
-            "SELECT id, atendido_id, protocolo FROM tb_atendimentos WHERE tenant_id = $1 AND id = $2",
+            """SELECT id, atendido_id, protocolo, lideranca_ponto_focal_id, categoria_id, intencao
+                 FROM tb_atendimentos WHERE tenant_id = $1 AND id = $2""",
             tenantId, atendimentoId,
         )
         return dict(registro) if registro else None
+
+    @staticmethod
+    async def listarCategorias(connection: asyncpg.Connection, tenantId: uuid.UUID) -> List[Dict[str, Any]]:
+        registros = await connection.fetch(
+            """SELECT id, nome, slug, palavras_chave_json, criada_por_ia, uso_count
+                 FROM tb_balcao_categorias
+                WHERE tenant_id = $1
+                ORDER BY uso_count DESC, nome ASC""",
+            tenantId,
+        )
+        resultado = []
+        for r in registros:
+            item = dict(r)
+            if isinstance(item.get("palavras_chave_json"), str):
+                item["palavras_chave_json"] = json.loads(item["palavras_chave_json"])
+            resultado.append(item)
+        return resultado
+
+    @staticmethod
+    async def garantirCategoria(connection: asyncpg.Connection, tenantId: uuid.UUID,
+                                nome: str, slug: str,
+                                palavrasChave: Optional[List[str]] = None,
+                                criadaPorIa: bool = False) -> Dict[str, Any]:
+        termos = [t.strip().lower() for t in (palavrasChave or []) if isinstance(t, str) and t.strip()]
+        registro = await connection.fetchrow(
+            """INSERT INTO tb_balcao_categorias (tenant_id, nome, slug, palavras_chave_json, criada_por_ia)
+               VALUES ($1, $2, $3, $4::jsonb, $5)
+               ON CONFLICT (tenant_id, slug) DO UPDATE
+                  SET uso_count = tb_balcao_categorias.uso_count + 1,
+                      palavras_chave_json = (
+                          SELECT COALESCE(jsonb_agg(DISTINCT val), '[]'::jsonb)
+                            FROM jsonb_array_elements_text(
+                                tb_balcao_categorias.palavras_chave_json || EXCLUDED.palavras_chave_json
+                            ) AS val
+                      )
+               RETURNING id, nome, slug, uso_count""",
+            tenantId, nome, slug, json.dumps(termos), criadaPorIa,
+        )
+        return dict(registro)
+
+    @staticmethod
+    async def listarLiderancasParaBalcao(
+        connection: asyncpg.Connection, tenantId: uuid.UUID, municipioId: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        registros = await connection.fetch(
+            """SELECT l.id_lideranca,
+                      l.nm_completo,
+                      l.tp_influencia AS ds_cargo,
+                      CASE WHEN $2::text IS NOT NULL AND EXISTS (
+                          SELECT 1 FROM tb_gabinete_lideranca_municipios lm
+                           WHERE lm.id_lideranca = l.id_lideranca AND lm.cd_ibge_7 = $2::text
+                      ) THEN TRUE ELSE FALSE END AS vinculada_municipio
+                 FROM tb_gabinete_liderancas l
+                WHERE l.tenant_id = $1 AND l.is_ativo = TRUE
+                ORDER BY vinculada_municipio DESC, l.nm_completo ASC""",
+            tenantId, municipioId,
+        )
+        return [dict(r) for r in registros]
+
+    @staticmethod
+    async def liderancaPertenceAoTenant(
+        connection: asyncpg.Connection, tenantId: uuid.UUID, liderancaId: uuid.UUID
+    ) -> Optional[Dict[str, Any]]:
+        registro = await connection.fetchrow(
+            "SELECT id_lideranca, nm_completo FROM tb_gabinete_liderancas WHERE tenant_id = $1 AND id_lideranca = $2",
+            tenantId, liderancaId,
+        )
+        return dict(registro) if registro else None
+
+    @staticmethod
+    async def atualizarPontoFocalAtendimento(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+        atendimentoBase: Dict[str, Any],
+        liderancaId: Optional[uuid.UUID],
+        liderancaNome: Optional[str],
+        userId: Optional[uuid.UUID],
+    ) -> Dict[str, Any]:
+        """tb_atendimentos é append-only: troca de ponto-focal gera novo evento sem encerrar o assunto."""
+        protocoloNovo = await BalcaoRepository.proximoProtocolo(connection, tenantId)
+        resumo = (
+            f"Ponto-focal alterado para {liderancaNome} (ref. {atendimentoBase['protocolo']})."
+            if liderancaNome
+            else f"Ponto-focal removido (ref. {atendimentoBase['protocolo']})."
+        )
+        return await BalcaoRepository.criarAtendimento(
+            connection,
+            tenantId,
+            atendimentoBase["atendido_id"],
+            protocoloNovo,
+            "TROCA_PONTO_FOCAL",
+            resumo,
+            userId,
+            liderancaPontoFocalId=liderancaId,
+            categoriaId=atendimentoBase.get("categoria_id"),
+            intencao=atendimentoBase.get("intencao"),
+        )
 
     @staticmethod
     async def listarAtendimentosDoAtendido(connection: asyncpg.Connection, tenantId: uuid.UUID,
@@ -396,15 +511,49 @@ class BalcaoRepository:
 
     @staticmethod
     async def atendimentosParaGrafo(connection: asyncpg.Connection, tenantId: uuid.UUID,
-                                    atendidoIds: List[uuid.UUID]) -> List[Dict[str, Any]]:
+                                    atendidoIds: List[uuid.UUID],
+                                    incluirResolvidos: bool = False) -> List[Dict[str, Any]]:
         registros = await connection.fetch(
-            """SELECT t.id, t.atendido_id, t.protocolo,
+            """SELECT t.id,
+                      t.atendido_id,
+                      t.protocolo,
+                      t.intencao,
+                      t.lideranca_ponto_focal_id,
+                      l.nm_completo AS nm_lideranca,
+                      l.tp_influencia AS cargo_lideranca,
+                      t.categoria_id,
+                      c.nome AS categoria_nome,
                       EXISTS (SELECT 1 FROM tb_balcao_resolucoes r
                                WHERE r.tenant_id = t.tenant_id AND r.atendimento_id = t.id) AS resolvido
                  FROM tb_atendimentos t
-                WHERE t.tenant_id = $1 AND t.atendido_id = ANY($2::uuid[])
-                ORDER BY t.criado_em""",
-            tenantId, atendidoIds,
+                 LEFT JOIN tb_gabinete_liderancas l
+                        ON l.id_lideranca = t.lideranca_ponto_focal_id AND l.tenant_id = t.tenant_id
+                 LEFT JOIN tb_balcao_categorias c
+                        ON c.id = t.categoria_id AND c.tenant_id = t.tenant_id
+                WHERE t.tenant_id = $1
+                  AND t.atendido_id = ANY($2::uuid[])
+                  AND ($3::boolean IS TRUE OR NOT EXISTS (
+                      SELECT 1 FROM tb_balcao_resolucoes r
+                       WHERE r.tenant_id = t.tenant_id AND r.atendimento_id = t.id
+                  ))
+                ORDER BY t.criado_em DESC""",
+            tenantId, atendidoIds, incluirResolvidos,
+        )
+        return [dict(r) for r in registros]
+
+    @staticmethod
+    async def liderancasMunicipiosParaGrafo(
+        connection: asyncpg.Connection, tenantId: uuid.UUID, liderancaIds: List[uuid.UUID]
+    ) -> List[Dict[str, Any]]:
+        if not liderancaIds:
+            return []
+        registros = await connection.fetch(
+            """SELECT lm.id_lideranca, lm.cd_ibge_7, m.nm_municipio
+                 FROM tb_gabinete_lideranca_municipios lm
+                 JOIN tb_gabinete_liderancas l ON l.id_lideranca = lm.id_lideranca
+                 JOIN tb_municipios m ON m.cd_ibge_7 = lm.cd_ibge_7
+                WHERE l.tenant_id = $1 AND lm.id_lideranca = ANY($2::uuid[])""",
+            tenantId, liderancaIds,
         )
         return [dict(r) for r in registros]
 

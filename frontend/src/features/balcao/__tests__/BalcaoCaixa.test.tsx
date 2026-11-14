@@ -17,6 +17,12 @@ vi.mock('../services/balcaoService', async (importOriginal) => {
       obterTimelineAtendido: vi.fn(),
       anexarAoAtendimento: vi.fn(),
       resolverAtendimento: vi.fn(),
+      obterMotorAtivo: vi.fn().mockResolvedValue({ provider: 'regex', model: '' }),
+      listarLiderancasSugeridas: vi
+        .fn()
+        .mockResolvedValue({ no_municipio: [], outras_do_gabinete: [] }),
+      listarCategorias: vi.fn().mockResolvedValue([]),
+      atualizarPontoFocal: vi.fn(),
     },
   };
 });
