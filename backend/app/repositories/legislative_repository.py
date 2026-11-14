@@ -179,16 +179,17 @@ class LegislativeRepository:
     @staticmethod
     async def addObservador(
         connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
         projetoLeiId: uuid.UUID,
         liderancaId: uuid.UUID,
     ) -> None:
         query = """
-            INSERT INTO tb_gabinete_projeto_lei_observadores (id_projeto_lei, id_lideranca)
-            VALUES ($1, $2)
+            INSERT INTO tb_gabinete_projeto_lei_observadores (tenant_id, id_projeto_lei, id_lideranca)
+            VALUES ($1, $2, $3)
             ON CONFLICT (id_projeto_lei, id_lideranca) DO NOTHING;
         """
         try:
-            await connection.execute(query, projetoLeiId, liderancaId)
+            await connection.execute(query, tenantId, projetoLeiId, liderancaId)
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao adicionar observador {liderancaId} ao PL {projetoLeiId}: {dbError}", exc_info=True)
             raise  # erro original, tipado: os handlers de app/core/exceptions.py respondem 409/422
@@ -196,15 +197,16 @@ class LegislativeRepository:
     @staticmethod
     async def removeObservador(
         connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
         projetoLeiId: uuid.UUID,
         liderancaId: uuid.UUID,
     ) -> bool:
         query = """
             DELETE FROM tb_gabinete_projeto_lei_observadores
-            WHERE id_projeto_lei = $1 AND id_lideranca = $2;
+            WHERE tenant_id = $1 AND id_projeto_lei = $2 AND id_lideranca = $3;
         """
         try:
-            result = await connection.execute(query, projetoLeiId, liderancaId)
+            result = await connection.execute(query, tenantId, projetoLeiId, liderancaId)
             return result == "DELETE 1"
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao remover observador {liderancaId} do PL {projetoLeiId}: {dbError}", exc_info=True)
@@ -213,17 +215,19 @@ class LegislativeRepository:
     @staticmethod
     async def listObservadores(
         connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
         projetoLeiId: uuid.UUID,
     ) -> List[Dict[str, Any]]:
         query = """
             SELECT l.id_lideranca, l.nm_completo
             FROM tb_gabinete_projeto_lei_observadores o
-            JOIN tb_gabinete_liderancas l ON l.id_lideranca = o.id_lideranca
-            WHERE o.id_projeto_lei = $1
+            JOIN tb_gabinete_liderancas l
+              ON l.id_lideranca = o.id_lideranca AND l.tenant_id = o.tenant_id
+            WHERE o.tenant_id = $1 AND o.id_projeto_lei = $2
             ORDER BY l.nm_completo ASC;
         """
         try:
-            records = await connection.fetch(query, projetoLeiId)
+            records = await connection.fetch(query, tenantId, projetoLeiId)
             return [dict(record) for record in records]
         except asyncpg.PostgresError as dbError:
             logger.error(f"Erro ao listar observadores do PL {projetoLeiId}: {dbError}", exc_info=True)

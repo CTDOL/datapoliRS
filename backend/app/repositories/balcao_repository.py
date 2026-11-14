@@ -147,6 +147,26 @@ class BalcaoRepository:
         return [dict(r) for r in registros]
 
     @staticmethod
+    async def entradasPorContato(connection: asyncpg.Connection, tenantId: uuid.UUID,
+                                 telefone: Optional[str], email: Optional[str], cpfHash: Optional[str],
+                                 ignorarIds: List[uuid.UUID]) -> List[uuid.UUID]:
+        if not any((telefone, email, cpfHash)):
+            return []
+        registros = await connection.fetch(
+            """SELECT id FROM tb_balcao_entradas
+                WHERE tenant_id = $1 AND status != 'DESCARTADA'
+                  AND NOT (id = ANY($5::uuid[]))
+                  AND (
+                    ($2::text IS NOT NULL AND dados_extraidos_json->>'telefone' = $2::text)
+                    OR ($3::text IS NOT NULL AND dados_extraidos_json->>'email' = $3::text)
+                    OR ($4::text IS NOT NULL AND dados_extraidos_json->>'cpf_hash' = $4::text)
+                  )
+                ORDER BY criado_em DESC LIMIT 5""",
+            tenantId, telefone, email, cpfHash, ignorarIds,
+        )
+        return [r["id"] for r in registros]
+
+    @staticmethod
     async def atendimentosResolvidosSimilares(connection: asyncpg.Connection, tenantId: uuid.UUID, texto: str,
                                               limiar: float, dias: int) -> List[Dict[str, Any]]:
         registros = await connection.fetch(

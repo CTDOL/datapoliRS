@@ -56,6 +56,11 @@ export const balcaoService = {
     return res.data;
   },
 
+  async analisarEntrada(idEntrada: string): Promise<EntradaDetalhe> {
+    const res = await api.post<EntradaDetalhe>(`/api/v1/balcao/entradas/${idEntrada}/analisar`);
+    return res.data;
+  },
+
   async efetivarEntrada(idEntrada: string, payload: EfetivarRequest): Promise<EfetivarResponse> {
     const res = await api.post<EfetivarResponse>(
       `/api/v1/balcao/entradas/${idEntrada}/efetivar`,

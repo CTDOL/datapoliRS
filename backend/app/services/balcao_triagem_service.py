@@ -19,6 +19,7 @@ JANELA_ASSUNTO_RESOLVIDO_DIAS = 365
 _CPF = re.compile(r"(?<!\d)(\d{3})\.?(\d{3})\.?(\d{3})-?(\d{2})(?!\d)")
 _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 _TELEFONE = re.compile(r"(?<!\d)(?:\+?55[\s.-]?)?\(?([1-9][1-9])\)?[\s.-]?(9?\d{4})[\s.-]?(\d{4})(?!\d)")
+MUNICIPIOS_HOMONIMOS_TITULO = {"capitao"}
 
 
 def cpfValido(digitos: str) -> bool:
@@ -55,15 +56,22 @@ def mascararDadosPessoais(texto: str) -> str:
 
 def acharMunicipios(texto: str, municipios: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Municípios citados no texto, por nome sem acento e com fronteira de palavra. Um nome contido em
-    outro mais longo que também aparece na mesma posição (Santa Maria x Santa Maria do Herval) não conta."""
+    outro mais longo que também aparece na mesma posição (Santa Maria x Santa Maria do Herval) não conta.
+    Municípios homônimos de patente/título (ex.: Capitão) só contam após preposição locativa ou antes de /RS ou -RS."""
     alvo = normalizar(texto)
     ocorrencias = []
     for municipio in municipios:
         nome = normalizar(municipio["nm_municipio"])
         if not nome:
             continue
-        for achado in re.finditer(rf"(?<![a-z0-9]){re.escape(nome)}(?![a-z0-9])", alvo):
-            ocorrencias.append((achado.start(), achado.end(), municipio))
+        if nome in MUNICIPIOS_HOMONIMOS_TITULO:
+            padrao = rf"(?:(?<![a-z0-9])(?:em|de|do|da|na|no)\s+({re.escape(nome)})(?![a-z0-9])|(?<![a-z0-9])({re.escape(nome)})(?=\s*[-/]\s*rs(?![a-z0-9])))"
+            for achado in re.finditer(padrao, alvo):
+                grupo = 1 if achado.group(1) is not None else 2
+                ocorrencias.append((achado.start(grupo), achado.end(grupo), municipio))
+        else:
+            for achado in re.finditer(rf"(?<![a-z0-9]){re.escape(nome)}(?![a-z0-9])", alvo):
+                ocorrencias.append((achado.start(), achado.end(), municipio))
     validos = {}
     for inicio, fim, municipio in ocorrencias:
         coberto = any(
@@ -120,8 +128,9 @@ class BalcaoTriagemService:
     async def triar(connection: asyncpg.Connection, tenantId: uuid.UUID, entrada: Dict[str, Any]) -> None:
         texto = entrada["texto_original"]
         municipios = await BalcaoTriagemService.listarMunicipios(connection)
+        dadosExtraidos = extrairDados(texto, municipios)
         await BalcaoRepository.gravarDadosExtraidos(
-            connection, tenantId, entrada["id"], extrairDados(texto, municipios)
+            connection, tenantId, entrada["id"], dadosExtraidos
         )
 
         idsJaSugeridos: List[uuid.UUID] = [entrada["id"]]
@@ -136,6 +145,19 @@ class BalcaoTriagemService:
         ):
             await BalcaoRepository.criarSugestao(
                 connection, tenantId, entrada["id"], similar["id"], None, similar["score"], "SIMILAR_TRGM"
+            )
+            idsJaSugeridos.append(similar["id"])
+
+        for contatoId in await BalcaoRepository.entradasPorContato(
+            connection,
+            tenantId,
+            dadosExtraidos.get("telefone"),
+            dadosExtraidos.get("email"),
+            dadosExtraidos.get("cpf_hash"),
+            idsJaSugeridos,
+        ):
+            await BalcaoRepository.criarSugestao(
+                connection, tenantId, entrada["id"], contatoId, None, 1.0, "MESMO_CONTATO"
             )
 
         for resolvido in await BalcaoRepository.atendimentosResolvidosSimilares(

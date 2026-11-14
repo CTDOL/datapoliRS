@@ -209,6 +209,14 @@ def test_b_nao_pode_remover_observador_do_pl_do_a(client, gabinetes):
     assert a["lideranca"] in {str(o["id_lideranca"]) for o in observadores}
 
 
+def test_b_nao_pode_remover_lideranca_do_a_do_proprio_pl(client, gabinetes):
+    resposta = client.delete(
+        f"{PROJETOS}/{gabinetes['B']['projeto']}/observadores/{gabinetes['A']['lideranca']}",
+        headers=gabinetes["headersB"],
+    )
+    assert resposta.status_code == 404
+
+
 # --- Agregados e exportação: números e nomes do A não vazam -------------------------
 
 def test_kpis_do_b_nao_somam_emendas_do_a(client, gabinetes):

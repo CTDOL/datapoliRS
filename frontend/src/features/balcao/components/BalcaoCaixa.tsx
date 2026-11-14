@@ -32,6 +32,7 @@ export function BalcaoCaixa() {
     processandoAcao,
     erro,
     selecionarEntrada,
+    analisar,
     efetivar,
     descartar,
     anexarAoAtendimento,
@@ -103,7 +104,7 @@ export function BalcaoCaixa() {
                 onClick={() => setFiltroStatus(f.valor)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                   filtroStatus === f.valor
-                    ? 'border border-purple-500/50 bg-purple-500/20 text-purple-200'
+                    ? 'border border-purple-500/50 bg-purple-500/20 text-purple-700 dark:text-purple-200'
                     : 'border border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:text-zinc-200'
                 }`}
               >
@@ -155,6 +156,7 @@ export function BalcaoCaixa() {
                   timeline={timeline}
                   podeEscrever={podeEscrever}
                   processando={processandoAcao}
+                  onAnalisar={analisar}
                   onEfetivar={efetivar}
                   onDescartar={descartar}
                   onAnexar={anexarAoAtendimento}

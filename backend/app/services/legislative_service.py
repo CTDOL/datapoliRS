@@ -189,7 +189,7 @@ class LegislativeService:
         lideranca = await CabinetRepository.getLeadershipById(connection, tenantId, liderancaId)
         if not lideranca:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Liderança não encontrada neste gabinete.")
-        await LegislativeRepository.addObservador(connection, projetoLeiId, liderancaId)
+        await LegislativeRepository.addObservador(connection, tenantId, projetoLeiId, liderancaId)
         return await LegislativeService.listObservadores(connection, tenantId, projetoLeiId)
 
     @staticmethod
@@ -200,7 +200,10 @@ class LegislativeService:
         liderancaId: uuid.UUID,
     ) -> list[ObservadorResponse]:
         await LegislativeService.getProjetoLeiById(connection, tenantId, projetoLeiId)
-        await LegislativeRepository.removeObservador(connection, projetoLeiId, liderancaId)
+        lideranca = await CabinetRepository.getLeadershipById(connection, tenantId, liderancaId)
+        if not lideranca:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Liderança não encontrada neste gabinete.")
+        await LegislativeRepository.removeObservador(connection, tenantId, projetoLeiId, liderancaId)
         return await LegislativeService.listObservadores(connection, tenantId, projetoLeiId)
 
     @staticmethod
@@ -210,5 +213,5 @@ class LegislativeService:
         projetoLeiId: uuid.UUID,
     ) -> list[ObservadorResponse]:
         await LegislativeService.getProjetoLeiById(connection, tenantId, projetoLeiId)
-        records = await LegislativeRepository.listObservadores(connection, projetoLeiId)
+        records = await LegislativeRepository.listObservadores(connection, tenantId, projetoLeiId)
         return [ObservadorResponse(**r) for r in records]

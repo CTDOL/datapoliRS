@@ -48,6 +48,17 @@ async def obter_entrada(
     return await BalcaoCaixaService.obterEntrada(connection, current_user.tenant_id, id_entrada)
 
 
+@router.post("/entradas/{id_entrada}/analisar", response_model=EntradaDetalhe,
+             dependencies=[Depends(RateLimiter(times=30, seconds=60))],
+             summary="Reexecuta análise Regex e IA (se ativa) na entrada pendente")
+async def analisar_entrada(
+    id_entrada: uuid.UUID,
+    current_user: UserInDB = Depends(require_role(PAPEIS_DE_ESCRITA)),
+    connection: asyncpg.Connection = Depends(getDbConnection)
+):
+    return await BalcaoCaixaService.analisarEntrada(connection, current_user.tenant_id, id_entrada)
+
+
 @router.post("/entradas/{id_entrada}/efetivar", response_model=EfetivarResponse,
              status_code=status.HTTP_201_CREATED, summary="Efetiva a entrada: atendido, protocolo e timeline")
 async def efetivar_entrada(

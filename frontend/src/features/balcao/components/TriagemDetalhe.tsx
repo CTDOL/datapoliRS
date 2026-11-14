@@ -28,6 +28,7 @@ interface TriagemDetalheProps {
   timeline: EventoTimeline[];
   podeEscrever: boolean;
   processando: boolean;
+  onAnalisar?: (idEntrada: string) => Promise<EntradaDetalhe | null>;
   onEfetivar: (idEntrada: string, payload: EfetivarRequest) => Promise<EfetivarResponse | null>;
   onDescartar: (idEntrada: string, payload: DescartarRequest) => Promise<boolean>;
   onAnexar: (idAtendimento: string, arquivo: File) => Promise<AnexoCriadoResposta | null>;
@@ -44,6 +45,7 @@ export function TriagemDetalhe({
   timeline,
   podeEscrever,
   processando,
+  onAnalisar,
   onEfetivar,
   onDescartar,
   onAnexar,
@@ -75,6 +77,17 @@ export function TriagemDetalhe({
       municipio_id: municipioId.trim() || null,
       resumo: resumo.trim() || null,
     });
+  };
+
+  const handleAnalisar = async () => {
+    if (!onAnalisar) return;
+    const atualizada = await onAnalisar(entrada.id);
+    if (!atualizada) return;
+    const novos = atualizada.dados_extraidos ?? {};
+    if (typeof novos.nome === 'string') setNome(novos.nome);
+    if (typeof novos.telefone === 'string') setTelefone(novos.telefone);
+    if (typeof novos.email === 'string') setEmail(novos.email);
+    if (typeof novos.municipio_id === 'string') setMunicipioId(novos.municipio_id);
   };
 
   const handleDescartar = async () => {
@@ -163,7 +176,28 @@ export function TriagemDetalhe({
 
       {pendente && podeEscrever && (
         <form onSubmit={handleEfetivar} className="space-y-4 border-t border-zinc-800 pt-4">
-          <h3 className="text-sm font-semibold text-white">Triagem & Efetivação</h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-white">Triagem & Efetivação</h3>
+            {onAnalisar && (
+              <button
+                type="button"
+                onClick={handleAnalisar}
+                disabled={processando}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-500/15 px-3 py-1.5 text-xs font-medium text-purple-200 hover:bg-purple-500/25 disabled:opacity-60"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{processando ? 'Analisando...' : 'Analisar (Regex / IA)'}</span>
+              </button>
+            )}
+          </div>
+
+          {Array.isArray(extraidos.municipios_candidatos) &&
+            extraidos.municipios_candidatos.length > 1 && (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                Múltiplos municípios citados ({extraidos.municipios_candidatos.join(', ')}):
+                escolha o correto ou acione a análise com IA.
+              </p>
+            )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>

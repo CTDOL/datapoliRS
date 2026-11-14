@@ -9,7 +9,7 @@ from app.schemas.balcao import DescartarRequest, EfetivarRequest
 from app.schemas.user import UserInDB
 from app.services.balcao_anexo_service import BalcaoAnexoService
 from app.services.balcao_ia_service import BalcaoIaService
-from app.services.balcao_triagem_service import BalcaoTriagemService, municipioUnico
+from app.services.balcao_triagem_service import BalcaoTriagemService, extrairDados, municipioUnico
 
 STATUS_VALIDOS = ("PENDENTE", "EFETIVADA", "DESCARTADA")
 RESUMO_MAXIMO = 5000
@@ -49,6 +49,37 @@ class BalcaoCaixaService:
         entrada["sugestoes"] = await BalcaoRepository.listarSugestoes(connection, tenantId, entradaId)
         entrada["anexos"] = await BalcaoRepository.listarAnexosDaEntrada(connection, tenantId, entradaId)
         return entrada
+
+    @staticmethod
+    async def analisarEntrada(connection: asyncpg.Connection, tenantId: uuid.UUID,
+                              entradaId: uuid.UUID) -> Dict[str, Any]:
+        """Reexecuta a extração determinística (Regex) e, se houver provedor IA ativo em runtime,
+        complementa nome e município vazios sem sobrescrever o que o regex já identificou."""
+        entrada = await BalcaoRepository.obterEntrada(connection, tenantId, entradaId)
+        if entrada is None:
+            raise _naoEncontrado("Entrada")
+        if entrada["status"] != "PENDENTE":
+            raise DomainException("A entrada já foi tratada.", status.HTTP_409_CONFLICT, "Conflito")
+
+        municipios = await BalcaoTriagemService.listarMunicipios(connection)
+        dados = extrairDados(entrada["texto_original"], municipios)
+        vazios = [c for c, chave in (("nome", "nome"), ("municipio", "municipio_id")) if not dados.get(chave)]
+        if vazios:
+            configIa = await BalcaoIaService.obterConfiguracao(connection)
+            sugeridos = await BalcaoIaService.complementar(
+                entrada["texto_original"], vazios, configRuntime=configIa
+            )
+            if "nome" in sugeridos and not dados.get("nome"):
+                dados["nome"] = sugeridos["nome"]
+                dados["ia_complementou"] = True
+            if "municipio" in sugeridos and not dados.get("municipio_id"):
+                munId = municipioUnico(sugeridos["municipio"], municipios)
+                if munId:
+                    dados["municipio_id"] = munId
+                    dados["ia_complementou"] = True
+
+        await BalcaoRepository.gravarDadosExtraidos(connection, tenantId, entradaId, dados)
+        return await BalcaoCaixaService.obterEntrada(connection, tenantId, entradaId)
 
     @staticmethod
     async def efetivar(connection: asyncpg.Connection, usuario: UserInDB, entradaId: uuid.UUID,

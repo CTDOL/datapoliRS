@@ -175,6 +175,21 @@ export function useBalcaoCaixa(statusInicial: FiltroStatus = 'PENDENTE') {
     [carregarTimeline]
   );
 
+  const analisar = useCallback(async (idEntrada: string): Promise<EntradaDetalhe | null> => {
+    setProcessandoAcao(true);
+    setErro(null);
+    try {
+      const atualizada = await balcaoService.analisarEntrada(idEntrada);
+      setEntradaSelecionada(atualizada);
+      return atualizada;
+    } catch (err) {
+      setErro(extrairMensagemErroApi(err, 'Não foi possível analisar a entrada.'));
+      return null;
+    } finally {
+      setProcessandoAcao(false);
+    }
+  }, []);
+
   return {
     filtroStatus,
     setFiltroStatus: alterarFiltroStatus,
@@ -190,6 +205,7 @@ export function useBalcaoCaixa(statusInicial: FiltroStatus = 'PENDENTE') {
     recarregar: () => carregarLista(filtroStatus),
     selecionarEntrada,
     carregarTimeline,
+    analisar,
     efetivar,
     descartar,
     anexarAoAtendimento,
