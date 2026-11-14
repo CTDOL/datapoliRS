@@ -40,6 +40,7 @@ services:
       # Mesma confiança no proxy da produção (ver docker-compose.prod.yml).
       - FORWARDED_ALLOW_IPS=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
       - SECRET_KEY=${SECRET_KEY:?defina SECRET_KEY no .env}
+      - BALCAO_CPF_HMAC_KEY=${BALCAO_CPF_HMAC_KEY:?defina BALCAO_CPF_HMAC_KEY no .env}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-operador@campanha.com.br}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env}
       - ALLOWED_ORIGINS=http://127.0.0.1:8080,http://localhost:8080

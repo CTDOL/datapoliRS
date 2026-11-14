@@ -54,6 +54,7 @@ POSTGRES_USER=ensaio
 POSTGRES_PASSWORD=$(openssl rand -hex 16)
 POSTGRES_DB=ensaio
 SECRET_KEY=$(openssl rand -hex 32)
+BALCAO_CPF_HMAC_KEY=$(openssl rand -hex 32)
 ADMIN_PASSWORD=$(openssl rand -hex 16)
 ADMIN_EMAIL=ensaio@invalid.local
 APP_DOMAIN=ensaio.invalid

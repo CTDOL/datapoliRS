@@ -79,6 +79,7 @@ services:
       - REDIS_PORT=6379
       - REDIS_URL=redis://redis:6379/0
       - ENVIRONMENT=${ENVIRONMENT:-production}
+      - BALCAO_CPF_HMAC_KEY=${BALCAO_CPF_HMAC_KEY:?defina BALCAO_CPF_HMAC_KEY no .env.prod}
       - ALLOWED_ORIGINS=${APP_PROTOCOL:-https}://${APP_DOMAIN}
       # O uvicorn confia no X-Forwarded-For só quando a conexão vem das redes internas do
       # Docker (Nginx e o rewrite do frontend). Assim o limitador e a trilha de acesso veem o

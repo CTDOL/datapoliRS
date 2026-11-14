@@ -75,8 +75,12 @@ def detalhe(client, g, entradaId):
     return resposta.json()
 
 
+_HEX_SEM_DIGITOS = str.maketrans("0123456789", "ghijklmnop")
+
+
 def texto(prefixo="Pedido") -> str:
-    return f"{prefixo} {uuid.uuid4()}"
+    # Evita dígitos no sufixo para que o UUID não seja capturado como telefone pela triagem.
+    return f"{prefixo} {uuid.uuid4().hex.translate(_HEX_SEM_DIGITOS)}"
 
 
 # --- BAL-04: extração determinística ---------------------------------------------------------
@@ -367,10 +371,14 @@ def test_anexo_do_atendimento_baixa_como_attachment_com_o_mesmo_conteudo(client,
     assert baixado.headers["x-content-type-options"] == "nosniff"
 
 
-@pytest.mark.parametrize("nome,conteudo,esperado", [
-    ("x.png", b"nao e imagem", 415),
-    ("x.pdf", PDF + b"\x00" * (10 * 1024 * 1024), 413),
-])
+@pytest.mark.parametrize(
+    "nome,conteudo,esperado",
+    [
+        ("x.png", b"nao e imagem", 415),
+        ("x.pdf", PDF + b"\x00" * (10 * 1024 * 1024), 413),
+    ],
+    ids=["tipo_proibido", "arquivo_acima_10mb"],
+)
 def test_anexo_do_atendimento_recusa_tipo_proibido_e_arquivo_grande(client, gab, atendimento, nome, conteudo, esperado):
     assert anexar(client, gab, atendimento["atendimento_id"], conteudo, nome).status_code == esperado
 
