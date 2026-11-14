@@ -51,7 +51,7 @@ def rotaRegistrada(metodo: str, caminho: str) -> bool:
         return re.sub(r"\{[^}]+\}", "{}", c or "")
 
     return any(
-        forma(getattr(r, "path", None)) == forma(caminho) and metodo in getattr(r, "methods", set())
+        forma(getattr(r, "path", None)) == forma(caminho) and metodo in (getattr(r, "methods", None) or ())
         for r in app.routes
     )
 

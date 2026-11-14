@@ -5,7 +5,6 @@ from fastapi.responses import FileResponse
 import asyncpg
 from app.core.dependencies import bloquear_super_admin, get_current_user, getDbConnection, require_role
 from app.core.rate_limit import RateLimiter
-from app.repositories.balcao_repository import BalcaoRepository
 from app.schemas.balcao import (
     AnexoCriadoResposta, CategoriaResumo, DescartarRequest, DescartarResponse, EfetivarRequest, EfetivarResponse,
     EntradaDetalhe, EntradaResumo, EventoTimeline, GrafoResposta, IaConfigAtualizarRequest,
@@ -218,13 +217,9 @@ async def listar_liderancas_sugeridas(
     current_user: UserInDB = Depends(get_current_user),
     connection: asyncpg.Connection = Depends(getDbConnection),
 ):
-    todas = await BalcaoRepository.listarLiderancasParaBalcao(
-        connection, current_user.tenant_id, municipio_id.strip() if municipio_id else None
+    return await BalcaoCaixaService.listarLiderancasSugeridas(
+        connection, current_user.tenant_id, municipio_id
     )
-    return {
-        "no_municipio": [l for l in todas if l["vinculada_municipio"]],
-        "outras_do_gabinete": [l for l in todas if not l["vinculada_municipio"]],
-    }
 
 
 @router.get("/categorias", response_model=List[CategoriaResumo],
@@ -233,7 +228,7 @@ async def listar_categorias(
     current_user: UserInDB = Depends(get_current_user),
     connection: asyncpg.Connection = Depends(getDbConnection),
 ):
-    return await BalcaoRepository.listarCategorias(connection, current_user.tenant_id)
+    return await BalcaoCaixaService.listarCategorias(connection, current_user.tenant_id)
 
 
 @router.get("/grafo", response_model=GrafoResposta, summary="Grafo de correlações do gabinete")

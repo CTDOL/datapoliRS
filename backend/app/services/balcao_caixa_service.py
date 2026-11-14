@@ -51,6 +51,24 @@ class BalcaoCaixaService:
         return await BalcaoRepository.listarPedidosMapa(connection, tenantId)
 
     @staticmethod
+    async def listarLiderancasSugeridas(
+        connection: asyncpg.Connection,
+        tenantId: uuid.UUID,
+        municipioId: Optional[str],
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        todas = await BalcaoRepository.listarLiderancasParaBalcao(
+            connection, tenantId, municipioId.strip() if municipioId else None
+        )
+        return {
+            "no_municipio": [l for l in todas if l["vinculada_municipio"]],
+            "outras_do_gabinete": [l for l in todas if not l["vinculada_municipio"]],
+        }
+
+    @staticmethod
+    async def listarCategorias(connection: asyncpg.Connection, tenantId: uuid.UUID) -> List[Dict[str, Any]]:
+        return await BalcaoRepository.listarCategorias(connection, tenantId)
+
+    @staticmethod
     async def obterEntrada(connection: asyncpg.Connection, tenantId: uuid.UUID,
                            entradaId: uuid.UUID) -> Dict[str, Any]:
         entrada = await BalcaoRepository.obterEntrada(connection, tenantId, entradaId)
