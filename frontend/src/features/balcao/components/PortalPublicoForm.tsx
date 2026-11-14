@@ -85,7 +85,7 @@ export function PortalPublicoForm({ token }: PortalPublicoFormProps) {
       {confirmacao && (
         <div
           role="status"
-          className="flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200"
+          className="flex items-start gap-3 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900"
         >
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
           <p>{confirmacao}</p>
@@ -95,7 +95,7 @@ export function PortalPublicoForm({ token }: PortalPublicoFormProps) {
       {erro && (
         <div
           role="alert"
-          className="flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200"
+          className="flex items-start gap-3 rounded-xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-900"
         >
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" />
           <p>{erro}</p>

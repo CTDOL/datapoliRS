@@ -195,3 +195,27 @@ def test_endpoints_comutador_ia_restritos_a_admin_e_comutacao_runtime(client):
     )
     assert restaurado.status_code == 200
     assert restaurado.json()["provider"] == "regex"
+
+
+def test_chave_api_ia_gravada_cifrada_e_removida_pelo_endpoint(client):
+    gab = novoGabinete(client)
+    headersAdmin = gab["headers"]
+
+    salvo = client.put(
+        "/api/v1/balcao/ia-config",
+        headers=headersAdmin,
+        json={"provider": "cohere", "model": "", "base_url": "", "api_key": "cohere-segredo-123"},
+    )
+    assert salvo.status_code == 200, salvo.text
+    corpo = salvo.json()
+    assert corpo["provider"] == "cohere"
+    assert corpo["api_key_configurada"] is True
+    assert "api_key" not in corpo
+
+    removido = client.put(
+        "/api/v1/balcao/ia-config",
+        headers=headersAdmin,
+        json={"provider": "regex", "model": "", "base_url": "", "limpar_api_key": True},
+    )
+    assert removido.status_code == 200
+    assert removido.json()["api_key_configurada"] is False

@@ -44,6 +44,14 @@ class BalcaoRepository:
         return dict(registro)
 
     @staticmethod
+    async def listarPortais(connection: asyncpg.Connection, tenantId: uuid.UUID) -> List[Dict[str, Any]]:
+        registros = await connection.fetch(
+            "SELECT id, ativo, criado_em FROM tb_balcao_portais WHERE tenant_id = $1 ORDER BY criado_em DESC",
+            tenantId,
+        )
+        return [dict(r) for r in registros]
+
+    @staticmethod
     async def revogarPortal(connection: asyncpg.Connection, tenantId: uuid.UUID, portalId: uuid.UUID) -> Optional[Dict[str, Any]]:
         registro = await connection.fetchrow(
             "UPDATE tb_balcao_portais SET ativo = FALSE WHERE tenant_id = $1 AND id = $2 RETURNING id, ativo",

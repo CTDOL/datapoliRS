@@ -84,4 +84,25 @@ describe('PortaisAdminPanel', () => {
       expect(screen.getByRole('status').textContent).toMatch(/ollama/i);
     });
   });
+
+  it('envia chave de API pelo formulário quando informada', async () => {
+    render(<PortaisAdminPanel />);
+
+    fireEvent.change(screen.getByLabelText(/Motor de extração/i), {
+      target: { value: 'cohere' },
+    });
+    fireEvent.change(screen.getByLabelText(/Chave de API de IA/i), {
+      target: { value: 'cohere-key-xyz' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Aplicar Motor/i }));
+
+    await waitFor(() => {
+      expect(balcaoService.atualizarIaConfig).toHaveBeenCalledWith({
+        provider: 'cohere',
+        model: '',
+        base_url: '',
+        api_key: 'cohere-key-xyz',
+      });
+    });
+  });
 });

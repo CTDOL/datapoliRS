@@ -21,6 +21,12 @@ class PortalRevogadoResposta(BaseModel):
     ativo: bool
 
 
+class PortalResumo(BaseModel):
+    id: uuid.UUID
+    ativo: bool
+    criado_em: datetime
+
+
 class AnexoResumo(BaseModel):
     id: uuid.UUID
     mime_type: str
@@ -129,3 +135,5 @@ class IaConfigAtualizarRequest(BaseModel):
     provider: str
     model: str = ""
     base_url: str = ""
+    api_key: Optional[str] = None
+    limpar_api_key: bool = False

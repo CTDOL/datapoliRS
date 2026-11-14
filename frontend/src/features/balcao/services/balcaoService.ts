@@ -9,9 +9,11 @@ import type {
   EntradaResumo,
   EventoTimeline,
   GrafoResposta,
+  IaConfigAtualizarRequest,
   IaConfigResposta,
   PortalCriadoResposta,
   PortalEntradaResposta,
+  PortalResumo,
   PortalRevogadoResposta,
   ResolverRequest,
   ResolverResponse,
@@ -109,6 +111,11 @@ export const balcaoService = {
     return res.data;
   },
 
+  async listarPortais(): Promise<PortalResumo[]> {
+    const res = await api.get<PortalResumo[]>('/api/v1/balcao/portais');
+    return res.data;
+  },
+
   async criarPortal(): Promise<PortalCriadoResposta> {
     const res = await api.post<PortalCriadoResposta>('/api/v1/balcao/portais');
     return res.data;
@@ -131,11 +138,7 @@ export const balcaoService = {
     return res.data;
   },
 
-  async atualizarIaConfig(payload: {
-    provider: string;
-    model: string;
-    base_url: string;
-  }): Promise<IaConfigResposta> {
+  async atualizarIaConfig(payload: IaConfigAtualizarRequest): Promise<IaConfigResposta> {
     const res = await api.put<IaConfigResposta>('/api/v1/balcao/ia-config', payload);
     return res.data;
   },

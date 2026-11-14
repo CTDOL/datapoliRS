@@ -113,12 +113,12 @@ export function TriagemDetalhe({
       {sugestaoResolvida && (
         <div
           role="alert"
-          className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 text-xs text-amber-200"
+          className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-950"
         >
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
           <div>
             <p className="font-semibold">Alerta de assunto semelhante já resolvido (365 dias)</p>
-            <p className="mt-0.5 text-amber-200/80">
+            <p className="mt-0.5 text-amber-800">
               {sugestaoResolvida.motivo} · Similaridade:{' '}
               {Math.round(sugestaoResolvida.score_similaridade * 100)}%
             </p>
@@ -127,12 +127,12 @@ export function TriagemDetalhe({
       )}
 
       {entrada.sugestoes.length > 0 && !sugestaoResolvida && (
-        <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-3 text-xs text-sky-200">
+        <div className="rounded-xl border border-sky-300 bg-sky-50 p-3 text-xs text-sky-950">
           <p className="flex items-center gap-1.5 font-semibold">
-            <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+            <Sparkles className="h-3.5 w-3.5 text-sky-600" />
             <span>Sugestões de vínculo ({entrada.sugestoes.length})</span>
           </p>
-          <ul className="mt-1.5 space-y-1">
+          <ul className="mt-1.5 space-y-1 text-sky-900">
             {entrada.sugestoes.map((sug) => (
               <li key={sug.id}>
                 {sug.motivo} ({Math.round(sug.score_similaridade * 100)}%)
@@ -183,9 +183,9 @@ export function TriagemDetalhe({
                 type="button"
                 onClick={handleAnalisar}
                 disabled={processando}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-500/15 px-3 py-1.5 text-xs font-medium text-purple-200 hover:bg-purple-500/25 disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-purple-600 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-900 hover:bg-purple-100 disabled:opacity-60"
               >
-                <Sparkles className="h-3.5 w-3.5" />
+                <Sparkles className="h-3.5 w-3.5 text-purple-700" />
                 <span>{processando ? 'Analisando...' : 'Analisar (Regex / IA)'}</span>
               </button>
             )}
@@ -193,7 +193,7 @@ export function TriagemDetalhe({
 
           {Array.isArray(extraidos.municipios_candidatos) &&
             extraidos.municipios_candidatos.length > 1 && (
-              <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950">
                 Múltiplos municípios citados ({extraidos.municipios_candidatos.join(', ')}):
                 escolha o correto ou acione a análise com IA.
               </p>
@@ -286,7 +286,7 @@ export function TriagemDetalhe({
                 type="button"
                 onClick={handleDescartar}
                 disabled={processando}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/15 px-3 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-500/25 disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-900 hover:bg-rose-100 disabled:opacity-60"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Descartar</span>

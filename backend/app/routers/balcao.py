@@ -8,7 +8,7 @@ from app.core.rate_limit import RateLimiter
 from app.schemas.balcao import (
     AnexoCriadoResposta, DescartarRequest, DescartarResponse, EfetivarRequest, EfetivarResponse,
     EntradaDetalhe, EntradaResumo, EventoTimeline, GrafoResposta, IaConfigAtualizarRequest,
-    IaConfigResposta, PortalCriadoResposta, PortalRevogadoResposta, ResolverRequest, ResolverResponse,
+    IaConfigResposta, PortalCriadoResposta, PortalResumo, PortalRevogadoResposta, ResolverRequest, ResolverResponse,
 )
 from app.schemas.user import UserInDB
 from app.services import observabilidade_service
@@ -119,6 +119,14 @@ async def baixar_anexo(
     )
 
 
+@router.get("/portais", response_model=List[PortalResumo], summary="Lista portais públicos do gabinete")
+async def listar_portais(
+    current_user: UserInDB = Depends(require_role(["admin"])),
+    connection: asyncpg.Connection = Depends(getDbConnection)
+):
+    return await BalcaoPortalService.listarPortais(connection, current_user.tenant_id)
+
+
 @router.post("/portais", response_model=PortalCriadoResposta, status_code=status.HTTP_201_CREATED,
              summary="Cria um portal; o token em claro só aparece nesta resposta")
 async def criar_portal(
@@ -188,5 +196,10 @@ async def atualizar_ia_config(
     connection: asyncpg.Connection = Depends(getDbConnection),
 ):
     return await BalcaoIaService.atualizarConfiguracao(
-        connection, payload.provider, payload.model, payload.base_url
+        connection,
+        payload.provider,
+        payload.model,
+        payload.base_url,
+        apiKey=payload.api_key,
+        limparApiKey=payload.limpar_api_key,
     )

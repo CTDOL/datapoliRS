@@ -1,7 +1,11 @@
 import asyncio
+import base64
+import hashlib
+import hmac
 import json
 import logging
 import re
+import secrets
 from typing import Any, Callable, Dict, List, Optional, Protocol
 
 import asyncpg
@@ -18,14 +22,17 @@ logger = logging.getLogger("BalcaoIaService")
 TIMEOUT_SEGUNDOS = 10
 TAMANHO_MAXIMO_DO_VALOR = 200
 CAMPOS_COMPLEMENTAVEIS = ("nome", "municipio")
-PROVEDORES_SUPORTADOS = ("", "regex", "openai", "ollama", "gemini", "anthropic")
+PROVEDORES_SUPORTADOS = ("", "regex", "openai", "cohere", "ollama", "gemini", "anthropic")
 
 CHAVE_PROVIDER = "balcao.ia.provider"
 CHAVE_MODEL = "balcao.ia.model"
 CHAVE_BASE_URL = "balcao.ia.base_url"
+CHAVE_API_KEY = "balcao.ia.api_key"
+PREFIXO_CIFRADO = "enc:"
 
 DEFAULT_MODELS = {
     "openai": "gpt-4o-mini",
+    "cohere": "command-a-03-2025",
     "ollama": "llama3.2",
     "gemini": "gemini-2.0-flash",
     "anthropic": "claude-3-5-haiku-latest",
@@ -33,10 +40,56 @@ DEFAULT_MODELS = {
 
 DEFAULT_BASE_URLS = {
     "openai": "https://api.openai.com/v1",
+    "cohere": "https://api.cohere.ai/compatibility/v1",
     "ollama": "http://127.0.0.1:11434/v1",
     "gemini": "https://generativelanguage.googleapis.com/v1beta",
     "anthropic": "https://api.anthropic.com/v1",
 }
+
+
+def _keystream(chaveMestra: bytes, nonce: bytes, tamanho: int) -> bytes:
+    blocos: List[bytes] = []
+    contador = 0
+    while sum(len(b) for b in blocos) < tamanho:
+        blocos.append(hashlib.sha256(chaveMestra + nonce + contador.to_bytes(4, "big")).digest())
+        contador += 1
+    return b"".join(blocos)[:tamanho]
+
+
+def _cifrarChave(chave: str) -> str:
+    limpa = chave.strip()
+    if not limpa:
+        return ""
+    segredo = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
+    nonce = secrets.token_bytes(16)
+    dados = limpa.encode("utf-8")
+    fluxo = _keystream(segredo, nonce, len(dados))
+    cifrado = bytes(a ^ b for a, b in zip(dados, fluxo))
+    mac = hmac.new(segredo, nonce + cifrado, hashlib.sha256).digest()
+    return f"{PREFIXO_CIFRADO}{base64.urlsafe_b64encode(nonce + mac + cifrado).decode()}"
+
+
+def _decifrarChave(valor: str) -> str:
+    limpo = (valor or "").strip()
+    if not limpo:
+        return ""
+    if not limpo.startswith(PREFIXO_CIFRADO):
+        return limpo
+    try:
+        bruto = base64.urlsafe_b64decode(limpo[len(PREFIXO_CIFRADO):].encode())
+        if len(bruto) < 48:
+            return ""
+        nonce, mac, cifrado = bruto[:16], bruto[16:48], bruto[48:]
+        segredo = hashlib.sha256(settings.SECRET_KEY.encode()).digest()
+        esperado = hmac.new(segredo, nonce + cifrado, hashlib.sha256).digest()
+        if not hmac.compare_digest(mac, esperado):
+            logger.warning("Assinatura inválida em balcao.ia.api_key; ignorando valor armazenado.")
+            return ""
+        fluxo = _keystream(segredo, nonce, len(cifrado))
+        return bytes(a ^ b for a, b in zip(cifrado, fluxo)).decode("utf-8")
+    except Exception:  # noqa: BLE001
+        logger.warning("Não foi possível decifrar balcao.ia.api_key; ignorando valor armazenado.")
+        return ""
 
 
 class ProvedorIA(Protocol):
@@ -113,8 +166,8 @@ class ProvedorOpenAI:
         ).strip().rstrip("/")
 
     async def complementar(self, pedido: Dict[str, Any]) -> Dict[str, Any]:
-        if self.provider == "openai" and not self.apiKey:
-            raise RuntimeError("BALCAO_IA_API_KEY ausente para provedor OpenAI.")
+        if self.provider in ("openai", "cohere") and not self.apiKey:
+            raise RuntimeError(f"BALCAO_IA_API_KEY ausente para provedor {self.provider}.")
         headers = {"Content-Type": "application/json"}
         if self.apiKey:
             headers["Authorization"] = f"Bearer {self.apiKey}"
@@ -203,6 +256,7 @@ class ProvedorAnthropic:
 def _registrarPadroes() -> None:
     registrarProvedor("regex", ProvedorRegex)
     registrarProvedor("openai", lambda: ProvedorOpenAI("openai"))
+    registrarProvedor("cohere", lambda: ProvedorOpenAI("cohere"))
     registrarProvedor("ollama", lambda: ProvedorOpenAI("ollama"))
     registrarProvedor("gemini", ProvedorGemini)
     registrarProvedor("anthropic", ProvedorAnthropic)
@@ -215,21 +269,29 @@ class BalcaoIaService:
     """Complemento por IA da efetivação: desligado/regex por padrão, só preenche campo vazio e nunca bloqueia."""
 
     @staticmethod
-    def _construirProvedor(nome: str, model: str = "", baseUrl: str = "") -> Optional[ProvedorIA]:
+    def _construirProvedor(
+        nome: str, model: str = "", baseUrl: str = "", apiKey: Optional[str] = None
+    ) -> Optional[ProvedorIA]:
         nomeLimpo = (nome or "").strip().lower()
         if not nomeLimpo:
             return None
-        if nomeLimpo in ("openai", "ollama") and (model or baseUrl):
-            return ProvedorOpenAI(nomeLimpo, model=model, baseUrl=baseUrl)
-        if nomeLimpo == "gemini" and (model or baseUrl):
-            return ProvedorGemini(model=model, baseUrl=baseUrl)
-        if nomeLimpo == "anthropic" and (model or baseUrl):
-            return ProvedorAnthropic(model=model, baseUrl=baseUrl)
+        if nomeLimpo in ("openai", "cohere", "ollama") and (model or baseUrl or apiKey is not None):
+            return ProvedorOpenAI(nomeLimpo, model=model, apiKey=apiKey, baseUrl=baseUrl)
+        if nomeLimpo == "gemini" and (model or baseUrl or apiKey is not None):
+            return ProvedorGemini(model=model, apiKey=apiKey, baseUrl=baseUrl)
+        if nomeLimpo == "anthropic" and (model or baseUrl or apiKey is not None):
+            return ProvedorAnthropic(model=model, apiKey=apiKey, baseUrl=baseUrl)
         fabrica = _PROVEDORES.get(nomeLimpo)
         if fabrica is None:
             logger.warning("BALCAO_IA_PROVIDER aponta para um provedor não registrado: IA desligada.")
             return None
         return fabrica()
+
+    @staticmethod
+    async def _resolverApiKey(connection: asyncpg.Connection) -> str:
+        armazenada = await SystemConfigService.getStr(connection, CHAVE_API_KEY, "")
+        decifrada = _decifrarChave(armazenada)
+        return decifrada or (settings.BALCAO_IA_API_KEY or "").strip()
 
     @staticmethod
     def provedor() -> Optional[ProvedorIA]:
@@ -240,22 +302,28 @@ class BalcaoIaService:
         provider = (await SystemConfigService.getStr(connection, CHAVE_PROVIDER, settings.BALCAO_IA_PROVIDER)).strip().lower()
         model = (await SystemConfigService.getStr(connection, CHAVE_MODEL, settings.BALCAO_IA_MODEL)).strip()
         baseUrl = (await SystemConfigService.getStr(connection, CHAVE_BASE_URL, settings.BALCAO_IA_BASE_URL)).strip()
+        apiKeyResolvida = await BalcaoIaService._resolverApiKey(connection)
         return {
             "provider": provider or "regex",
             "model": model,
             "base_url": baseUrl,
-            "api_key_configurada": bool(settings.BALCAO_IA_API_KEY),
+            "api_key_configurada": bool(apiKeyResolvida),
             "provedores_suportados": [p or "regex" for p in PROVEDORES_SUPORTADOS if p != ""],
         }
 
     @staticmethod
     async def atualizarConfiguracao(
-        connection: asyncpg.Connection, provider: str, model: str = "", baseUrl: str = ""
+        connection: asyncpg.Connection,
+        provider: str,
+        model: str = "",
+        baseUrl: str = "",
+        apiKey: Optional[str] = None,
+        limparApiKey: bool = False,
     ) -> Dict[str, Any]:
         providerLimpo = (provider or "").strip().lower()
         if providerLimpo not in PROVEDORES_SUPORTADOS:
             raise DomainException(
-                "Provedor de IA inválido. Escolha regex, openai, ollama, gemini ou anthropic.",
+                "Provedor de IA inválido. Escolha regex, openai, cohere, ollama, gemini ou anthropic.",
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 "Dados inválidos",
             )
@@ -267,11 +335,16 @@ class BalcaoIaService:
                 "Dados inválidos",
             )
         valorBanco = "" if providerLimpo == "regex" else providerLimpo
-        await SystemConfigService.updateMany(connection, {
+        updates: Dict[str, str] = {
             CHAVE_PROVIDER: valorBanco,
             CHAVE_MODEL: (model or "").strip()[:120],
             CHAVE_BASE_URL: baseUrlLimpa[:255],
-        })
+        }
+        if limparApiKey:
+            updates[CHAVE_API_KEY] = ""
+        elif apiKey is not None and apiKey.strip():
+            updates[CHAVE_API_KEY] = _cifrarChave(apiKey.strip())
+        await SystemConfigService.updateMany(connection, updates)
         return await BalcaoIaService.obterConfiguracao(connection)
 
     @staticmethod
@@ -279,15 +352,20 @@ class BalcaoIaService:
         texto: str,
         camposVazios: List[str],
         configRuntime: Optional[Dict[str, Any]] = None,
+        connection: Optional[asyncpg.Connection] = None,
     ) -> Dict[str, str]:
         camposPedidos = [c for c in camposVazios if c in CAMPOS_COMPLEMENTAVEIS]
         if not camposPedidos:
             return {}
         if configRuntime is not None:
+            apiKeyRuntime: Optional[str] = None
+            if connection is not None:
+                apiKeyRuntime = await BalcaoIaService._resolverApiKey(connection) or None
             provedor = BalcaoIaService._construirProvedor(
                 str(configRuntime.get("provider", "")),
                 model=str(configRuntime.get("model", "")),
                 baseUrl=str(configRuntime.get("base_url", "")),
+                apiKey=apiKeyRuntime,
             )
         else:
             provedor = BalcaoIaService.provedor()

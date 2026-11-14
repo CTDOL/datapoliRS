@@ -16,6 +16,12 @@ export interface PortalRevogadoResposta {
   ativo: boolean;
 }
 
+export interface PortalResumo {
+  id: string;
+  ativo: boolean;
+  criado_em: string;
+}
+
 export interface AnexoResumo {
   id: string;
   mime_type: string;
@@ -115,6 +121,8 @@ export interface IaConfigAtualizarRequest {
   provider: string;
   model: string;
   base_url: string;
+  api_key?: string;
+  limpar_api_key?: boolean;
 }
 
 export interface GrafoNo {

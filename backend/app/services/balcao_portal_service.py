@@ -1,7 +1,7 @@
 import hashlib
 import secrets
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import asyncpg
 from fastapi import status
 from app.core.exceptions import DomainException
@@ -52,6 +52,10 @@ class BalcaoPortalService:
         token = secrets.token_urlsafe(32)
         portal = await BalcaoRepository.criarPortal(connection, tenantId, hashDoToken(token))
         return {**portal, "token": token}
+
+    @staticmethod
+    async def listarPortais(connection: asyncpg.Connection, tenantId: uuid.UUID) -> List[Dict[str, Any]]:
+        return await BalcaoRepository.listarPortais(connection, tenantId)
 
     @staticmethod
     async def revogarPortal(connection: asyncpg.Connection, tenantId: uuid.UUID,

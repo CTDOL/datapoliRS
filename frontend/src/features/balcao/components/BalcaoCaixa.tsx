@@ -87,9 +87,9 @@ export function BalcaoCaixa() {
       {erro && (
         <div
           role="alert"
-          className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200"
+          className="flex items-center gap-2 rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900"
         >
-          <AlertTriangle className="h-4 w-4 shrink-0 text-rose-400" />
+          <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
           <span>{erro}</span>
         </div>
       )}
@@ -104,8 +104,8 @@ export function BalcaoCaixa() {
                 onClick={() => setFiltroStatus(f.valor)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                   filtroStatus === f.valor
-                    ? 'border border-purple-500/50 bg-purple-500/20 text-purple-700 dark:text-purple-200'
-                    : 'border border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:text-zinc-200'
+                    ? 'border border-purple-600 bg-purple-600 text-white'
+                    : 'border border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                 }`}
               >
                 {f.rotulo}

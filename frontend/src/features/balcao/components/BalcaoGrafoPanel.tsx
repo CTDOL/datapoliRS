@@ -6,9 +6,9 @@ import { balcaoService } from '../services/balcaoService';
 import { extrairMensagemErroApi, type GrafoNo, type GrafoResposta } from '../types';
 
 const CORES_POR_TIPO: Record<string, string> = {
-  ATENDIDO: 'border-sky-500/40 bg-sky-500/10 text-sky-200',
-  ATENDIMENTO: 'border-purple-500/40 bg-purple-500/10 text-purple-200',
-  MUNICIPIO: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200',
+  ATENDIDO: 'border-sky-300 bg-sky-50 text-sky-900',
+  ATENDIMENTO: 'border-purple-300 bg-purple-50 text-purple-900',
+  MUNICIPIO: 'border-emerald-300 bg-emerald-50 text-emerald-900',
 };
 
 export function BalcaoGrafoPanel() {
@@ -82,7 +82,7 @@ export function BalcaoGrafoPanel() {
       {erro && (
         <div
           role="alert"
-          className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200"
+          className="flex items-center gap-2 rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900"
         >
           <AlertTriangle className="h-4 w-4 text-rose-400" />
           <span>{erro}</span>

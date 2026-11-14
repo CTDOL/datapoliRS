@@ -67,7 +67,7 @@ class BalcaoCaixaService:
         if vazios:
             configIa = await BalcaoIaService.obterConfiguracao(connection)
             sugeridos = await BalcaoIaService.complementar(
-                entrada["texto_original"], vazios, configRuntime=configIa
+                entrada["texto_original"], vazios, configRuntime=configIa, connection=connection
             )
             if "nome" in sugeridos and not dados.get("nome"):
                 dados["nome"] = sugeridos["nome"]
@@ -154,7 +154,7 @@ class BalcaoCaixaService:
         if vazios:
             configIa = await BalcaoIaService.obterConfiguracao(connection)
             sugeridos = await BalcaoIaService.complementar(
-                entrada["texto_original"], vazios, configRuntime=configIa
+                entrada["texto_original"], vazios, configRuntime=configIa, connection=connection
             )
             if "nome" in sugeridos and not campos["nome"]:
                 campos["nome"] = sugeridos["nome"]

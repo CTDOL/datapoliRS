@@ -58,7 +58,14 @@ class SystemConfigService:
 
     @staticmethod
     async def listAll(connection: asyncpg.Connection) -> List[Dict[str, Any]]:
-        return await SystemConfigRepository.getAll(connection)
+        rows = await SystemConfigRepository.getAll(connection)
+        return [
+            {
+                **dict(row),
+                "valor": "***" if row.get("chave") == "balcao.ia.api_key" and row.get("valor") else row.get("valor"),
+            }
+            for row in rows
+        ]
 
     @staticmethod
     async def updateMany(connection: asyncpg.Connection, updates: Dict[str, str]) -> List[Dict[str, Any]]:

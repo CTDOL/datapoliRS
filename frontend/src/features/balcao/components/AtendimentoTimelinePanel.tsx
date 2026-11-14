@@ -121,7 +121,7 @@ export function AtendimentoTimelinePanel({
           {resolvidoSucesso && (
             <div
               role="status"
-              className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-200"
+              className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 p-2.5 text-xs text-emerald-900"
             >
               <CheckCircle2 className="h-4 w-4 text-emerald-400" />
               <span>Atendimento resolvido com sucesso.</span>
@@ -131,7 +131,7 @@ export function AtendimentoTimelinePanel({
           {erroLocal && (
             <div
               role="alert"
-              className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-200"
+              className="rounded-lg border border-rose-300 bg-rose-50 p-2.5 text-xs text-rose-900"
             >
               {erroLocal}
             </div>
