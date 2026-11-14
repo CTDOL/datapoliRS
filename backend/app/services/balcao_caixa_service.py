@@ -91,7 +91,7 @@ class BalcaoCaixaService:
                 existentes = await BalcaoRepository.listarSugestoes(connection, tenantId, entradaId)
                 jaVinculado = {str(s.get("atendimento_relacionado_id")) for s in existentes if s.get("atendimento_relacionado_id")}
                 if semelhante["atendimento_id"] not in jaVinculado:
-                    await BalcaoRepository.gravarSugestao(
+                    await BalcaoRepository.criarSugestao(
                         connection,
                         tenantId,
                         entradaId,
